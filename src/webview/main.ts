@@ -68,6 +68,65 @@ function getBlockquoteDepth(line: string): number {
     return match ? match[1].length : 0;
 }
 
+// Line type definitions - single source of truth for type detection, icons, and menu
+interface LineTypeDefinition {
+    type: string;
+    pattern: RegExp;
+    icon: string;
+    label?: string; // Label for menu (if shown in menu)
+}
+
+// Types for line detection (order matters - more specific patterns first)
+const LINE_TYPES: LineTypeDefinition[] = [
+    { type: 'h1', pattern: /^#{1}\s/, icon: 'H₁', label: 'Heading 1' },
+    { type: 'h2', pattern: /^#{2}\s/, icon: 'H₂', label: 'Heading 2' },
+    { type: 'h3', pattern: /^#{3}\s/, icon: 'H₃', label: 'Heading 3' },
+    { type: 'h4', pattern: /^#{4}\s/, icon: 'H₄', label: 'Heading 4' },
+    { type: 'h5', pattern: /^#{5}\s/, icon: 'H₅', label: 'Heading 5' },
+    { type: 'h6', pattern: /^#{6}\s/, icon: 'H₆', label: 'Heading 6' },
+    { type: 'hr', pattern: /^(-{3,}|\*{3,}|_{3,})\s*$/, icon: '―', label: 'Horizontal Rule' },
+    { type: 'task', pattern: /^[-*+]\s\[[ xX]\]/, icon: '☐', label: 'Task List' },
+    { type: 'ul', pattern: /^[-*+]\s/, icon: '•', label: 'Bullet List' },
+    { type: 'ol', pattern: /^\d+\.\s/, icon: '1.', label: 'Numbered List' },
+    { type: 'alert', pattern: /^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/i, icon: '!' }, // No menu entry
+    { type: 'quote', pattern: /^>/, icon: '❝', label: 'Quote' },
+    { type: 'code', pattern: /^```/, icon: '{}', label: 'Code Block' },
+];
+
+const DEFAULT_LINE_TYPE: LineTypeDefinition = { type: 'paragraph', pattern: /^/, icon: 'T', label: 'Text' };
+
+// Menu items (subset of LINE_TYPES that appear in the menu, in display order)
+const MENU_LINE_TYPES: LineTypeDefinition[] = [
+    DEFAULT_LINE_TYPE,
+    ...LINE_TYPES.filter(t => t.label), // Only types with labels
+];
+
+// Get the line type for a given line
+function getLineType(line: string): LineTypeDefinition {
+    for (const def of LINE_TYPES) {
+        if (def.pattern.test(line)) {
+            return def;
+        }
+    }
+    return DEFAULT_LINE_TYPE;
+}
+
+// Get the icon for a line type
+function getLineTypeIcon(line: string): string {
+    return getLineType(line).icon;
+}
+
+// Generate line prefix (line number + type button)
+// isCodeContent: true for lines inside code blocks (not the ``` fences themselves)
+function generateLinePrefix(lineNumber: number, line: string, isCodeContent: boolean = false): string {
+    if (isCodeContent) {
+        // Code content lines: no icon, no button interaction
+        return `<span class="line-prefix" contenteditable="false"><span class="line-number">${lineNumber}</span><span class="line-type-btn disabled"></span></span>`;
+    }
+    const icon = getLineTypeIcon(line);
+    return `<span class="line-prefix" contenteditable="false"><span class="line-number">${lineNumber}</span><button type="button" class="line-type-btn" data-line="${lineNumber - 1}" title="Change line type">${icon}</button></span>`;
+}
+
 // Parse markdown text into styled HTML for display
 function markdownToStyledHtml(markdown: string): string {
     const lines = markdown.split('\n');
@@ -156,27 +215,32 @@ function markdownToStyledHtml(markdown: string): string {
         const info = lineInfos[i];
         const prevInfo = i > 0 ? lineInfos[i - 1] : null;
         const nextInfo = i < lineInfos.length - 1 ? lineInfos[i + 1] : null;
+        const lineNum = i + 1;
         
-        // Code fence
+        // Code fence - these ARE clickable to convert back to text
         if (info.isCodeFence) {
+            const prefix = generateLinePrefix(lineNum, info.line, false);
             if (!inCodeBlock) {
                 inCodeBlock = true;
                 const lang = info.line.slice(3).trim();
-                htmlLines.push(`<div class="line code-fence code-start"><span class="line-content"><span class="code-inner">\`\`\`${escapeHtml(lang)}</span></span></div>`);
+                htmlLines.push(`<div class="line code-fence code-start">${prefix}<span class="line-content"><span class="code-inner">\`\`\`${escapeHtml(lang)}</span></span></div>`);
             } else {
                 inCodeBlock = false;
-                htmlLines.push(`<div class="line code-fence code-end"><span class="line-content"><span class="code-inner">\`\`\`</span></span></div>`);
+                htmlLines.push(`<div class="line code-fence code-end">${prefix}<span class="line-content"><span class="code-inner">\`\`\`</span></span></div>`);
             }
             continue;
         }
         
         // Code content
         if (info.isCodeContent) {
+            const prefix = generateLinePrefix(lineNum, info.line, true);
             const content = escapeHtml(info.line);
             const isEmpty = !content;
-            htmlLines.push(`<div class="line code-content${isEmpty ? ' empty-line' : ''}"><span class="line-content"><span class="code-inner">${content || '<br>'}</span></span></div>`);
+            htmlLines.push(`<div class="line code-content${isEmpty ? ' empty-line' : ''}">${prefix}<span class="line-content"><span class="code-inner">${content || '<br>'}</span></span></div>`);
             continue;
         }
+        
+        const prefix = generateLinePrefix(lineNum, info.line);
         
         // GitHub alert header
         if (info.isAlertHeader) {
@@ -184,8 +248,8 @@ function markdownToStyledHtml(markdown: string): string {
             const alertType = alertMatch![1].toUpperCase();
             const isLast = !nextInfo?.isAlertContent;
             let classes = `line md-alert md-alert-${info.alertType} alert-first`;
-            if (isLast) classes += ' alert-last alert-single';
-            htmlLines.push(`<div class="${classes}"><span class="line-content"><span class="alert-inner"><span class="md-syntax">&gt; [!</span><span class="md-alert-type">${alertType}</span><span class="md-syntax">]</span></span></span></div>`);
+            if (isLast) {classes += ' alert-last alert-single';}
+            htmlLines.push(`<div class="${classes}">${prefix}<span class="line-content"><span class="alert-inner"><span class="md-syntax">&gt; [!</span><span class="md-alert-type">${alertType}</span><span class="md-syntax">]</span></span></span></div>`);
             continue;
         }
         
@@ -195,8 +259,8 @@ function markdownToStyledHtml(markdown: string): string {
             const styledContent = styleInline(content);
             const isLast = !nextInfo?.isAlertContent;
             let classes = `line md-alert-content md-alert-${info.alertType}`;
-            if (isLast) classes += ' alert-last';
-            htmlLines.push(`<div class="${classes}"><span class="line-content"><span class="alert-inner"><span class="md-syntax">&gt;</span> ${styledContent}</span></span></div>`);
+            if (isLast) {classes += ' alert-last';}
+            htmlLines.push(`<div class="${classes}">${prefix}<span class="line-content"><span class="alert-inner"><span class="md-syntax">&gt;</span> ${styledContent}</span></span></div>`);
             continue;
         }
         
@@ -212,14 +276,14 @@ function markdownToStyledHtml(markdown: string): string {
             if (depth > 1) {classes += ` blockquote-depth-${depth}`;}
             
             const styledLine = styleLine(info.line);
-            htmlLines.push(`<div class="${classes}"><span class="line-content">${styledLine}</span></div>`);
+            htmlLines.push(`<div class="${classes}">${prefix}<span class="line-content">${styledLine}</span></div>`);
             continue;
         }
         
         // Regular line
         const styledLine = styleLine(info.line);
         const isEmpty = !styledLine;
-        htmlLines.push(`<div class="line${isEmpty ? ' empty-line' : ''}"><span class="line-content">${styledLine || '<br>'}</span></div>`);
+        htmlLines.push(`<div class="line${isEmpty ? ' empty-line' : ''}">${prefix}<span class="line-content">${styledLine || '<br>'}</span></div>`);
     }
     
     return htmlLines.join('');
@@ -440,6 +504,53 @@ function escapeHtml(text: string): string {
         .replace(/'/g, '&#39;');
 }
 
+// Get selected text, extracting only from .line-content elements
+function getSelectedMarkdownText(selection: Selection): string {
+    if (!selection.rangeCount || !editorContainer) {
+        return '';
+    }
+    
+    const range = selection.getRangeAt(0);
+    
+    // If selection is within a single line-content, just return the text
+    const commonAncestor = range.commonAncestorContainer;
+    if (commonAncestor instanceof Text || 
+        (commonAncestor instanceof HTMLElement && commonAncestor.closest('.line-content'))) {
+        return selection.toString();
+    }
+    
+    // Multi-line selection: extract text from each line-content
+    const lines: string[] = [];
+    const children = editorContainer.children;
+    
+    for (let i = 0; i < children.length; i++) {
+        const lineEl = children[i];
+        const lineContent = lineEl.querySelector('.line-content');
+        if (!lineContent) {
+            continue;
+        }
+        
+        // Check if this line is within the selection
+        if (selection.containsNode(lineContent, true)) {
+            // Get the text from this line-content
+            const lineRange = document.createRange();
+            lineRange.selectNodeContents(lineContent);
+            
+            // Intersect with selection
+            if (range.compareBoundaryPoints(Range.START_TO_START, lineRange) > 0) {
+                lineRange.setStart(range.startContainer, range.startOffset);
+            }
+            if (range.compareBoundaryPoints(Range.END_TO_END, lineRange) < 0) {
+                lineRange.setEnd(range.endContainer, range.endOffset);
+            }
+            
+            lines.push(lineRange.toString());
+        }
+    }
+    
+    return lines.join('\n');
+}
+
 // Extract plain markdown text from the editor
 function extractMarkdown(container: HTMLElement): string {
     const lines: string[] = [];
@@ -449,7 +560,9 @@ function extractMarkdown(container: HTMLElement): string {
     
     for (let i = 0; i < children.length; i++) {
         const child = children[i];
-        const text = child.textContent || '';
+        // Only get text from .line-content, not line numbers or buttons
+        const lineContent = child.querySelector('.line-content');
+        const text = lineContent ? lineContent.textContent || '' : child.textContent || '';
         lines.push(text);
     }
     
@@ -463,32 +576,28 @@ function placeCursorAtStart(container: HTMLElement): void {
         return;
     }
     
-    // Find the first text node in the container
-    const firstLine = container.firstElementChild;
-    if (!firstLine) {
+    // Find the first line-content element
+    const firstLineContent = container.querySelector('.line-content');
+    if (!firstLineContent) {
         return;
     }
     
-    const treeWalker = document.createTreeWalker(firstLine, NodeFilter.SHOW_TEXT);
+    // Find the first text node within the line-content
+    const treeWalker = document.createTreeWalker(firstLineContent, NodeFilter.SHOW_TEXT);
     const firstTextNode = treeWalker.nextNode();
     
+    const range = document.createRange();
     if (firstTextNode) {
-        const range = document.createRange();
         range.setStart(firstTextNode, 0);
         range.collapse(true);
-        selection.removeAllRanges();
-        selection.addRange(range);
     } else {
-        // No text node, place cursor at start of line content
-        const lineContent = firstLine.querySelector('.line-content');
-        if (lineContent) {
-            const range = document.createRange();
-            range.selectNodeContents(lineContent);
-            range.collapse(true);
-            selection.removeAllRanges();
-            selection.addRange(range);
-        }
+        // No text node (empty line), place cursor at start of line content
+        range.selectNodeContents(firstLineContent);
+        range.collapse(true);
     }
+    
+    selection.removeAllRanges();
+    selection.addRange(range);
 }
 
 // Save and restore cursor position
@@ -561,7 +670,13 @@ function restoreCursorPosition(container: HTMLElement, pos: CursorPosition): voi
     }
     
     const lineEl = children[pos.lineIndex];
-    const treeWalker = document.createTreeWalker(lineEl, NodeFilter.SHOW_TEXT);
+    // Only walk through text nodes in .line-content, not .line-prefix
+    const lineContent = lineEl.querySelector('.line-content');
+    if (!lineContent) {
+        return;
+    }
+    
+    const treeWalker = document.createTreeWalker(lineContent, NodeFilter.SHOW_TEXT);
     
     let charCount = 0;
     let targetNode: Node | null = null;
@@ -579,20 +694,32 @@ function restoreCursorPosition(container: HTMLElement, pos: CursorPosition): voi
         charCount += nodeLength;
     }
     
-    // If no text node found, try to place cursor in the line-content
+    // If no text node found or offset beyond content, place cursor at end of line-content
     if (!targetNode) {
-        const lineContent = lineEl.querySelector('.line-content');
-        if (lineContent) {
-            const range = document.createRange();
+        const range = document.createRange();
+        // Try to find the last text node
+        const lastTextWalker = document.createTreeWalker(lineContent, NodeFilter.SHOW_TEXT);
+        let lastTextNode: Node | null = null;
+        while (lastTextWalker.nextNode()) {
+            lastTextNode = lastTextWalker.currentNode;
+        }
+        
+        if (lastTextNode) {
+            // Place cursor at end of last text node
+            range.setStart(lastTextNode, lastTextNode.textContent?.length || 0);
+            range.collapse(true);
+        } else {
+            // No text nodes, place at start of line-content
             range.selectNodeContents(lineContent);
             range.collapse(true);
-            const selection = window.getSelection();
-            if (selection) {
-                selection.removeAllRanges();
-                selection.addRange(range);
-            }
-            return;
         }
+        
+        const selection = window.getSelection();
+        if (selection) {
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+        return;
     }
     
     if (targetNode) {
@@ -681,6 +808,641 @@ function updateTocFromMarkdown(markdown: string): void {
     };
     
     updateToc(mockDoc as any);
+}
+
+// ============================================
+// Formatting Toolbar
+// ============================================
+
+let formattingToolbar: HTMLElement | null = null;
+let lineTypeMenu: HTMLElement | null = null;
+let currentLineIndex: number = -1;
+
+function initToolbar(): void {
+    formattingToolbar = document.getElementById('formatting-toolbar');
+    lineTypeMenu = document.getElementById('line-type-menu');
+    
+    if (!formattingToolbar || !lineTypeMenu) {
+        return;
+    }
+    
+    // Generate line type menu from MENU_LINE_TYPES
+    lineTypeMenu.innerHTML = MENU_LINE_TYPES.map(def => `
+        <button type="button" data-type="${def.type}" class="line-type-option">
+            <span class="line-type-icon">${def.icon}</span>
+            <span class="line-type-label">${def.label}</span>
+        </button>
+    `).join('');
+    
+    // Handle formatting toolbar button clicks
+    formattingToolbar.addEventListener('mousedown', (e) => {
+        e.preventDefault(); // Prevent losing selection
+    });
+    
+    formattingToolbar.addEventListener('click', (e) => {
+        const button = (e.target as HTMLElement).closest('button');
+        if (!button) {
+            return;
+        }
+        
+        const format = button.dataset.format;
+        if (format) {
+            applyInlineFormat(format);
+            hideFormattingToolbar();
+        }
+    });
+    
+    // Handle line type menu button clicks
+    lineTypeMenu.addEventListener('click', (e) => {
+        const button = (e.target as HTMLElement).closest('button');
+        if (!button) {
+            return;
+        }
+        
+        const type = button.dataset.type;
+        if (type && currentLineIndex >= 0) {
+            applyLineType(currentLineIndex, type);
+            hideLineTypeMenu();
+        }
+    });
+    
+    // Hide menus when clicking outside
+    document.addEventListener('mousedown', (e) => {
+        const target = e.target as HTMLElement;
+        
+        if (formattingToolbar && !formattingToolbar.contains(target)) {
+            hideFormattingToolbar();
+        }
+        
+        if (lineTypeMenu && !lineTypeMenu.contains(target) && !target.closest('#editor > *::before')) {
+            hideLineTypeMenu();
+        }
+    });
+    
+    // Show formatting toolbar on text selection
+    document.addEventListener('selectionchange', () => {
+        const selection = window.getSelection();
+        if (!selection || !editorContainer) {
+            hideFormattingToolbar();
+            return;
+        }
+        
+        // Check if selection/cursor is within editor
+        if (selection.rangeCount === 0) {
+            hideFormattingToolbar();
+            return;
+        }
+        
+        const range = selection.getRangeAt(0);
+        if (!editorContainer.contains(range.commonAncestorContainer)) {
+            hideFormattingToolbar();
+            return;
+        }
+        
+        // Check if selection is within .line-content (not line numbers or buttons)
+        const startInLineContent = isNodeInLineContent(range.startContainer);
+        const endInLineContent = isNodeInLineContent(range.endContainer);
+        
+        if (!startInLineContent && !endInLineContent) {
+            hideFormattingToolbar();
+            return;
+        }
+        
+        // Show toolbar if there's a selection OR if cursor is inside formatted text
+        if (!selection.isCollapsed) {
+            showFormattingToolbar(selection);
+        } else {
+            // Check if cursor is inside formatted text
+            const formattingInfo = getFormattingAtCursor(selection);
+            if (formattingInfo.hasFormatting) {
+                showFormattingToolbarAtCursor(selection, formattingInfo);
+            } else {
+                hideFormattingToolbar();
+            }
+        }
+    });
+}
+
+// Check if a node is within a .line-content element
+function isNodeInLineContent(node: Node): boolean {
+    let current: Node | null = node;
+    while (current && current !== editorContainer) {
+        if (current instanceof HTMLElement && current.classList.contains('line-content')) {
+            return true;
+        }
+        current = current.parentNode;
+    }
+    return false;
+}
+
+// Detect what formatting is applied at the current cursor position
+function getFormattingAtCursor(selection: Selection): { hasFormatting: boolean; bold: boolean; italic: boolean; code: boolean; strikethrough: boolean; link: boolean } {
+    const result = { hasFormatting: false, bold: false, italic: false, code: false, strikethrough: false, link: false };
+    
+    if (!selection.rangeCount) {
+        return result;
+    }
+    
+    let node: Node | null = selection.getRangeAt(0).startContainer;
+    
+    // Walk up the DOM tree to find formatting spans
+    while (node && node !== editorContainer) {
+        if (node instanceof HTMLElement) {
+            if (node.classList.contains('md-bold') || node.classList.contains('md-bold-italic')) {
+                result.bold = true;
+                result.hasFormatting = true;
+            }
+            if (node.classList.contains('md-italic') || node.classList.contains('md-bold-italic')) {
+                result.italic = true;
+                result.hasFormatting = true;
+            }
+            if (node.classList.contains('md-code')) {
+                result.code = true;
+                result.hasFormatting = true;
+            }
+            if (node.classList.contains('md-strike')) {
+                result.strikethrough = true;
+                result.hasFormatting = true;
+            }
+            if (node.classList.contains('md-link')) {
+                result.link = true;
+                result.hasFormatting = true;
+            }
+        }
+        node = node.parentNode;
+    }
+    
+    return result;
+}
+
+// Update toolbar button active states
+function updateToolbarButtonStates(formattingInfo: { bold: boolean; italic: boolean; code: boolean; strikethrough: boolean; link: boolean }): void {
+    if (!formattingToolbar) {
+        return;
+    }
+    
+    const buttons = formattingToolbar.querySelectorAll('button');
+    buttons.forEach((button) => {
+        const format = button.dataset.format;
+        let isActive = false;
+        
+        switch (format) {
+            case 'bold':
+                isActive = formattingInfo.bold;
+                break;
+            case 'italic':
+                isActive = formattingInfo.italic;
+                break;
+            case 'code':
+                isActive = formattingInfo.code;
+                break;
+            case 'strikethrough':
+                isActive = formattingInfo.strikethrough;
+                break;
+            case 'link':
+                isActive = formattingInfo.link;
+                break;
+        }
+        
+        button.classList.toggle('active', isActive);
+    });
+}
+
+function showFormattingToolbar(selection: Selection): void {
+    if (!formattingToolbar) {
+        return;
+    }
+    
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    
+    // Position toolbar above the selection
+    const toolbarHeight = 36;
+    const toolbarWidth = 160;
+    
+    let left = rect.left + (rect.width / 2) - (toolbarWidth / 2);
+    let top = rect.top - toolbarHeight - 8;
+    
+    // Keep within viewport
+    if (left < 8) {
+        left = 8;
+    }
+    if (left + toolbarWidth > window.innerWidth - 8) {
+        left = window.innerWidth - toolbarWidth - 8;
+    }
+    if (top < 8) {
+        top = rect.bottom + 8; // Show below if not enough space above
+    }
+    
+    formattingToolbar.style.left = `${left}px`;
+    formattingToolbar.style.top = `${top}px`;
+    formattingToolbar.style.display = 'flex';
+    
+    // Update button states based on selection
+    const formattingInfo = getFormattingAtCursor(selection);
+    updateToolbarButtonStates(formattingInfo);
+}
+
+function showFormattingToolbarAtCursor(selection: Selection, formattingInfo: { bold: boolean; italic: boolean; code: boolean; strikethrough: boolean; link: boolean }): void {
+    if (!formattingToolbar) {
+        return;
+    }
+    
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    
+    // Position toolbar above the cursor
+    const toolbarHeight = 36;
+    const toolbarWidth = 160;
+    
+    let left = rect.left - (toolbarWidth / 2);
+    let top = rect.top - toolbarHeight - 8;
+    
+    // Keep within viewport
+    if (left < 8) {
+        left = 8;
+    }
+    if (left + toolbarWidth > window.innerWidth - 8) {
+        left = window.innerWidth - toolbarWidth - 8;
+    }
+    if (top < 8) {
+        top = rect.bottom + 8;
+    }
+    
+    formattingToolbar.style.left = `${left}px`;
+    formattingToolbar.style.top = `${top}px`;
+    formattingToolbar.style.display = 'flex';
+    
+    // Update button states
+    updateToolbarButtonStates(formattingInfo);
+}
+
+function hideFormattingToolbar(): void {
+    if (formattingToolbar) {
+        formattingToolbar.style.display = 'none';
+        // Clear active states
+        const buttons = formattingToolbar.querySelectorAll('button');
+        buttons.forEach((button) => button.classList.remove('active'));
+    }
+}
+
+function showLineTypeMenu(lineElement: HTMLElement, lineIndex: number): void {
+    if (!lineTypeMenu || !editorContainer) {
+        return;
+    }
+    
+    currentLineIndex = lineIndex;
+    
+    // Get line rect
+    const rect = lineElement.getBoundingClientRect();
+    
+    // Position menu to the left of the line
+    const menuWidth = 180;
+    let left = rect.left - menuWidth - 8;
+    let top = rect.top;
+    
+    // If not enough space on left, show on right
+    if (left < 8) {
+        left = rect.left + 50; // After line number
+    }
+    
+    // Keep within viewport vertically
+    const menuHeight = 320; // Approximate
+    if (top + menuHeight > window.innerHeight - 8) {
+        top = window.innerHeight - menuHeight - 8;
+    }
+    
+    lineTypeMenu.style.left = `${left}px`;
+    lineTypeMenu.style.top = `${top}px`;
+    lineTypeMenu.style.display = 'block';
+    
+    // Mark current line type as active
+    updateLineTypeMenuState(lineIndex);
+}
+
+function hideLineTypeMenu(): void {
+    if (lineTypeMenu) {
+        lineTypeMenu.style.display = 'none';
+    }
+    currentLineIndex = -1;
+}
+
+function updateLineTypeMenuState(lineIndex: number): void {
+    if (!lineTypeMenu || !editorContainer) {
+        return;
+    }
+    
+    const markdown = extractMarkdown(editorContainer);
+    const lines = markdown.split('\n');
+    const line = lines[lineIndex] || '';
+    
+    // Detect current line type using shared definitions
+    const lineTypeDef = getLineType(line);
+    // Map 'alert' type to 'quote' for menu purposes (alerts are a special kind of quote)
+    const currentType = lineTypeDef.type === 'alert' ? 'quote' : lineTypeDef.type;
+    
+    // Update active state
+    const options = lineTypeMenu.querySelectorAll('.line-type-option');
+    options.forEach((option) => {
+        const type = (option as HTMLElement).dataset.type;
+        option.classList.toggle('active', type === currentType);
+    });
+}
+
+// Find the formatting span element at cursor position for a given format type
+function findFormattingSpanAtCursor(format: string): HTMLElement | null {
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount) {
+        return null;
+    }
+    
+    let node: Node | null = selection.getRangeAt(0).startContainer;
+    const classMap: Record<string, string[]> = {
+        'bold': ['md-bold', 'md-bold-italic'],
+        'italic': ['md-italic', 'md-bold-italic'],
+        'code': ['md-code'],
+        'strikethrough': ['md-strike'],
+        'link': ['md-link']
+    };
+    
+    const targetClasses = classMap[format] || [];
+    
+    while (node && node !== editorContainer) {
+        if (node instanceof HTMLElement) {
+            for (const cls of targetClasses) {
+                if (node.classList.contains(cls)) {
+                    return node;
+                }
+            }
+        }
+        node = node.parentNode;
+    }
+    
+    return null;
+}
+
+function applyInlineFormat(format: string): void {
+    const selection = window.getSelection();
+    if (!selection || !editorContainer) {
+        return;
+    }
+    
+    // If no selection, check if cursor is inside formatted text and select it
+    if (selection.isCollapsed) {
+        const formattingSpan = findFormattingSpanAtCursor(format);
+        if (formattingSpan) {
+            // Select the entire formatted span
+            const range = document.createRange();
+            range.selectNodeContents(formattingSpan);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        } else {
+            // No selection and not inside formatted text - nothing to do
+            return;
+        }
+    }
+    
+    const selectedText = selection.toString();
+    if (!selectedText) {
+        return;
+    }
+    
+    // Get cursor position info
+    const cursorPos = saveCursorPosition(editorContainer);
+    if (!cursorPos) {
+        return;
+    }
+    
+    // Get the line and find selection position
+    const markdown = extractMarkdown(editorContainer);
+    const lines = markdown.split('\n');
+    const line = lines[cursorPos.lineIndex];
+    
+    // Find selection start and end within the line
+    const range = selection.getRangeAt(0);
+    const preSelectionRange = range.cloneRange();
+    const lineContent = editorContainer.children[cursorPos.lineIndex]?.querySelector('.line-content');
+    if (!lineContent) {
+        return;
+    }
+    preSelectionRange.selectNodeContents(lineContent);
+    preSelectionRange.setEnd(range.startContainer, range.startOffset);
+    const selectionStart = preSelectionRange.toString().length;
+    const selectionEnd = selectionStart + selectedText.length;
+    
+    // Check if the selection is already formatted (for toggle)
+    let prefix = '';
+    let suffix = '';
+    
+    switch (format) {
+        case 'bold':
+            prefix = '**';
+            suffix = '**';
+            break;
+        case 'italic':
+            prefix = '*';
+            suffix = '*';
+            break;
+        case 'code':
+            prefix = '`';
+            suffix = '`';
+            break;
+        case 'strikethrough':
+            prefix = '~~';
+            suffix = '~~';
+            break;
+        case 'link':
+            // Links are special - check if already a link
+            const linkMatch = selectedText.match(/^\[(.+)\]\(.+\)$/);
+            if (linkMatch) {
+                // Remove link formatting - extract just the text
+                const newLine = line.slice(0, selectionStart) + linkMatch[1] + line.slice(selectionEnd);
+                lines[cursorPos.lineIndex] = newLine;
+                const newMarkdown = lines.join('\n');
+                sendEdit(newMarkdown);
+                isExternalUpdate = true;
+                editorContainer.innerHTML = markdownToStyledHtml(newMarkdown);
+                isExternalUpdate = false;
+                restoreCursorPosition(editorContainer, {
+                    lineIndex: cursorPos.lineIndex,
+                    offset: selectionStart + linkMatch[1].length
+                });
+                updateTocFromMarkdown(newMarkdown);
+                return;
+            }
+            // Add link formatting
+            const wrappedLink = `[${selectedText}](url)`;
+            const newLineLink = line.slice(0, selectionStart) + wrappedLink + line.slice(selectionEnd);
+            lines[cursorPos.lineIndex] = newLineLink;
+            const newMarkdownLink = lines.join('\n');
+            sendEdit(newMarkdownLink);
+            isExternalUpdate = true;
+            editorContainer.innerHTML = markdownToStyledHtml(newMarkdownLink);
+            isExternalUpdate = false;
+            restoreCursorPosition(editorContainer, {
+                lineIndex: cursorPos.lineIndex,
+                offset: selectionStart + wrappedLink.length
+            });
+            updateTocFromMarkdown(newMarkdownLink);
+            return;
+        default:
+            return;
+    }
+    
+    // Check if text before and after selection has the formatting markers
+    const beforeSelection = line.slice(0, selectionStart);
+    const afterSelection = line.slice(selectionEnd);
+    
+    // Check if selection itself is wrapped with markers
+    if (beforeSelection.endsWith(prefix) && afterSelection.startsWith(suffix)) {
+        // Remove formatting
+        // Remove formatting
+        const newLine = line.slice(0, selectionStart - prefix.length) + selectedText + line.slice(selectionEnd + suffix.length);
+        lines[cursorPos.lineIndex] = newLine;
+        
+        const newMarkdown = lines.join('\n');
+        sendEdit(newMarkdown);
+        isExternalUpdate = true;
+        editorContainer.innerHTML = markdownToStyledHtml(newMarkdown);
+        isExternalUpdate = false;
+        
+        restoreCursorPosition(editorContainer, {
+            lineIndex: cursorPos.lineIndex,
+            offset: selectionStart - prefix.length + selectedText.length
+        });
+        updateTocFromMarkdown(newMarkdown);
+        return;
+    }
+    
+    // Check if the selected text itself contains the markers (e.g., selecting "**bold**")
+    if (selectedText.startsWith(prefix) && selectedText.endsWith(suffix) && selectedText.length > prefix.length + suffix.length) {
+        // Remove formatting from selected text
+        const innerText = selectedText.slice(prefix.length, -suffix.length);
+        const newLine = line.slice(0, selectionStart) + innerText + line.slice(selectionEnd);
+        lines[cursorPos.lineIndex] = newLine;
+        
+        const newMarkdown = lines.join('\n');
+        sendEdit(newMarkdown);
+        isExternalUpdate = true;
+        editorContainer.innerHTML = markdownToStyledHtml(newMarkdown);
+        isExternalUpdate = false;
+        
+        restoreCursorPosition(editorContainer, {
+            lineIndex: cursorPos.lineIndex,
+            offset: selectionStart + innerText.length
+        });
+        updateTocFromMarkdown(newMarkdown);
+        return;
+    }
+    
+    // Add formatting
+    const wrappedText = prefix + selectedText + suffix;
+    const newLine = line.slice(0, selectionStart) + wrappedText + line.slice(selectionEnd);
+    lines[cursorPos.lineIndex] = newLine;
+    
+    const newMarkdown = lines.join('\n');
+    sendEdit(newMarkdown);
+    isExternalUpdate = true;
+    editorContainer.innerHTML = markdownToStyledHtml(newMarkdown);
+    isExternalUpdate = false;
+    
+    // Place cursor after the formatted text
+    const newOffset = selectionStart + wrappedText.length;
+    restoreCursorPosition(editorContainer, {
+        lineIndex: cursorPos.lineIndex,
+        offset: newOffset
+    });
+    
+    updateTocFromMarkdown(newMarkdown);
+}
+
+function applyLineType(lineIndex: number, type: string): void {
+    if (!editorContainer) {
+        return;
+    }
+    
+    const markdown = extractMarkdown(editorContainer);
+    const lines = markdown.split('\n');
+    let line = lines[lineIndex] || '';
+    
+    // Strip existing line prefix (order matters - check more specific patterns first)
+    // Horizontal rule
+    line = line.replace(/^(-{3,}|\*{3,}|_{3,})\s*$/, '');
+    // Headings
+    line = line.replace(/^#{1,6}\s/, '');
+    // Task list
+    line = line.replace(/^[-*+]\s\[[ xX]\]\s/, '');
+    // Unordered list
+    line = line.replace(/^[-*+]\s/, '');
+    // Ordered list
+    line = line.replace(/^\d+\.\s/, '');
+    // Blockquote (handle nested - multiple > characters)
+    line = line.replace(/^>+\s?/, '');
+    // Code fence
+    line = line.replace(/^```\w*\s*/, '');
+    
+    // Apply new prefix
+    switch (type) {
+        case 'paragraph':
+            // Already stripped
+            break;
+        case 'h1':
+            line = `# ${line}`;
+            break;
+        case 'h2':
+            line = `## ${line}`;
+            break;
+        case 'h3':
+            line = `### ${line}`;
+            break;
+        case 'h4':
+            line = `#### ${line}`;
+            break;
+        case 'h5':
+            line = `##### ${line}`;
+            break;
+        case 'h6':
+            line = `###### ${line}`;
+            break;
+        case 'hr':
+            line = `---`;
+            break;
+        case 'ul':
+            line = `- ${line}`;
+            break;
+        case 'ol':
+            line = `1. ${line}`;
+            break;
+        case 'task':
+            line = `- [ ] ${line}`;
+            break;
+        case 'quote':
+            line = `> ${line}`;
+            break;
+        case 'code':
+            // Insert code block (3 lines)
+            line = `\`\`\`\n${line}\n\`\`\``;
+            break;
+    }
+    
+    lines[lineIndex] = line;
+    const newMarkdown = lines.join('\n');
+    
+    // Update editor
+    sendEdit(newMarkdown);
+    isExternalUpdate = true;
+    editorContainer.innerHTML = markdownToStyledHtml(newMarkdown);
+    isExternalUpdate = false;
+    
+    // Place cursor at beginning of line content (after any markdown prefix)
+    // This ensures cursor stays on the same line after type change
+    editorContainer.focus();
+    restoreCursorPosition(editorContainer, {
+        lineIndex: lineIndex,
+        offset: 0
+    });
+    
+    updateTocFromMarkdown(newMarkdown);
 }
 
 // Initialize editor with content
@@ -778,14 +1540,14 @@ function initEditor(container: HTMLElement, markdown: string): void {
         updateTocFromMarkdown(newMarkdown);
     });
     
-    // Handle copy to ensure plain markdown text is copied
+    // Handle copy to ensure plain markdown text is copied (only line content)
     container.addEventListener('copy', (e) => {
         e.preventDefault();
         const selection = window.getSelection();
         if (selection && selection.rangeCount > 0) {
-            // Get the selected text content (plain text, not HTML)
-            const selectedText = selection.toString();
-            e.clipboardData?.setData('text/plain', selectedText);
+            // Extract only text from .line-content elements
+            const text = getSelectedMarkdownText(selection);
+            e.clipboardData?.setData('text/plain', text);
         }
     });
     
@@ -794,9 +1556,9 @@ function initEditor(container: HTMLElement, markdown: string): void {
         e.preventDefault();
         const selection = window.getSelection();
         if (selection && selection.rangeCount > 0) {
-            // Copy the selected text
-            const selectedText = selection.toString();
-            e.clipboardData?.setData('text/plain', selectedText);
+            // Extract only text from .line-content elements
+            const text = getSelectedMarkdownText(selection);
+            e.clipboardData?.setData('text/plain', text);
             
             // Delete the selection by inserting empty text
             document.execCommand('insertText', false, '');
@@ -805,17 +1567,52 @@ function initEditor(container: HTMLElement, markdown: string): void {
     
     // Handle keyboard shortcuts
     container.addEventListener('keydown', (e) => {
-        // Cmd/Ctrl+A for select all - select all content properly
+        // Cmd/Ctrl+A for select all - select only line content, not line numbers
         if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
             e.preventDefault();
             const selection = window.getSelection();
             if (selection) {
-                const range = document.createRange();
-                range.selectNodeContents(container);
                 selection.removeAllRanges();
-                selection.addRange(range);
+                
+                // Select content from first line-content to last line-content
+                const lineContents = container.querySelectorAll('.line-content');
+                if (lineContents.length > 0) {
+                    const range = document.createRange();
+                    range.setStartBefore(lineContents[0]);
+                    range.setEndAfter(lineContents[lineContents.length - 1]);
+                    selection.addRange(range);
+                }
             }
             return;
+        }
+        
+        // Formatting shortcuts
+        if (e.metaKey || e.ctrlKey) {
+            const selection = window.getSelection();
+            if (selection && !selection.isCollapsed) {
+                switch (e.key.toLowerCase()) {
+                    case 'b':
+                        e.preventDefault();
+                        applyInlineFormat('bold');
+                        hideFormattingToolbar();
+                        return;
+                    case 'i':
+                        e.preventDefault();
+                        applyInlineFormat('italic');
+                        hideFormattingToolbar();
+                        return;
+                    case 'e':
+                        e.preventDefault();
+                        applyInlineFormat('code');
+                        hideFormattingToolbar();
+                        return;
+                    case 'k':
+                        e.preventDefault();
+                        applyInlineFormat('link');
+                        hideFormattingToolbar();
+                        return;
+                }
+            }
         }
         
         // Cmd/Ctrl+Z for undo (let browser handle it)
@@ -1016,6 +1813,9 @@ function initEditor(container: HTMLElement, markdown: string): void {
     // Focus editor and restore/set cursor position
     container.focus();
     
+    // Focus the editor first
+    container.focus();
+    
     // Restore state from previous session (cursor position, scroll)
     const storedState = getStoredState();
     if (storedState && storedState.cursorPosition) {
@@ -1048,6 +1848,27 @@ function initEditor(container: HTMLElement, markdown: string): void {
         }
         if (state && state.scrollTop) {
             container.scrollTop = state.scrollTop;
+        }
+    });
+    
+    // Initialize formatting toolbar and line-type menu
+    initToolbar();
+    
+    // Handle click on line-type button to show menu
+    container.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        const lineTypeBtn = target.closest('.line-type-btn') as HTMLElement;
+        
+        if (lineTypeBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const lineIndex = parseInt(lineTypeBtn.dataset.line || '-1', 10);
+            const lineElement = lineTypeBtn.closest('#editor > *') as HTMLElement;
+            
+            if (lineIndex >= 0 && lineElement) {
+                showLineTypeMenu(lineElement, lineIndex);
+            }
         }
     });
 }

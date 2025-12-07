@@ -11,7 +11,7 @@ A beautiful WYSIWYG-style markdown editor for VS Code that renders markdown synt
 - **Text Formatting**: Bold, italic, strikethrough, and inline code with visual styling
 - **Links & Images**: Clickable links (Cmd/Ctrl+Click) with styled syntax
 - **Code Blocks**: Syntax-highlighted fenced code blocks with rounded corners
-- **Blockquotes**: Styled blockquotes with left border and background
+- **Blockquotes**: Styled blockquotes with left border and background (supports nested quotes)
 - **Lists**: Unordered, ordered, and task lists with proper indentation
 - **Tables**: Clean table rendering with separator styling
 - **Horizontal Rules**: Visual dividers with centered syntax
@@ -30,6 +30,18 @@ Full support for GitHub's alert syntax:
 - Scroll spy highlights current section
 - Collapsible for more editing space
 
+### 🛠️ Formatting Toolbar
+- **Selection-based toolbar**: Appears when you select text
+- **Toggle formatting**: Bold, italic, code, strikethrough, and links
+- **Smart detection**: Toolbar highlights active formatting at cursor position
+- **Keyboard shortcuts**: Cmd/Ctrl+B (bold), Cmd/Ctrl+I (italic), Cmd/Ctrl+E (code), Cmd/Ctrl+K (link)
+
+### 📋 Line Type Selector
+- **Quick line conversion**: Click the line type icon next to any line number
+- **Supported types**: Text, Headings (H1-H6), Bullet List, Numbered List, Task List, Quote, Code Block, Horizontal Rule
+- **Visual indicators**: Each line shows its type with a distinctive icon
+- **Nested support**: Properly handles nested blockquotes
+
 ### 🎯 Editor Features
 - **Line Numbers**: Always visible line numbers for easy reference
 - **Syntax Visible**: Markdown syntax stays visible and editable
@@ -37,6 +49,8 @@ Full support for GitHub's alert syntax:
 - **Bidirectional Sync**: Changes sync with the actual file
 - **Undo/Redo**: Full undo/redo support via VS Code
 - **Local Images**: Supports relative image paths
+- **Clipboard Support**: Full copy, cut, paste, and select all (Cmd/Ctrl+A)
+- **Cursor Persistence**: Cursor position preserved when switching tabs
 
 ## Installation
 
@@ -60,6 +74,14 @@ Full support for GitHub's alert syntax:
 ### Keyboard Shortcuts
 | Shortcut | Action |
 |----------|--------|
+| `Cmd/Ctrl+B` | Toggle bold |
+| `Cmd/Ctrl+I` | Toggle italic |
+| `Cmd/Ctrl+E` | Toggle inline code |
+| `Cmd/Ctrl+K` | Insert/edit link |
+| `Cmd/Ctrl+A` | Select all content |
+| `Cmd/Ctrl+C` | Copy selection |
+| `Cmd/Ctrl+X` | Cut selection |
+| `Cmd/Ctrl+V` | Paste |
 | `Cmd/Ctrl+Click` | Open link in browser |
 | `Tab` | Insert 4 spaces |
 | `Enter` | New line |

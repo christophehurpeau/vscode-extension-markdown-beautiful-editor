@@ -23,6 +23,20 @@ export function getWebviewContent(
             <div id="editor"></div>
         </div>
     </div>
+    
+    <!-- Floating formatting toolbar (appears on text selection) -->
+    <div id="formatting-toolbar" class="formatting-toolbar" style="display: none;">
+        <button type="button" data-format="bold" title="Bold (⌘B)"><strong>B</strong></button>
+        <button type="button" data-format="italic" title="Italic (⌘I)"><em>I</em></button>
+        <button type="button" data-format="code" title="Code (⌘E)"><code>&lt;/&gt;</code></button>
+        <button type="button" data-format="strikethrough" title="Strikethrough"><s>S</s></button>
+        <button type="button" data-format="link" title="Link (⌘K)">🔗</button>
+    </div>
+    
+    <!-- Line type selector (appears on line gutter click) -->
+    <!-- Content is generated dynamically from MENU_LINE_TYPES in main.ts -->
+    <div id="line-type-menu" class="line-type-menu" style="display: none;"></div>
+    
     <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;

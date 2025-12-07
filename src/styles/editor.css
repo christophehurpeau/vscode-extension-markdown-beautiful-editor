@@ -53,16 +53,64 @@ html, body {
     align-items: baseline;
 }
 
-#editor > *::before {
-    content: counter(line-number);
+/* Line prefix container (number + type button) - non-editable */
+.line-prefix {
+    display: inline-flex;
+    align-items: center;
     flex-shrink: 0;
-    width: 40px;
-    margin-right: 10px;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* Line number */
+.line-number {
+    flex-shrink: 0;
+    width: 32px;
     text-align: right;
     color: var(--vscode-editorLineNumber-foreground, #6e7681);
     font-size: 0.85em;
-    user-select: none;
     pointer-events: none;
+}
+
+/* Line type indicator button */
+.line-type-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    margin: 0 6px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--vscode-editorLineNumber-foreground, #6e7681);
+    font-size: 12px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.1s ease, color 0.1s ease;
+}
+
+.line-type-btn:hover:not(.disabled) {
+    background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.3));
+    color: var(--vscode-foreground, #cccccc);
+}
+
+.line-type-btn:active:not(.disabled) {
+    background: var(--vscode-toolbar-activeBackground, rgba(99, 102, 103, 0.5));
+}
+
+.line-type-btn.disabled {
+    cursor: default;
+    pointer-events: none;
+}
+
+#editor > *:hover .line-type-btn,
+#editor > *:focus-within .line-type-btn {
+    color: var(--vscode-editorLineNumber-activeForeground, #c6c6c6);
 }
 
 /* Line content wrapper */
@@ -71,13 +119,8 @@ html, body {
     min-width: 0; /* Allow text to wrap */
 }
 
-/* For browser-generated elements without line-content wrapper */
-#editor > *:not(:has(.line-content)) {
-    /* The content is the element itself, no wrapper */
-}
-
 /* Highlight current line number */
-#editor > *:focus-within::before {
+#editor > *:focus-within .line-number {
     color: var(--vscode-editorLineNumber-activeForeground, #c6c6c6);
 }
 
@@ -616,4 +659,167 @@ html, body {
     .toc-sidebar {
         display: none;
     }
+}
+
+/* ============================================
+   Floating Formatting Toolbar
+   ============================================ */
+.formatting-toolbar {
+    position: fixed;
+    z-index: 1000;
+    display: flex;
+    gap: 2px;
+    padding: 4px;
+    background: var(--vscode-editorWidget-background, #252526);
+    border: 1px solid var(--vscode-editorWidget-border, #454545);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    animation: toolbar-fade-in 0.15s ease-out;
+}
+
+@keyframes toolbar-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.formatting-toolbar button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--vscode-foreground, #cccccc);
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.1s ease;
+}
+
+.formatting-toolbar button:hover {
+    background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.5));
+}
+
+.formatting-toolbar button:active {
+    background: var(--vscode-toolbar-activeBackground, rgba(99, 102, 103, 0.5));
+}
+
+.formatting-toolbar button.active {
+    background: var(--vscode-textLink-foreground, #3794ff);
+    color: var(--vscode-editor-background, #1e1e1e);
+}
+
+.formatting-toolbar button.active:hover {
+    background: var(--vscode-textLink-activeForeground, #3794ff);
+}
+
+.formatting-toolbar button strong {
+    font-weight: 700;
+}
+
+.formatting-toolbar button em {
+    font-style: italic;
+}
+
+.formatting-toolbar button code {
+    font-family: inherit;
+    font-size: 10px;
+}
+
+.formatting-toolbar button s {
+    text-decoration: line-through;
+}
+
+/* ============================================
+   Line Type Menu (Turn Into)
+   ============================================ */
+.line-type-menu {
+    position: fixed;
+    z-index: 1000;
+    min-width: 180px;
+    padding: 4px;
+    background: var(--vscode-editorWidget-background, #252526);
+    border: 1px solid var(--vscode-editorWidget-border, #454545);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    animation: menu-fade-in 0.12s ease-out;
+}
+
+@keyframes menu-fade-in {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.line-type-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--vscode-foreground, #cccccc);
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.1s ease;
+}
+
+.line-type-option:hover {
+    background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.3));
+}
+
+.line-type-option:active {
+    background: var(--vscode-list-activeSelectionBackground, rgba(0, 122, 204, 0.4));
+}
+
+.line-type-option.active {
+    background: var(--vscode-list-inactiveSelectionBackground, rgba(55, 148, 255, 0.15));
+    border: 1px solid var(--vscode-focusBorder, rgba(55, 148, 255, 0.5));
+    margin: -1px;
+}
+
+.line-type-option.active .line-type-icon {
+    color: var(--vscode-textLink-foreground, #3794ff);
+}
+
+.line-type-option.active .line-type-label {
+    color: var(--vscode-textLink-foreground, #3794ff);
+}
+
+.line-type-option.active::after {
+    content: '✓';
+    margin-left: auto;
+    font-size: 14px;
+    color: var(--vscode-textLink-foreground, #3794ff);
+}
+
+.line-type-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--vscode-descriptionForeground, #8b949e);
+}
+
+.line-type-label {
+    flex: 1;
 }
