@@ -25,10 +25,7 @@ describe('Markdown Serialization', () => {
     function simulateExtract(markdown: string): string {
         // Split into lines, process each, rejoin
         const lines = markdown.split('\n');
-        return lines.map(line => {
-            // Remove zero-width spaces that might be added for empty lines
-            return line.replace(/\u200B/g, '');
-        }).join('\n');
+        return lines.join('\n');
     }
 
     describe('Headings', () => {

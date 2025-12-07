@@ -174,7 +174,7 @@ function markdownToStyledHtml(markdown: string): string {
         if (info.isCodeContent) {
             const content = escapeHtml(info.line);
             const isEmpty = !content;
-            htmlLines.push(`<div class="line code-content${isEmpty ? ' empty-line' : ''}"><span class="line-content"><span class="code-inner">${content || '\u200B'}</span></span></div>`);
+            htmlLines.push(`<div class="line code-content${isEmpty ? ' empty-line' : ''}"><span class="line-content"><span class="code-inner">${content || '<br>'}</span></span></div>`);
             continue;
         }
         
@@ -219,7 +219,7 @@ function markdownToStyledHtml(markdown: string): string {
         // Regular line
         const styledLine = styleLine(info.line);
         const isEmpty = !styledLine;
-        htmlLines.push(`<div class="line${isEmpty ? ' empty-line' : ''}"><span class="line-content">${styledLine || '\u200B'}</span></div>`);
+        htmlLines.push(`<div class="line${isEmpty ? ' empty-line' : ''}"><span class="line-content">${styledLine || '<br>'}</span></div>`);
     }
     
     return htmlLines.join('');
@@ -449,13 +449,46 @@ function extractMarkdown(container: HTMLElement): string {
     
     for (let i = 0; i < children.length; i++) {
         const child = children[i];
-        let text = child.textContent || '';
-        // Remove zero-width spaces (used by CSS for empty line cursor placement)
-        text = text.replace(/\u200B/g, '');
+        const text = child.textContent || '';
         lines.push(text);
     }
     
     return lines.join('\n');
+}
+
+// Place cursor at the start of the editor
+function placeCursorAtStart(container: HTMLElement): void {
+    const selection = window.getSelection();
+    if (!selection) {
+        return;
+    }
+    
+    // Find the first text node in the container
+    const firstLine = container.firstElementChild;
+    if (!firstLine) {
+        return;
+    }
+    
+    const treeWalker = document.createTreeWalker(firstLine, NodeFilter.SHOW_TEXT);
+    const firstTextNode = treeWalker.nextNode();
+    
+    if (firstTextNode) {
+        const range = document.createRange();
+        range.setStart(firstTextNode, 0);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+    } else {
+        // No text node, place cursor at start of line content
+        const lineContent = firstLine.querySelector('.line-content');
+        if (lineContent) {
+            const range = document.createRange();
+            range.selectNodeContents(lineContent);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+    }
 }
 
 // Save and restore cursor position
@@ -466,8 +499,8 @@ function saveCursorPosition(container: HTMLElement): CursorPosition | null {
     }
     
     const range = selection.getRangeAt(0);
-    let node = range.startContainer;
-    let offset = range.startOffset;
+    const node = range.startContainer;
+    const offset = range.startOffset;
     
     // Find the line element (direct child of container)
     let lineEl: HTMLElement | null = null;
@@ -504,15 +537,18 @@ function saveCursorPosition(container: HTMLElement): CursorPosition | null {
     let foundNode: Node | null = null;
     
     while (treeWalker.nextNode()) {
-        if (treeWalker.currentNode === node) {
+        const currentNode = treeWalker.currentNode;
+        if (currentNode === node) {
             foundNode = node;
+            charCount += offset;
             break;
         }
-        charCount += (treeWalker.currentNode.textContent || '').length;
+        charCount += (currentNode.textContent || '').length;
     }
     
-    if (foundNode) {
-        charCount += offset;
+    if (!foundNode) {
+        // Node not found in tree walker, use offset directly
+        charCount = offset;
     }
     
     return { lineIndex, offset: charCount };
@@ -532,21 +568,30 @@ function restoreCursorPosition(container: HTMLElement, pos: CursorPosition): voi
     let targetOffset = 0;
     
     while (treeWalker.nextNode()) {
-        const nodeLength = (treeWalker.currentNode.textContent || '').length;
+        const currentNode = treeWalker.currentNode;
+        const nodeLength = (currentNode.textContent || '').length;
+        
         if (charCount + nodeLength >= pos.offset) {
-            targetNode = treeWalker.currentNode;
+            targetNode = currentNode;
             targetOffset = pos.offset - charCount;
             break;
         }
         charCount += nodeLength;
     }
     
-    // If no text node found, try to place cursor in the line-content or the element itself
+    // If no text node found, try to place cursor in the line-content
     if (!targetNode) {
         const lineContent = lineEl.querySelector('.line-content');
-        if (lineContent && lineContent.firstChild) {
-            targetNode = lineContent.firstChild;
-            targetOffset = 0;
+        if (lineContent) {
+            const range = document.createRange();
+            range.selectNodeContents(lineContent);
+            range.collapse(true);
+            const selection = window.getSelection();
+            if (selection) {
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+            return;
         }
     }
     
@@ -649,15 +694,130 @@ function initEditor(container: HTMLElement, markdown: string): void {
     // Set up event listeners
     container.addEventListener('input', handleInput);
     
-    // Handle paste to strip formatting
+    // Handle paste to strip formatting and properly insert multi-line content
     container.addEventListener('paste', (e) => {
         e.preventDefault();
         const text = e.clipboardData?.getData('text/plain') || '';
-        document.execCommand('insertText', false, text);
+        if (!text) {
+            return;
+        }
+        
+        // Get current cursor position
+        const cursorPos = saveCursorPosition(container);
+        if (!cursorPos) {
+            // No cursor, just append at the end
+            const currentMarkdown = extractMarkdown(container);
+            const newMarkdown = currentMarkdown + text;
+            sendEdit(newMarkdown);
+            isExternalUpdate = true;
+            container.innerHTML = markdownToStyledHtml(newMarkdown);
+            isExternalUpdate = false;
+            updateTocFromMarkdown(newMarkdown);
+            return;
+        }
+        
+        // Get current markdown and insert text at cursor position
+        const currentMarkdown = extractMarkdown(container);
+        const lines = currentMarkdown.split('\n');
+        const currentLine = lines[cursorPos.lineIndex] || '';
+        
+        // Split the current line at cursor position and insert pasted text
+        const beforeCursor = currentLine.slice(0, cursorPos.offset);
+        const afterCursor = currentLine.slice(cursorPos.offset);
+        
+        // Handle multi-line paste
+        const pastedLines = text.split('\n');
+        if (pastedLines.length === 1) {
+            // Single line paste - simple insertion
+            lines[cursorPos.lineIndex] = beforeCursor + text + afterCursor;
+        } else {
+            // Multi-line paste
+            const firstPastedLine = pastedLines[0];
+            const lastPastedLine = pastedLines[pastedLines.length - 1];
+            const middlePastedLines = pastedLines.slice(1, -1);
+            
+            // Build new lines array
+            const newLines = [
+                ...lines.slice(0, cursorPos.lineIndex),
+                beforeCursor + firstPastedLine,
+                ...middlePastedLines,
+                lastPastedLine + afterCursor,
+                ...lines.slice(cursorPos.lineIndex + 1)
+            ];
+            lines.length = 0;
+            lines.push(...newLines);
+        }
+        
+        const newMarkdown = lines.join('\n');
+        
+        // Calculate new cursor position (end of pasted content)
+        const pastedLineCount = pastedLines.length;
+        let newLineIndex: number;
+        let newOffset: number;
+        if (pastedLineCount === 1) {
+            newLineIndex = cursorPos.lineIndex;
+            newOffset = cursorPos.offset + text.length;
+        } else {
+            newLineIndex = cursorPos.lineIndex + pastedLineCount - 1;
+            newOffset = pastedLines[pastedLines.length - 1].length;
+        }
+        
+        // Update and re-render
+        sendEdit(newMarkdown);
+        isExternalUpdate = true;
+        container.innerHTML = markdownToStyledHtml(newMarkdown);
+        isExternalUpdate = false;
+        
+        // Restore cursor to end of pasted content
+        restoreCursorPosition(container, {
+            lineIndex: newLineIndex,
+            offset: newOffset
+        });
+        
+        // Update TOC
+        updateTocFromMarkdown(newMarkdown);
+    });
+    
+    // Handle copy to ensure plain markdown text is copied
+    container.addEventListener('copy', (e) => {
+        e.preventDefault();
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+            // Get the selected text content (plain text, not HTML)
+            const selectedText = selection.toString();
+            e.clipboardData?.setData('text/plain', selectedText);
+        }
+    });
+    
+    // Handle cut (copy + delete)
+    container.addEventListener('cut', (e) => {
+        e.preventDefault();
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+            // Copy the selected text
+            const selectedText = selection.toString();
+            e.clipboardData?.setData('text/plain', selectedText);
+            
+            // Delete the selection by inserting empty text
+            document.execCommand('insertText', false, '');
+        }
     });
     
     // Handle keyboard shortcuts
     container.addEventListener('keydown', (e) => {
+        // Cmd/Ctrl+A for select all - select all content properly
+        if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+            e.preventDefault();
+            const selection = window.getSelection();
+            if (selection) {
+                const range = document.createRange();
+                range.selectNodeContents(container);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+            return;
+        }
+        
         // Cmd/Ctrl+Z for undo (let browser handle it)
         // Cmd/Ctrl+Shift+Z or Cmd/Ctrl+Y for redo (let browser handle it)
         
@@ -853,20 +1013,19 @@ function initEditor(container: HTMLElement, markdown: string): void {
     updateTocFromMarkdown(markdown);
     setupScrollSpy();
     
+    // Focus editor and restore/set cursor position
+    container.focus();
+    
     // Restore state from previous session (cursor position, scroll)
     const storedState = getStoredState();
-    if (storedState) {
-        if (storedState.cursorPosition) {
-            // Use requestAnimationFrame to ensure DOM is ready
-            requestAnimationFrame(() => {
-                if (storedState.cursorPosition) {
-                    restoreCursorPosition(container, storedState.cursorPosition);
-                }
-                if (storedState.scrollTop) {
-                    container.scrollTop = storedState.scrollTop;
-                }
-            });
+    if (storedState && storedState.cursorPosition) {
+        restoreCursorPosition(container, storedState.cursorPosition);
+        if (storedState.scrollTop) {
+            container.scrollTop = storedState.scrollTop;
         }
+    } else {
+        // No stored state - place cursor at the beginning
+        placeCursorAtStart(container);
     }
     
     // Save state on blur (when focus leaves the editor)

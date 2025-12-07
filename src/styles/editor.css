@@ -82,9 +82,8 @@ html, body {
 }
 
 /* Empty lines - ensure they're still editable and visible */
-#editor > *:empty::after,
-.line.empty-line .line-content:empty::after {
-    content: '\200B'; /* Zero-width space for cursor placement */
+.line.empty-line {
+    min-height: 1.7em;
 }
 
 /* Syntax highlighting - make markdown symbols subtle */
