@@ -1,0 +1,43 @@
+# Development files
+.vscode/**
+.vscode-test/**
+.vscode-test.mjs
+
+# Source files (bundled into dist/)
+src/**
+out/**
+
+# Dependencies (not needed, bundled)
+node_modules/**
+
+# Build configuration
+esbuild.js
+tsconfig*.json
+eslint.config.mjs
+.yarnrc
+
+# Git
+.git/**
+.gitignore
+
+# Documentation (keep README, CHANGELOG, LICENSE)
+vsc-extension-quickstart.md
+
+# Source maps (not needed in production)
+**/*.map
+
+# TypeScript source (bundled)
+**/*.ts
+!**/*.d.ts
+
+# Test files
+**/test/**
+**/*.test.*
+
+# Samples (optional, can include for demo)
+# samples/**
+
+# Temporary files
+*.log
+.DS_Store
+tmp-*
