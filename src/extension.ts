@@ -6,7 +6,7 @@ export function activate(context: vscode.ExtensionContext): void {
     
     context.subscriptions.push(
         vscode.window.registerCustomEditorProvider(
-            'markdown.wysiwygEditor',
+            'markdown.beautifulEditor',
             provider,
             {
                 supportsMultipleEditorsPerDocument: false,
