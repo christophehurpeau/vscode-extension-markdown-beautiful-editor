@@ -1,0 +1,620 @@
+/* Reset and base styles */
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    background: var(--vscode-editor-background);
+    color: var(--vscode-editor-foreground);
+    font-family: var(--vscode-editor-font-family, 'SF Mono', Monaco, 'Cascadia Code', Consolas, monospace);
+    font-size: var(--vscode-editor-font-size, 14px);
+    line-height: 1.7;
+}
+
+/* Main layout */
+.editor-container {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.editor-main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 32px;
+}
+
+#editor {
+    max-width: 860px;
+    margin: 0 auto;
+    outline: none;
+    min-height: 100%;
+    padding-bottom: 50vh;
+    counter-reset: line-number;
+}
+
+#editor:focus {
+    outline: none;
+}
+
+/* Line styling - apply to all direct children of editor */
+#editor > * {
+    min-height: 1.7em;
+    padding: 2px 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    position: relative;
+    counter-increment: line-number;
+    display: flex;
+    align-items: baseline;
+}
+
+#editor > *::before {
+    content: counter(line-number);
+    flex-shrink: 0;
+    width: 40px;
+    margin-right: 10px;
+    text-align: right;
+    color: var(--vscode-editorLineNumber-foreground, #6e7681);
+    font-size: 0.85em;
+    user-select: none;
+    pointer-events: none;
+}
+
+/* Line content wrapper */
+.line-content {
+    flex: 1;
+    min-width: 0; /* Allow text to wrap */
+}
+
+/* For browser-generated elements without line-content wrapper */
+#editor > *:not(:has(.line-content)) {
+    /* The content is the element itself, no wrapper */
+}
+
+/* Highlight current line number */
+#editor > *:focus-within::before {
+    color: var(--vscode-editorLineNumber-activeForeground, #c6c6c6);
+}
+
+/* Empty lines - ensure they're still editable and visible */
+#editor > *:empty::after,
+.line.empty-line .line-content:empty::after {
+    content: '\200B'; /* Zero-width space for cursor placement */
+}
+
+/* Syntax highlighting - make markdown symbols subtle */
+.md-syntax {
+    color: var(--vscode-editorLineNumber-foreground, #6e7681);
+    font-weight: normal;
+    font-style: normal;
+}
+
+/* Headings */
+.md-heading {
+    display: inline; /* Keep inline so line height is based on text */
+}
+
+.md-h1 {
+    font-size: 2em;
+    font-weight: 700;
+    color: var(--vscode-editor-foreground);
+}
+
+.md-h2 {
+    font-size: 1.6em;
+    font-weight: 600;
+    color: var(--vscode-editor-foreground);
+}
+
+.md-h3 {
+    font-size: 1.35em;
+    font-weight: 600;
+    color: var(--vscode-editor-foreground);
+}
+
+.md-h4 {
+    font-size: 1.2em;
+    font-weight: 600;
+    color: var(--vscode-editor-foreground);
+}
+
+.md-h5 {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: var(--vscode-editor-foreground);
+}
+
+.md-h6 {
+    font-size: 1em;
+    font-weight: 600;
+    color: var(--vscode-descriptionForeground, #8b949e);
+}
+
+/* Heading spacing - use margin on the heading element */
+.md-h1 {
+    margin: 0.5em 0 0.3em 0;
+}
+
+.md-h2 {
+    margin: 0.4em 0 0.2em 0;
+}
+
+.md-h3 {
+    margin: 0.3em 0 0.15em 0;
+}
+
+.md-h4 {
+    margin: 0.2em 0 0.1em 0;
+}
+
+.md-h5 {
+    margin: 0.15em 0 0.08em 0;
+}
+
+.md-h6 {
+    margin: 0.1em 0 0.05em 0;
+}
+
+/* Bold */
+.md-bold strong {
+    font-weight: 700 !important;
+    color: var(--vscode-editor-foreground);
+}
+
+/* Italic */
+.md-italic em {
+    font-style: italic !important;
+    color: var(--vscode-editor-foreground);
+}
+
+/* Inline code */
+.md-code {
+    background: rgba(110, 118, 129, 0.2);
+    padding: 3px 2px;
+    border-radius: 5px;
+}
+
+.md-code code {
+    background: transparent;
+    padding: 0 2px;
+    font-family: inherit;
+    font-size: 0.95em;
+    color: var(--vscode-editor-foreground);
+}
+
+/* Strikethrough */
+.md-strike del {
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+/* Bold + Italic */
+.md-bold-italic strong {
+    font-weight: 700 !important;
+    color: var(--vscode-editor-foreground);
+}
+
+.md-bold-italic em {
+    font-style: italic !important;
+    color: var(--vscode-editor-foreground);
+}
+
+.md-bold-italic strong em {
+    font-weight: 700 !important;
+    font-style: italic !important;
+    color: var(--vscode-editor-foreground);
+}
+
+/* Escaped characters */
+.md-escaped {
+    color: var(--vscode-editor-foreground);
+}
+
+/* Math */
+.md-math {
+    font-family: 'Times New Roman', serif;
+}
+
+.md-math-content {
+    color: var(--vscode-textPreformat-foreground, #c9510c);
+    font-style: italic;
+}
+
+/* Footnotes */
+.md-footnote {
+    color: var(--vscode-textLink-foreground, #58a6ff);
+    font-size: 0.85em;
+    vertical-align: super;
+}
+
+.md-footnote-def {
+    color: var(--vscode-descriptionForeground, #8b949e);
+    font-size: 0.9em;
+}
+
+/* Task lists */
+.md-task {
+    display: inline;
+}
+
+.md-task-checked {
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+/* Tables */
+.md-table {
+    font-family: var(--vscode-editor-font-family, monospace);
+}
+
+.md-table-sep {
+    color: var(--vscode-editorLineNumber-foreground, #6e7681);
+}
+
+/* Definition lists */
+.md-definition {
+    padding-left: 2em;
+    color: var(--vscode-editor-foreground);
+}
+
+/* GitHub Alerts - applied to .line elements, blended */
+#editor > .md-alert,
+#editor > .md-alert-content {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+/* Inner content wrapper for alerts */
+.md-alert .alert-inner,
+.md-alert-content .alert-inner {
+    display: block;
+    background: rgba(128, 128, 128, 0.1);
+    border-left: 4px solid #848d97;
+    padding: 4px 12px;
+}
+
+.md-alert {
+    font-weight: 600;
+}
+
+.md-alert-content {
+    font-weight: normal;
+}
+
+/* First alert line - rounded top corners */
+#editor > .alert-first {
+    margin-top: 8px;
+}
+
+.alert-first .alert-inner {
+    border-top-right-radius: 6px;
+    padding-top: 8px;
+}
+
+/* Last alert line - rounded bottom corners */
+#editor > .alert-last {
+    margin-bottom: 8px;
+}
+
+.alert-last .alert-inner {
+    border-bottom-right-radius: 6px;
+    padding-bottom: 8px;
+}
+
+/* Single line alert */
+.alert-single .alert-inner {
+    border-radius: 0 6px 6px 0;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.md-alert-type {
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+/* Note - Blue */
+.md-alert-note .alert-inner {
+    border-left-color: #58a6ff;
+    background: rgba(88, 166, 255, 0.1);
+}
+.md-alert-note .md-alert-type {
+    color: #58a6ff;
+}
+
+/* Tip - Green */
+.md-alert-tip .alert-inner {
+    border-left-color: #3fb950;
+    background: rgba(63, 185, 80, 0.1);
+}
+.md-alert-tip .md-alert-type {
+    color: #3fb950;
+}
+
+/* Important - Purple */
+.md-alert-important .alert-inner {
+    border-left-color: #a371f7;
+    background: rgba(163, 113, 247, 0.1);
+}
+.md-alert-important .md-alert-type {
+    color: #a371f7;
+}
+
+/* Warning - Yellow/Orange */
+.md-alert-warning .alert-inner {
+    border-left-color: #d29922;
+    background: rgba(210, 153, 34, 0.1);
+}
+.md-alert-warning .md-alert-type {
+    color: #d29922;
+}
+
+/* Caution - Red */
+.md-alert-caution .alert-inner {
+    border-left-color: #f85149;
+    background: rgba(248, 81, 73, 0.1);
+}
+.md-alert-caution .md-alert-type {
+    color: #f85149;
+}
+
+/* Links */
+.md-link .md-text {
+    color: var(--vscode-textLink-foreground, #58a6ff);
+    text-decoration: underline;
+}
+
+.md-link .md-url {
+    color: var(--vscode-descriptionForeground, #8b949e);
+    font-size: 0.9em;
+}
+
+/* Cmd/Ctrl+Click to open links */
+#editor.cmd-held .md-link,
+#editor.cmd-held .md-image {
+    cursor: pointer;
+}
+
+#editor.cmd-held .md-link:hover,
+#editor.cmd-held .md-image:hover {
+    background: rgba(88, 166, 255, 0.15);
+    border-radius: 3px;
+}
+
+/* Images */
+.md-image .md-alt {
+    color: var(--vscode-textLink-foreground, #58a6ff);
+}
+
+.md-image .md-url {
+    color: var(--vscode-descriptionForeground, #8b949e);
+    font-size: 0.9em;
+}
+
+/* Blockquotes - styled like GitHub alerts, blended */
+#editor > .blockquote-line {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+.blockquote-line .md-blockquote {
+    display: block;
+    background: rgba(128, 128, 128, 0.08);
+    padding: 4px 12px;
+    border-left: 4px solid var(--vscode-textBlockQuote-border, #848d97);
+    color: var(--vscode-textBlockQuote-foreground, var(--vscode-editor-foreground));
+}
+
+/* First line of blockquote group */
+#editor > .blockquote-first {
+    margin-top: 4px;
+}
+
+.blockquote-first .md-blockquote {
+    border-top-right-radius: 6px;
+    padding-top: 8px;
+}
+
+/* Last line of blockquote group */
+#editor > .blockquote-last {
+    margin-bottom: 4px;
+}
+
+.blockquote-last .md-blockquote {
+    border-bottom-right-radius: 6px;
+    padding-bottom: 8px;
+}
+
+/* Nested blockquotes - indent more */
+.md-quote-1 {
+    /* Base level */
+}
+
+.md-quote-2 {
+    margin-left: 1.5em;
+}
+
+.md-quote-3 {
+    margin-left: 3em;
+}
+
+/* Lists */
+.md-list {
+    display: inline;
+}
+
+/* Horizontal rule - line with editable text */
+.line-content:has(.md-hr) {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.md-hr {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    color: var(--vscode-editorLineNumber-foreground, #6e7681);
+    margin: 0.5em 0;
+}
+
+/* Line before text */
+.md-hr::before {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--vscode-editorLineNumber-foreground, #6e7681);
+    opacity: 0.4;
+    margin-right: 1em;
+}
+
+/* Line after text */
+.md-hr::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--vscode-editorLineNumber-foreground, #6e7681);
+    opacity: 0.4;
+    margin-left: 1em;
+}
+
+/* The text showing --- or *** etc */
+.md-hr-text {
+    letter-spacing: 0.2em;
+    flex-shrink: 0;
+}
+
+/* Code blocks - use inner wrapper for background, blended */
+#editor > .code-fence,
+#editor > .code-content {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+/* Code block inner content */
+.code-fence .code-inner,
+.code-content .code-inner {
+    display: block;
+    background: rgba(110, 118, 129, 0.15);
+    padding: 2px 16px;
+    font-size: 0.95em;
+}
+
+/* Opening fence - top radius */
+#editor > .code-fence.code-start {
+    margin-top: 8px;
+}
+
+.code-fence.code-start .code-inner {
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    padding-top: 12px;
+    color: var(--vscode-editorLineNumber-foreground, #6e7681);
+}
+
+/* Closing fence - bottom radius */
+#editor > .code-fence.code-end {
+    margin-bottom: 8px;
+}
+
+.code-fence.code-end .code-inner {
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    padding-bottom: 12px;
+    color: var(--vscode-editorLineNumber-foreground, #6e7681);
+}
+
+/* Code content lines */
+.code-content .code-inner {
+    color: var(--vscode-editor-foreground);
+}
+
+/* Selection */
+::selection {
+    background: var(--vscode-editor-selectionBackground, rgba(0, 122, 204, 0.3));
+}
+
+/* Cursor */
+#editor {
+    caret-color: var(--vscode-editorCursor-foreground, #007acc);
+}
+
+/* TOC Sidebar */
+.toc-sidebar {
+    width: 200px;
+    min-width: 200px;
+    padding: 24px 12px;
+    border-right: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+    overflow-y: auto;
+    background: var(--vscode-sideBar-background, var(--vscode-editor-background));
+    font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+}
+
+.toc-title {
+    font-size: 0.7em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--vscode-sideBarSectionHeader-foreground, var(--vscode-descriptionForeground));
+    margin: 0 0 12px 8px;
+}
+
+.toc-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.toc-item {
+    margin: 2px 0;
+}
+
+.toc-link {
+    display: block;
+    padding: 4px 8px;
+    color: var(--vscode-foreground, inherit);
+    text-decoration: none;
+    font-size: 0.85em;
+    border-radius: 4px;
+    transition: background 0.15s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.toc-link:hover {
+    background: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.1));
+}
+
+.toc-link.active {
+    background: var(--vscode-list-activeSelectionBackground, rgba(0, 122, 204, 0.3));
+    color: var(--vscode-list-activeSelectionForeground, inherit);
+}
+
+/* TOC indentation levels */
+.toc-level-1 .toc-link { padding-left: 8px; font-weight: 600; }
+.toc-level-2 .toc-link { padding-left: 16px; }
+.toc-level-3 .toc-link { padding-left: 24px; font-size: 0.8em; }
+.toc-level-4 .toc-link { padding-left: 32px; font-size: 0.8em; }
+.toc-level-5 .toc-link { padding-left: 40px; font-size: 0.75em; }
+.toc-level-6 .toc-link { padding-left: 48px; font-size: 0.75em; }
+
+/* Empty TOC state */
+.toc-empty {
+    padding: 8px;
+    color: var(--vscode-descriptionForeground, #6a737d);
+    font-size: 0.8em;
+    font-style: italic;
+}
+
+/* Responsive: hide TOC on narrow viewports */
+@media (max-width: 600px) {
+    .toc-sidebar {
+        display: none;
+    }
+}

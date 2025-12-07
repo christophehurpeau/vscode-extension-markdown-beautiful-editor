@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+        "module": "ESNext",
+        "tsBuildInfoFile": "node_modules/.cache/tsc/tsbuildinfo",
+        "target": "ES2022",
+        "lib": ["ES2022", "DOM", "DOM.Iterable"],
+        "sourceMap": true,
+        "rootDir": "src/webview",
+        "outDir": "out/webview",
+        "strict": true,
+        "skipLibCheck": true,
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "composite": true,
+        "moduleResolution": "bundler"
+    },
+    "include": [
+        "src/webview/**/*.ts"
+    ]
+}
+
