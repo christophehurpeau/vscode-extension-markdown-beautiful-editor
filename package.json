@@ -2,7 +2,7 @@
   "name": "markdown-beautiful-editor",
   "displayName": "Markdown Beautiful Editor",
   "description": "A beautiful WYSIWYG-style markdown editor with visual syntax styling, GitHub alerts, and table of contents",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "publisher": "chrp",
   "author": {
     "name": "Christophe Hurpeau"
