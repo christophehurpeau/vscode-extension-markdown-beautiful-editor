@@ -215,9 +215,27 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
             });
         });
 
+        // Track previous active state to detect tab switches
+        let wasActive = webviewPanel.active;
+        
+        // Notify webview when panel becomes active (tab switch)
+        const viewStateHandler = webviewPanel.onDidChangeViewState((e) => {
+            const isNowActive = e.webviewPanel.active;
+            
+            // Only send focus when transitioning from inactive to active
+            if (isNowActive && !wasActive) {
+                webviewPanel.webview.postMessage({
+                    type: 'focus'
+                });
+            }
+            
+            wasActive = isNowActive;
+        });
+
         webviewPanel.onDidDispose(() => {
             messageHandler.dispose();
             changeHandler.dispose();
+            viewStateHandler.dispose();
         });
     }
 }

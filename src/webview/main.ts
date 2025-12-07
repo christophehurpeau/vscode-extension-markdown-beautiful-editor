@@ -9,6 +9,12 @@ declare function acquireVsCodeApi(): {
 
 const vscode = acquireVsCodeApi();
 
+// Cursor position interface (defined early for use in EditorState)
+interface CursorPosition {
+    lineIndex: number;
+    offset: number;
+}
+
 // Track if we're currently applying an external update to avoid loops
 let isExternalUpdate = false;
 
@@ -21,6 +27,27 @@ const EDIT_DEBOUNCE_MS = 300;
 
 // Editor container reference
 let editorContainer: HTMLElement | null = null;
+
+// State management for persistence across tab switches
+interface EditorState {
+    cursorPosition: CursorPosition | null;
+    scrollTop: number;
+}
+
+function saveState(): void {
+    if (!editorContainer) {
+        return;
+    }
+    const state: EditorState = {
+        cursorPosition: saveCursorPosition(editorContainer),
+        scrollTop: editorContainer.scrollTop
+    };
+    vscode.setState(state);
+}
+
+function getStoredState(): EditorState | null {
+    return vscode.getState() as EditorState | null;
+}
 
 // Check if a line is a blockquote (but not a GitHub alert)
 function isBlockquoteLine(line: string): boolean {
@@ -432,11 +459,6 @@ function extractMarkdown(container: HTMLElement): string {
 }
 
 // Save and restore cursor position
-interface CursorPosition {
-    lineIndex: number;
-    offset: number;
-}
-
 function saveCursorPosition(container: HTMLElement): CursorPosition | null {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) {
@@ -830,6 +852,45 @@ function initEditor(container: HTMLElement, markdown: string): void {
     // Update TOC and set up scroll spy
     updateTocFromMarkdown(markdown);
     setupScrollSpy();
+    
+    // Restore state from previous session (cursor position, scroll)
+    const storedState = getStoredState();
+    if (storedState) {
+        if (storedState.cursorPosition) {
+            // Use requestAnimationFrame to ensure DOM is ready
+            requestAnimationFrame(() => {
+                if (storedState.cursorPosition) {
+                    restoreCursorPosition(container, storedState.cursorPosition);
+                }
+                if (storedState.scrollTop) {
+                    container.scrollTop = storedState.scrollTop;
+                }
+            });
+        }
+    }
+    
+    // Save state on blur (when focus leaves the editor)
+    container.addEventListener('blur', () => {
+        saveState();
+    });
+    
+    // Save state after edits
+    container.addEventListener('input', () => {
+        saveState();
+    });
+    
+    // Handle window/document focus (Cmd+Tab back to VS Code)
+    window.addEventListener('focus', () => {
+        // Window regained focus - restore editor focus and cursor
+        const state = getStoredState();
+        container.focus();
+        if (state && state.cursorPosition) {
+            restoreCursorPosition(container, state.cursorPosition);
+        }
+        if (state && state.scrollTop) {
+            container.scrollTop = state.scrollTop;
+        }
+    });
 }
 
 // Update editor content from external source (e.g., undo/redo)
@@ -885,6 +946,20 @@ function init(): void {
             case 'update': {
                 const updateContent = message.originalContent || message.content || '';
                 updateEditorContent(updateContent);
+                break;
+            }
+            case 'focus': {
+                // Tab became active - focus editor and restore cursor position
+                if (editorContainer) {
+                    const state = getStoredState();
+                    editorContainer.focus();
+                    if (state && state.cursorPosition) {
+                        restoreCursorPosition(editorContainer, state.cursorPosition);
+                    }
+                    if (state && state.scrollTop) {
+                        editorContainer.scrollTop = state.scrollTop;
+                    }
+                }
                 break;
             }
         }
