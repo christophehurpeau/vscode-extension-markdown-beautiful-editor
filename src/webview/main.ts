@@ -1107,7 +1107,7 @@ function showLineTypeMenu(lineElement: HTMLElement, lineIndex: number): void {
     }
     
     // Keep within viewport vertically
-    const menuHeight = 320; // Approximate
+    const menuHeight = 450; // Approximate
     if (top + menuHeight > window.innerHeight - 8) {
         top = window.innerHeight - menuHeight - 8;
     }

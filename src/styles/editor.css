@@ -769,12 +769,12 @@ html, body {
     align-items: center;
     gap: 10px;
     width: 100%;
-    padding: 8px 12px;
-    border: none;
+    padding: 4px 8px;
+    border: 1px solid transparent;
     border-radius: 4px;
     background: transparent;
     color: var(--vscode-foreground, #cccccc);
-    font-size: 13px;
+    font-size: 12px;
     text-align: left;
     cursor: pointer;
     transition: background 0.1s ease;
@@ -791,7 +791,6 @@ html, body {
 .line-type-option.active {
     background: var(--vscode-list-inactiveSelectionBackground, rgba(55, 148, 255, 0.15));
     border: 1px solid var(--vscode-focusBorder, rgba(55, 148, 255, 0.5));
-    margin: -1px;
 }
 
 .line-type-option.active .line-type-icon {
