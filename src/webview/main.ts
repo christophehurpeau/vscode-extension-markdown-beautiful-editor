@@ -1055,12 +1055,12 @@ function showFormattingToolbarAtCursor(selection: Selection, formattingInfo: { b
     const toolbarHeight = 36;
     const toolbarWidth = 160;
     
-    let left = rect.left - (toolbarWidth / 2);
+    let left = rect.left;
     let top = rect.top - toolbarHeight - 8;
     
     // Keep within viewport
-    if (left < 8) {
-        left = 8;
+    if (left < 250) {
+        left = 250;
     }
     if (left + toolbarWidth > window.innerWidth - 8) {
         left = window.innerWidth - toolbarWidth - 8;
