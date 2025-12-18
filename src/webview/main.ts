@@ -15,6 +15,14 @@ interface CursorPosition {
     offset: number;
 }
 
+// Selection position interface for tracking selection boundaries in markdown
+interface SelectionPosition {
+    startLineIndex: number;
+    startOffset: number;
+    endLineIndex: number;
+    endOffset: number;
+}
+
 // Track if we're currently applying an external update to avoid loops
 let isExternalUpdate = false;
 
@@ -639,12 +647,17 @@ function saveCursorPosition(container: HTMLElement): CursorPosition | null {
     if (lineIndex === -1) {
         return null;
     }
-    
-    // Calculate offset within the line's text content
-    const treeWalker = document.createTreeWalker(lineEl, NodeFilter.SHOW_TEXT);
+
+    // Calculate offset within the line's text content (only in .line-content, not .line-prefix)
+    const lineContent = lineEl.querySelector('.line-content');
+    if (!lineContent) {
+        return { lineIndex, offset: 0 };
+    }
+
+    const treeWalker = document.createTreeWalker(lineContent, NodeFilter.SHOW_TEXT);
     let charCount = 0;
     let foundNode: Node | null = null;
-    
+
     while (treeWalker.nextNode()) {
         const currentNode = treeWalker.currentNode;
         if (currentNode === node) {
@@ -654,13 +667,181 @@ function saveCursorPosition(container: HTMLElement): CursorPosition | null {
         }
         charCount += (currentNode.textContent || '').length;
     }
-    
+
     if (!foundNode) {
         // Node not found in tree walker, use offset directly
         charCount = offset;
     }
     
     return { lineIndex, offset: charCount };
+}
+
+// Get selection start and end positions in markdown coordinates
+function getSelectionMarkdownPosition(container: HTMLElement, selection: Selection): SelectionPosition | null {
+    if (!selection || selection.rangeCount === 0) {
+        return null;
+    }
+
+    const range = selection.getRangeAt(0);
+
+    // Helper function to get position for a node and offset
+    const getPositionForNode = (node: Node, offset: number): { lineIndex: number; offset: number } | null => {
+        // Find the line element (direct child of container)
+        let lineEl: HTMLElement | null = null;
+        let current: Node | null = node;
+        while (current && current !== container) {
+            if (current.parentNode === container && current instanceof HTMLElement) {
+                lineEl = current;
+                break;
+            }
+            current = current.parentNode;
+        }
+
+        if (!lineEl) {
+            return null;
+        }
+
+        // Find line index among all direct children
+        const children = container.children;
+        let lineIndex = -1;
+        for (let i = 0; i < children.length; i++) {
+            if (children[i] === lineEl) {
+                lineIndex = i;
+                break;
+            }
+        }
+
+        if (lineIndex === -1) {
+            return null;
+        }
+
+        // Calculate offset within the line's text content
+        const lineContent = lineEl.querySelector('.line-content');
+        if (!lineContent) {
+            return { lineIndex, offset: 0 };
+        }
+
+        const treeWalker = document.createTreeWalker(lineContent, NodeFilter.SHOW_TEXT);
+        let charCount = 0;
+        let foundNode: Node | null = null;
+
+        while (treeWalker.nextNode()) {
+            const currentNode = treeWalker.currentNode;
+            if (currentNode === node) {
+                foundNode = node;
+                charCount += offset;
+                break;
+            }
+            charCount += (currentNode.textContent || '').length;
+        }
+
+        if (!foundNode) {
+            // Node not found in tree walker, use offset directly
+            charCount = offset;
+        }
+
+        return { lineIndex, offset: charCount };
+    };
+
+    // Get start position
+    const startPos = getPositionForNode(range.startContainer, range.startOffset);
+    if (!startPos) {
+        return null;
+    }
+
+    // Get end position
+    const endPos = getPositionForNode(range.endContainer, range.endOffset);
+    if (!endPos) {
+        return null;
+    }
+
+    return {
+        startLineIndex: startPos.lineIndex,
+        startOffset: startPos.offset,
+        endLineIndex: endPos.lineIndex,
+        endOffset: endPos.offset
+    };
+}
+
+// Delete selected text from the editor
+function deleteSelection(selection: Selection): boolean {
+    if (!editorContainer) {
+        return false;
+    }
+
+    // Check if there's actually a selection
+    if (!selection || selection.isCollapsed) {
+        return false;
+    }
+
+    // Get selection position in markdown coordinates
+    const selPos = getSelectionMarkdownPosition(editorContainer, selection);
+    if (!selPos) {
+        return false;
+    }
+
+    // Extract current markdown
+    const markdown = extractMarkdown(editorContainer);
+    const lines = markdown.split('\n');
+
+    // Calculate new markdown and cursor position after deletion
+    let newMarkdown: string;
+    let cursorLineIndex: number;
+    let cursorOffset: number;
+
+    if (selPos.startLineIndex === selPos.endLineIndex) {
+        // SINGLE LINE DELETION
+        const line = lines[selPos.startLineIndex];
+        const beforeSelection = line.slice(0, selPos.startOffset);
+        const afterSelection = line.slice(selPos.endOffset);
+        lines[selPos.startLineIndex] = beforeSelection + afterSelection;
+
+        cursorLineIndex = selPos.startLineIndex;
+        cursorOffset = selPos.startOffset;
+    } else {
+        // MULTI-LINE DELETION
+        const beforeSelection = lines[selPos.startLineIndex].slice(0, selPos.startOffset);
+        const afterSelection = lines[selPos.endLineIndex].slice(selPos.endOffset);
+        const mergedLine = beforeSelection + afterSelection;
+
+        // Build new lines array:
+        // - Lines before selection start
+        // - Merged line
+        // - Lines after selection end
+        const newLines = [
+            ...lines.slice(0, selPos.startLineIndex),
+            mergedLine,
+            ...lines.slice(selPos.endLineIndex + 1)
+        ];
+
+        lines.length = 0;
+        lines.push(...newLines);
+
+        cursorLineIndex = selPos.startLineIndex;
+        cursorOffset = selPos.startOffset;
+    }
+
+    // Join back into markdown
+    newMarkdown = lines.join('\n');
+
+    // Send edit to VS Code
+    sendEdit(newMarkdown);
+
+    // Re-render editor
+    isExternalUpdate = true;
+    editorContainer.innerHTML = markdownToStyledHtml(newMarkdown);
+    isExternalUpdate = false;
+
+    // Restore cursor to deletion point
+    restoreCursorPosition(editorContainer, {
+        lineIndex: cursorLineIndex,
+        offset: cursorOffset
+    });
+
+    // Update TOC
+    updateTocFromMarkdown(newMarkdown);
+
+    return true;
 }
 
 function restoreCursorPosition(container: HTMLElement, pos: CursorPosition): void {
@@ -1559,9 +1740,9 @@ function initEditor(container: HTMLElement, markdown: string): void {
             // Extract only text from .line-content elements
             const text = getSelectedMarkdownText(selection);
             e.clipboardData?.setData('text/plain', text);
-            
-            // Delete the selection by inserting empty text
-            document.execCommand('insertText', false, '');
+
+            // Delete the selection using our new function (instead of execCommand)
+            deleteSelection(selection);
         }
     });
     
@@ -1670,16 +1851,26 @@ function initEditor(container: HTMLElement, markdown: string): void {
             }
         }
         
-        // Backspace key - handle line merging
+        // Backspace key - handle selection deletion and line merging
         if (e.key === 'Backspace') {
+            const selection = window.getSelection();
+
+            // Handle selection deletion FIRST
+            if (selection && !selection.isCollapsed) {
+                e.preventDefault();
+                deleteSelection(selection);
+                return;
+            }
+
+            // EXISTING: Line-merge logic when cursor at line start
             const cursorPos = saveCursorPosition(container);
             const markdown = extractMarkdown(container);
             const lines = markdown.split('\n');
-            
+
             // Check if at start of line (offset 0, or offset 1 with empty line due to zero-width space)
             const currentLineText = cursorPos ? lines[cursorPos.lineIndex] || '' : '';
             const isAtLineStart = cursorPos && (cursorPos.offset === 0 || (cursorPos.offset <= 1 && currentLineText === ''));
-            
+
             if (cursorPos && isAtLineStart && cursorPos.lineIndex > 0) {
                 // At the start of a line (not the first line) - merge with previous line
                 e.preventDefault();
@@ -1713,15 +1904,25 @@ function initEditor(container: HTMLElement, markdown: string): void {
             // Otherwise, let browser handle normal backspace within a line
         }
         
-        // Delete key - handle line merging
+        // Delete key - handle selection deletion and line merging
         if (e.key === 'Delete') {
+            const selection = window.getSelection();
+
+            // Handle selection deletion FIRST
+            if (selection && !selection.isCollapsed) {
+                e.preventDefault();
+                deleteSelection(selection);
+                return;
+            }
+
+            // EXISTING: Line-merge logic when cursor at line end
             const cursorPos = saveCursorPosition(container);
             const markdown = extractMarkdown(container);
             const lines = markdown.split('\n');
-            
+
             if (cursorPos && cursorPos.lineIndex < lines.length - 1) {
                 const currentLine = lines[cursorPos.lineIndex];
-                
+
                 // At the end of a line (not the last line) - merge with next line
                 if (cursorPos.offset >= currentLine.length) {
                     e.preventDefault();
