@@ -241,7 +241,7 @@ describe('Selection Deletion', () => {
 
         it('should delete selection in blockquote', () => {
             const markdown = '> This is a quote';
-            const result = simulateDeleteSelection(markdown, 0, 2, 0, 11); // Delete "This is "
+            const result = simulateDeleteSelection(markdown, 0, 2, 0, 10); // Delete "This is "
             assert.strictEqual(result.newMarkdown, '> a quote');
             assert.strictEqual(result.cursorLineIndex, 0);
             assert.strictEqual(result.cursorOffset, 2);
@@ -257,7 +257,7 @@ describe('Selection Deletion', () => {
 
         it('should delete link URL', () => {
             const markdown = '[Click here](https://example.com)';
-            const result = simulateDeleteSelection(markdown, 0, 13, 0, 33); // Delete URL
+            const result = simulateDeleteSelection(markdown, 0, 13, 0, 32); // Delete "https://example.com"
             assert.strictEqual(result.newMarkdown, '[Click here]()');
             assert.strictEqual(result.cursorLineIndex, 0);
             assert.strictEqual(result.cursorOffset, 13);
@@ -267,10 +267,10 @@ describe('Selection Deletion', () => {
     describe('Code block deletions', () => {
         it('should delete within code fence', () => {
             const markdown = '```javascript\nconsole.log("test");\n```';
-            const result = simulateDeleteSelection(markdown, 1, 8, 1, 14); // Delete ".log()"
-            assert.strictEqual(result.newMarkdown, '```javascript\nconsole"test");\n```');
+            const result = simulateDeleteSelection(markdown, 1, 7, 1, 11); // Delete ".log"
+            assert.strictEqual(result.newMarkdown, '```javascript\nconsole("test");\n```');
             assert.strictEqual(result.cursorLineIndex, 1);
-            assert.strictEqual(result.cursorOffset, 8);
+            assert.strictEqual(result.cursorOffset, 7);
         });
 
         it('should delete entire code block', () => {
@@ -318,11 +318,11 @@ describe('Selection Deletion', () => {
         });
 
         it('should delete table row', () => {
-            const markdown = '| H1 | H2 |\n|----|----|\\n| C1 | C2 |';
-            const result = simulateDeleteSelection(markdown, 1, 0, 1, 12); // Delete separator
-            assert.strictEqual(result.newMarkdown, '| H1 | H2 |\n\n| C1 | C2 |');
+            const markdown = '| H1 | H2 |\n|----|----|\n| C1 | C2 |';
+            const result = simulateDeleteSelection(markdown, 1, 1, 1, 10); // Delete "----|----"
+            assert.strictEqual(result.newMarkdown, '| H1 | H2 |\n||\n| C1 | C2 |');
             assert.strictEqual(result.cursorLineIndex, 1);
-            assert.strictEqual(result.cursorOffset, 0);
+            assert.strictEqual(result.cursorOffset, 1);
         });
     });
 

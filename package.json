@@ -61,10 +61,9 @@
     "package": "yarn run check-types && yarn run lint && node esbuild.js --production",
     "compile-tests": "tsc -p tsconfig.test.json",
     "watch-tests": "tsc -p tsconfig.test.json -w",
-    "pretest": "yarn run compile-tests && yarn run compile && yarn run lint",
     "check-types": "tsc -b",
     "lint": "eslint src",
-    "test": "yarn test:unit && yarn test:integration",
+    "test": "yarn run compile-tests && yarn run compile && yarn run lint && yarn test:unit && yarn test:integration",
     "test:unit": "mocha out/test/unit/**/*.test.js",
     "test:integration": "vscode-test"
   },

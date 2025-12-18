@@ -421,7 +421,7 @@ describe('Keyboard Deletion Integration', () => {
                 'Delete'
             );
 
-            assert.strictEqual(result.newMarkdown, '**Bo* `code`');
+            assert.strictEqual(result.newMarkdown, '**Bo `code`');
         });
     });
 });
