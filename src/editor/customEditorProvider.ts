@@ -3,13 +3,146 @@ import * as path from 'path';
 import { getWebviewContent } from './webviewContent';
 
 export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
+    private activeWebviewPanels = new Map<string, vscode.WebviewPanel>();
+
     constructor(private readonly context: vscode.ExtensionContext) {}
+
+    /**
+     * Get the original version of a file from git for diff comparison
+     */
+    private async getOriginalContent(uri: vscode.Uri): Promise<string | null> {
+        try {
+            const gitExtension = vscode.extensions.getExtension('vscode.git');
+            if (!gitExtension) {
+                return null;
+            }
+
+            const git = gitExtension.exports;
+            const api = git.getAPI(1);
+
+            if (!api || api.repositories.length === 0) {
+                return null;
+            }
+
+            // Find the repository containing this file
+            let repository = null;
+            for (const repo of api.repositories) {
+                if (uri.fsPath.startsWith(repo.rootUri.fsPath)) {
+                    repository = repo;
+                    break;
+                }
+            }
+
+            if (!repository) {
+                return null;
+            }
+
+            // Get the relative path from repo root
+            const relativePath = path.relative(repository.rootUri.fsPath, uri.fsPath);
+
+            // Get the HEAD version
+            const headCommit = await repository.getCommit('HEAD');
+            const content = await repository.show(headCommit.hash, relativePath);
+
+            return content;
+        } catch (error) {
+            console.log('Could not get original content:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Check if diff is available for this file (file is in git and has changes)
+     */
+    private async isDiffAvailable(uri: vscode.Uri): Promise<boolean> {
+        try {
+            const gitExtension = vscode.extensions.getExtension('vscode.git');
+            if (!gitExtension) {
+                console.log('Git extension not found');
+                return false;
+            }
+
+            const git = gitExtension.exports;
+            const api = git.getAPI(1);
+
+            if (!api || api.repositories.length === 0) {
+                console.log('No git repositories found');
+                return false;
+            }
+
+            // Find the repository containing this file
+            let repository = null;
+            for (const repo of api.repositories) {
+                if (uri.fsPath.startsWith(repo.rootUri.fsPath)) {
+                    repository = repo;
+                    break;
+                }
+            }
+
+            if (!repository) {
+                console.log('File not in any git repository');
+                return false;
+            }
+
+            // Get the original content from HEAD
+            const originalContent = await this.getOriginalContent(uri);
+            if (!originalContent) {
+                console.log('Could not get original content from HEAD - file might be new or untracked');
+                return false;
+            }
+
+            // Get current content
+            const document = await vscode.workspace.openTextDocument(uri);
+            const currentContent = document.getText();
+
+            // Check if there are differences
+            const hasDiff = originalContent !== currentContent;
+            console.log('Diff available:', hasDiff, 'for file:', uri.fsPath);
+            return hasDiff;
+        } catch (error) {
+            console.log('Could not check diff availability:', error);
+            return false;
+        }
+    }
+
+    public async toggleDiffMode(documentUri: vscode.Uri): Promise<void> {
+        const uriString = documentUri.toString();
+        const webviewPanel = this.activeWebviewPanels.get(uriString);
+
+        if (!webviewPanel) {
+            vscode.window.showErrorMessage('No active Markdown Beautiful Editor for this file');
+            return;
+        }
+
+        // Get the original content from git
+        const originalContent = await this.getOriginalContent(documentUri);
+
+        if (!originalContent) {
+            vscode.window.showErrorMessage('Could not get git HEAD version of this file');
+            return;
+        }
+
+        // Toggle diff mode by sending a message to the webview
+        webviewPanel.webview.postMessage({
+            type: 'toggleDiff',
+            originalVersionContent: originalContent
+        });
+    }
 
     public async resolveCustomTextEditor(
         document: vscode.TextDocument,
         webviewPanel: vscode.WebviewPanel,
         _token: vscode.CancellationToken
     ): Promise<void> {
+        // Register this webview panel for command access
+        const uriString = document.uri.toString();
+        this.activeWebviewPanels.set(uriString, webviewPanel);
+
+        // Custom editors cannot detect git diff context automatically
+        // Always start in normal editor mode
+        const isDiffMode = false;
+        const originalContent: string | null = null;
+
         // Get the document's directory for resolving relative image paths
         const documentDirPath = path.dirname(document.uri.fsPath);
         const documentDir = vscode.Uri.file(documentDirPath);
@@ -96,14 +229,33 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
         };
 
         // Send initial document content
-        const sendDocument = () => {
+        const sendDocument = async () => {
             lastKnownContent = document.getText();
             const processedContent = processImagePaths(lastKnownContent);
-            webviewPanel.webview.postMessage({
-                type: 'init',
-                content: processedContent,
-                originalContent: lastKnownContent
-            });
+
+            // Check if diff is available (file in git with changes)
+            const diffAvailable = await this.isDiffAvailable(document.uri);
+
+            if (isDiffMode && originalContent) {
+                // Send both original and current content for diff view
+                webviewPanel.webview.postMessage({
+                    type: 'init',
+                    content: processedContent,
+                    originalContent: lastKnownContent,
+                    diffMode: true,
+                    originalVersionContent: processImagePaths(originalContent),
+                    diffAvailable
+                });
+            } else {
+                // Normal editor mode
+                webviewPanel.webview.postMessage({
+                    type: 'init',
+                    content: processedContent,
+                    originalContent: lastKnownContent,
+                    diffMode: false,
+                    diffAvailable
+                });
+            }
         };
 
         // Handle messages from webview
@@ -112,6 +264,10 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                 case 'ready':
                     // Webview is ready, send initial content
                     sendDocument();
+                    break;
+                case 'requestDiffToggle':
+                    // Handle diff toggle request from webview button
+                    await this.toggleDiffMode(document.uri);
                     break;
                 case 'edit':
                     // Skip if content hasn't actually changed
@@ -236,6 +392,8 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
             messageHandler.dispose();
             changeHandler.dispose();
             viewStateHandler.dispose();
+            // Remove from active panels map
+            this.activeWebviewPanels.delete(uriString);
         });
     }
 }

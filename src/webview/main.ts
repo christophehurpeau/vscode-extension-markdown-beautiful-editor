@@ -1,4 +1,5 @@
 import { updateToc, setupScrollSpy } from './toc';
+import * as Diff from 'diff';
 
 // Acquire VS Code API
 declare function acquireVsCodeApi(): {
@@ -35,6 +36,11 @@ const EDIT_DEBOUNCE_MS = 300;
 
 // Editor container reference
 let editorContainer: HTMLElement | null = null;
+
+// Track diff mode state
+let isDiffModeActive = false;
+let storedOriginalContent: string | null = null;
+let storedCurrentContent: string | null = null;
 
 // State management for persistence across tab switches
 interface EditorState {
@@ -1630,7 +1636,17 @@ function applyLineType(lineIndex: number, type: string): void {
 function initEditor(container: HTMLElement, markdown: string): void {
     editorContainer = container;
     lastSentContent = markdown;
-    
+
+    // Show toolbar and TOC (in case we're switching from diff mode)
+    const toolbar = document.getElementById('toolbar');
+    if (toolbar) {
+        toolbar.style.display = 'flex';
+    }
+    const toc = document.getElementById('toc');
+    if (toc) {
+        toc.style.display = 'block';
+    }
+
     // Render initial content
     container.innerHTML = markdownToStyledHtml(markdown);
     
@@ -2102,6 +2118,143 @@ function updateEditorContent(markdown: string): void {
     }
 }
 
+/**
+ * Initialize diff view with side-by-side comparison
+ */
+function initDiffView(container: HTMLElement, originalMarkdown: string, modifiedMarkdown: string): void {
+    // Make container non-editable for diff view
+    container.setAttribute('contenteditable', 'false');
+
+    // Create side-by-side diff layout
+    container.innerHTML = `
+        <div class="diff-container">
+            <div class="diff-panel diff-original">
+                <div class="diff-header">Original (HEAD)</div>
+                <div class="diff-content" id="diff-original-content" contenteditable="false" spellcheck="false"></div>
+            </div>
+            <div class="diff-panel diff-modified">
+                <div class="diff-header">Modified (Working Copy)</div>
+                <div class="diff-content" id="diff-modified-content" contenteditable="false" spellcheck="false"></div>
+            </div>
+        </div>
+    `;
+
+    // Render both versions
+    const originalContent = document.getElementById('diff-original-content');
+    const modifiedContent = document.getElementById('diff-modified-content');
+
+    if (originalContent && modifiedContent) {
+        originalContent.innerHTML = markdownToStyledHtml(originalMarkdown);
+        modifiedContent.innerHTML = markdownToStyledHtml(modifiedMarkdown);
+
+        // Highlight differences line by line
+        highlightDifferences(originalContent, modifiedContent, originalMarkdown, modifiedMarkdown);
+
+        // Synchronize scrolling
+        const originalPanel = originalContent.closest('.diff-panel') as HTMLElement;
+        const modifiedPanel = modifiedContent.closest('.diff-panel') as HTMLElement;
+
+        if (originalPanel && modifiedPanel) {
+            let isScrolling = false;
+            originalPanel.addEventListener('scroll', () => {
+                if (!isScrolling) {
+                    isScrolling = true;
+                    modifiedPanel.scrollTop = originalPanel.scrollTop;
+                    setTimeout(() => { isScrolling = false; }, 50);
+                }
+            });
+            modifiedPanel.addEventListener('scroll', () => {
+                if (!isScrolling) {
+                    isScrolling = true;
+                    originalPanel.scrollTop = modifiedPanel.scrollTop;
+                    setTimeout(() => { isScrolling = false; }, 50);
+                }
+            });
+        }
+    }
+
+    // Hide TOC in diff mode
+    const toc = document.getElementById('toc');
+    if (toc) {
+        toc.style.display = 'none';
+    }
+
+    // Keep toolbar visible in diff mode (for the close button)
+    // The button visibility is managed by the toggleDiff message handler
+}
+
+/**
+ * Compute diff using the diff library for accurate change detection
+ */
+function computeDiff(originalText: string, modifiedText: string): {
+    added: Set<number>;
+    removed: Set<number>;
+} {
+    const added = new Set<number>();
+    const removed = new Set<number>();
+
+    // Use the diff library to compute line-by-line changes
+    const changes = Diff.diffLines(originalText, modifiedText);
+
+    let originalLineIndex = 0;
+    let modifiedLineIndex = 0;
+
+    for (const change of changes) {
+        const lineCount = change.count || 0;
+
+        if (change.removed) {
+            // Mark lines as removed in the original
+            for (let i = 0; i < lineCount; i++) {
+                removed.add(originalLineIndex + i);
+            }
+            originalLineIndex += lineCount;
+        } else if (change.added) {
+            // Mark lines as added in the modified
+            for (let i = 0; i < lineCount; i++) {
+                added.add(modifiedLineIndex + i);
+            }
+            modifiedLineIndex += lineCount;
+        } else {
+            // Unchanged lines - advance both indices
+            originalLineIndex += lineCount;
+            modifiedLineIndex += lineCount;
+        }
+    }
+
+    return { added, removed };
+}
+
+/**
+ * Highlight differences between original and modified content
+ */
+function highlightDifferences(
+    originalContainer: HTMLElement,
+    modifiedContainer: HTMLElement,
+    originalMarkdown: string,
+    modifiedMarkdown: string
+): void {
+    // Compute diff using the diff library
+    const diff = computeDiff(originalMarkdown, modifiedMarkdown);
+
+    // Get line elements
+    const originalLineElements = originalContainer.querySelectorAll('.line');
+    const modifiedLineElements = modifiedContainer.querySelectorAll('.line');
+
+    // Highlight removed lines in original
+    diff.removed.forEach(idx => {
+        if (idx < originalLineElements.length) {
+            originalLineElements[idx].classList.add('diff-line-removed');
+        }
+    });
+
+    // Highlight added lines in modified
+    diff.added.forEach(idx => {
+        if (idx < modifiedLineElements.length) {
+            modifiedLineElements[idx].classList.add('diff-line-added');
+        }
+    });
+}
+
 // Initialize
 function init(): void {
     const container = document.getElementById('editor');
@@ -2109,10 +2262,28 @@ function init(): void {
         console.error('Editor container not found');
         return;
     }
-    
+
     // Make container editable
     container.setAttribute('contenteditable', 'true');
     container.setAttribute('spellcheck', 'false');
+
+    // Set up diff toggle button
+    const diffToggleBtn = document.getElementById('diff-toggle-btn');
+    if (diffToggleBtn) {
+        diffToggleBtn.addEventListener('click', () => {
+            // Send message to extension to toggle diff mode
+            vscode.postMessage({ type: 'requestDiffToggle' });
+        });
+    }
+
+    // Set up diff close button
+    const diffCloseBtn = document.getElementById('diff-close-btn');
+    if (diffCloseBtn) {
+        diffCloseBtn.addEventListener('click', () => {
+            // Send message to extension to toggle diff mode (same as toggle button)
+            vscode.postMessage({ type: 'requestDiffToggle' });
+        });
+    }
 
     // Handle messages from extension
     window.addEventListener('message', (event: MessageEvent) => {
@@ -2121,7 +2292,30 @@ function init(): void {
         switch (message.type) {
             case 'init': {
                 const content = message.originalContent || message.content || '';
-                initEditor(container, content);
+
+                console.log('Received init message. diffAvailable:', message.diffAvailable, 'diffMode:', message.diffMode);
+
+                // Show/hide diff button based on availability
+                const diffToggleBtn = document.getElementById('diff-toggle-btn');
+                if (diffToggleBtn) {
+                    if (message.diffAvailable) {
+                        console.log('Showing diff button');
+                        diffToggleBtn.style.display = 'flex';
+                    } else {
+                        console.log('Hiding diff button - no changes or not in git');
+                        diffToggleBtn.style.display = 'none';
+                    }
+                } else {
+                    console.error('Diff toggle button not found in DOM');
+                }
+
+                if (message.diffMode && message.originalVersionContent) {
+                    // Initialize in diff mode
+                    initDiffView(container, message.originalVersionContent, content);
+                } else {
+                    // Normal editor mode
+                    initEditor(container, content);
+                }
                 break;
             }
             case 'update': {
@@ -2139,6 +2333,61 @@ function init(): void {
                     }
                     if (state && state.scrollTop) {
                         editorContainer.scrollTop = state.scrollTop;
+                    }
+                }
+                break;
+            }
+            case 'toggleDiff': {
+                // Toggle between diff mode and normal editor mode
+                const container = document.getElementById('editor');
+                if (!container) {
+                    break;
+                }
+
+                const diffToggleBtn = document.getElementById('diff-toggle-btn');
+                const diffCloseBtn = document.getElementById('diff-close-btn');
+
+                if (isDiffModeActive) {
+                    // Switch back to normal editor mode
+                    isDiffModeActive = false;
+                    // Restore the content we stored before entering diff mode
+                    const currentMarkdown = storedCurrentContent || extractMarkdown(container);
+                    container.setAttribute('contenteditable', 'true');
+                    container.setAttribute('spellcheck', 'false');
+                    initEditor(container, currentMarkdown);
+
+                    // Clear stored content
+                    storedCurrentContent = null;
+                    storedOriginalContent = null;
+
+                    // Update button states
+                    if (diffToggleBtn) {
+                        diffToggleBtn.classList.remove('active');
+                        diffToggleBtn.style.display = 'flex';
+                    }
+                    if (diffCloseBtn) {
+                        diffCloseBtn.style.display = 'none';
+                    }
+                } else {
+                    // Switch to diff mode
+                    const originalVersionContent = message.originalVersionContent || '';
+                    if (!originalVersionContent) {
+                        break;
+                    }
+                    isDiffModeActive = true;
+                    // Store current content before entering diff mode
+                    const currentMarkdown = extractMarkdown(container);
+                    storedCurrentContent = currentMarkdown;
+                    storedOriginalContent = originalVersionContent;
+                    initDiffView(container, originalVersionContent, currentMarkdown);
+
+                    // Update button states
+                    if (diffToggleBtn) {
+                        diffToggleBtn.classList.add('active');
+                        diffToggleBtn.style.display = 'none';
+                    }
+                    if (diffCloseBtn) {
+                        diffCloseBtn.style.display = 'flex';
                     }
                 }
                 break;

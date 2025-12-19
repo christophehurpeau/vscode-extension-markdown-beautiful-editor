@@ -15,10 +15,65 @@ html, body {
     line-height: 1.7;
 }
 
+/* Top toolbar */
+.toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    padding: 0 12px;
+    background: var(--vscode-editor-background);
+    border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.2));
+    z-index: 100;
+}
+
+.toolbar-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--vscode-foreground, #cccccc);
+    font-size: 13px;
+    font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+    cursor: pointer;
+    transition: background 0.1s ease;
+}
+
+.toolbar-btn:hover {
+    background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.3));
+}
+
+.toolbar-btn:active {
+    background: var(--vscode-toolbar-activeBackground, rgba(90, 93, 94, 0.5));
+}
+
+.toolbar-btn.active {
+    background: var(--vscode-button-secondaryBackground, rgba(90, 93, 94, 0.5));
+    color: var(--vscode-button-secondaryForeground, #ffffff);
+}
+
+.toolbar-btn-icon {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.toolbar-btn-label {
+    font-weight: 500;
+}
+
 /* Main layout */
 .editor-container {
     display: flex;
-    height: 100vh;
+    height: calc(100vh - 36px);
+    margin-top: 36px;
     overflow: hidden;
 }
 
@@ -821,4 +876,80 @@ html, body {
 
 .line-type-label {
     flex: 1;
+}
+
+/* ===== Diff View Styles ===== */
+
+.diff-container {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+    gap: 1px;
+    background-color: var(--vscode-editorWidget-border, #454545);
+}
+
+.diff-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background-color: var(--vscode-editor-background, #1e1e1e);
+}
+
+.diff-header {
+    padding: 8px 16px;
+    background-color: var(--vscode-editorGroupHeader-tabsBackground, #252526);
+    color: var(--vscode-foreground, #cccccc);
+    font-size: 13px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--vscode-editorWidget-border, #454545);
+    flex-shrink: 0;
+}
+
+.diff-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px;
+}
+
+/* Diff highlighting */
+
+.diff-line-removed {
+    background-color: rgba(255, 0, 0, 0.15) !important;
+    border-left: 3px solid rgba(255, 0, 0, 0.6);
+    padding-left: 4px;
+}
+
+.diff-line-added {
+    background-color: rgba(0, 255, 0, 0.15) !important;
+    border-left: 3px solid rgba(0, 255, 0, 0.6);
+    padding-left: 4px;
+}
+
+.diff-original .diff-line-removed {
+    background-color: rgba(255, 81, 92, 0.2) !important;
+}
+
+.diff-modified .diff-line-added {
+    background-color: rgba(38, 205, 77, 0.2) !important;
+}
+
+/* Make diff panels scrollable together */
+
+.diff-panel::-webkit-scrollbar {
+    width: 10px;
+}
+
+.diff-panel::-webkit-scrollbar-track {
+    background: var(--vscode-scrollbarSlider-background, #424242);
+}
+
+.diff-panel::-webkit-scrollbar-thumb {
+    background: var(--vscode-scrollbarSlider-hoverBackground, #4e4e4e);
+    border-radius: 5px;
+}
+
+.diff-panel::-webkit-scrollbar-thumb:hover {
+    background: var(--vscode-scrollbarSlider-activeBackground, #646464);
 }

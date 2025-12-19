@@ -17,13 +17,25 @@ export function getWebviewContent(
     <title>Markdown Editor</title>
 </head>
 <body>
+    <!-- Top toolbar -->
+    <div id="toolbar" class="toolbar">
+        <button type="button" id="diff-toggle-btn" class="toolbar-btn" title="Toggle Diff Mode" style="display: none;">
+            <span class="toolbar-btn-icon">⇄</span>
+            <span class="toolbar-btn-label">Diff</span>
+        </button>
+        <button type="button" id="diff-close-btn" class="toolbar-btn" title="Exit Diff Mode" style="display: none;">
+            <span class="toolbar-btn-icon">✕</span>
+            <span class="toolbar-btn-label">Close Diff</span>
+        </button>
+    </div>
+
     <div class="editor-container">
         <nav class="toc-sidebar" id="toc"></nav>
         <div class="editor-main">
             <div id="editor"></div>
         </div>
     </div>
-    
+
     <!-- Floating formatting toolbar (appears on text selection) -->
     <div id="formatting-toolbar" class="formatting-toolbar" style="display: none;">
         <button type="button" data-format="bold" title="Bold (⌘B)"><strong>B</strong></button>
@@ -32,11 +44,11 @@ export function getWebviewContent(
         <button type="button" data-format="strikethrough" title="Strikethrough"><s>S</s></button>
         <button type="button" data-format="link" title="Link (⌘K)">🔗</button>
     </div>
-    
+
     <!-- Line type selector (appears on line gutter click) -->
     <!-- Content is generated dynamically from MENU_LINE_TYPES in main.ts -->
     <div id="line-type-menu" class="line-type-menu" style="display: none;"></div>
-    
+
     <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
