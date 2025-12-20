@@ -718,11 +718,14 @@ function applyLineType(lineIndex: number, type: string): void {
     if (!editorContainer) {
         return;
     }
-    
+
+    // Save scroll position before making changes
+    const scrollTop = editorContainer.scrollTop;
+
     const markdown = extractMarkdown(editorContainer);
     const lines = markdown.split('\n');
     let line = lines[lineIndex] || '';
-    
+
     // Strip existing line prefix (order matters - check more specific patterns first)
     // Horizontal rule
     line = line.replace(/^(-{3,}|\*{3,}|_{3,})\s*$/, '');
@@ -738,7 +741,7 @@ function applyLineType(lineIndex: number, type: string): void {
     line = line.replace(/^>+\s?/, '');
     // Code fence
     line = line.replace(/^```\w*\s*/, '');
-    
+
     // Apply new prefix
     switch (type) {
         case 'paragraph':
@@ -782,16 +785,19 @@ function applyLineType(lineIndex: number, type: string): void {
             line = `\`\`\`\n${line}\n\`\`\``;
             break;
     }
-    
+
     lines[lineIndex] = line;
     const newMarkdown = lines.join('\n');
-    
+
     // Update editor
     sendEdit(newMarkdown);
     isExternalUpdate = true;
     editorContainer.innerHTML = markdownToStyledHtml(newMarkdown);
     isExternalUpdate = false;
-    
+
+    // Restore scroll position
+    editorContainer.scrollTop = scrollTop;
+
     // Place cursor at beginning of line content (after any markdown prefix)
     // This ensures cursor stays on the same line after type change
     editorContainer.focus();
@@ -799,7 +805,7 @@ function applyLineType(lineIndex: number, type: string): void {
         lineIndex: lineIndex,
         offset: 0
     });
-    
+
     updateTocFromMarkdown(newMarkdown);
 }
 
