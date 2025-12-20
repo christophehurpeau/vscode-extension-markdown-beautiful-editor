@@ -1345,42 +1345,81 @@ function init(): void {
 
                 console.log('Received init message. diffAvailable:', message.diffAvailable, 'diffMode:', message.diffMode);
 
-                // Show/hide diff button based on availability
-                const diffToggleBtn = document.getElementById('diff-toggle-btn');
-                if (diffToggleBtn) {
-                    if (message.diffAvailable) {
-                        console.log('Showing diff button');
-                        diffToggleBtn.style.display = 'flex';
-                    } else {
-                        console.log('Hiding diff button - no changes or not in git');
-                        diffToggleBtn.style.display = 'none';
-                    }
-                } else {
-                    console.error('Diff toggle button not found in DOM');
-                }
-
                 if (message.diffMode && message.originalVersionContent) {
                     // Initialize in diff mode
+                    isDiffModeActive = true;
                     initDiffView(container, message.originalVersionContent, content, markdownToStyledHtml);
+
+                    // Show close button, hide diff button and line type toolbar in diff mode
+                    const diffToggleBtn = document.getElementById('diff-toggle-btn');
+                    const diffCloseBtn = document.getElementById('diff-close-btn');
+                    const lineTypeToolbar = document.getElementById('line-type-toolbar');
+                    if (diffToggleBtn) {
+                        diffToggleBtn.style.display = 'none';
+                        diffToggleBtn.classList.add('active');
+                    }
+                    if (diffCloseBtn) {
+                        diffCloseBtn.style.display = 'flex';
+                    }
+                    if (lineTypeToolbar) {
+                        lineTypeToolbar.style.display = 'none';
+                    }
                 } else {
                     // Normal editor mode
+                    isDiffModeActive = false;
                     initEditor(container, content);
+
+                    // Show/hide diff button based on availability, show line type toolbar
+                    const diffToggleBtn = document.getElementById('diff-toggle-btn');
+                    const diffCloseBtn = document.getElementById('diff-close-btn');
+                    const lineTypeToolbar = document.getElementById('line-type-toolbar');
+                    if (diffToggleBtn) {
+                        if (message.diffAvailable) {
+                            console.log('Showing diff button');
+                            diffToggleBtn.style.display = 'flex';
+                        } else {
+                            console.log('Hiding diff button - no changes or not in git');
+                            diffToggleBtn.style.display = 'none';
+                        }
+                        diffToggleBtn.classList.remove('active');
+                    } else {
+                        console.error('Diff toggle button not found in DOM');
+                    }
+                    if (diffCloseBtn) {
+                        diffCloseBtn.style.display = 'none';
+                    }
+                    if (lineTypeToolbar) {
+                        lineTypeToolbar.style.display = 'flex';
+                    }
                 }
                 break;
             }
             case 'update': {
                 const updateContent = message.originalContent || message.content || '';
-                updateEditorContent(updateContent);
 
-                // Update diff button visibility based on diffAvailable flag
-                const diffToggleBtn = document.getElementById('diff-toggle-btn');
-                if (diffToggleBtn) {
-                    if (message.diffAvailable) {
-                        console.log('Showing diff button after update');
-                        diffToggleBtn.style.display = 'flex';
-                    } else {
-                        console.log('Hiding diff button after update - no changes');
-                        diffToggleBtn.style.display = 'none';
+                // If in diff mode, update stored content and re-render diff
+                if (isDiffModeActive && storedOriginalContent) {
+                    storedCurrentContent = updateContent;
+                    const container = document.getElementById('editor');
+                    if (container) {
+                        initDiffView(container, storedOriginalContent, updateContent, markdownToStyledHtml);
+                    }
+                } else {
+                    // Normal editor mode - update content
+                    updateEditorContent(updateContent);
+                }
+
+                // Update diff button visibility based on diffAvailable flag (only in normal mode)
+                if (!isDiffModeActive) {
+                    const diffToggleBtn = document.getElementById('diff-toggle-btn');
+                    if (diffToggleBtn) {
+                        if (message.diffAvailable) {
+                            console.log('Showing diff button after update');
+                            diffToggleBtn.style.display = 'flex';
+                        } else {
+                            console.log('Hiding diff button after update - no changes');
+                            diffToggleBtn.style.display = 'none';
+                        }
                     }
                 }
                 break;
@@ -1422,13 +1461,17 @@ function init(): void {
                     storedCurrentContent = null;
                     storedOriginalContent = null;
 
-                    // Update button states
+                    // Update button states and show line type toolbar
+                    const lineTypeToolbar = document.getElementById('line-type-toolbar');
                     if (diffToggleBtn) {
                         diffToggleBtn.classList.remove('active');
                         diffToggleBtn.style.display = 'flex';
                     }
                     if (diffCloseBtn) {
                         diffCloseBtn.style.display = 'none';
+                    }
+                    if (lineTypeToolbar) {
+                        lineTypeToolbar.style.display = 'flex';
                     }
                 } else {
                     // Switch to diff mode
@@ -1443,13 +1486,17 @@ function init(): void {
                     storedOriginalContent = originalVersionContent;
                     initDiffView(container, originalVersionContent, currentMarkdown, markdownToStyledHtml);
 
-                    // Update button states
+                    // Update button states and hide line type toolbar
+                    const lineTypeToolbar = document.getElementById('line-type-toolbar');
                     if (diffToggleBtn) {
                         diffToggleBtn.classList.add('active');
                         diffToggleBtn.style.display = 'none';
                     }
                     if (diffCloseBtn) {
                         diffCloseBtn.style.display = 'flex';
+                    }
+                    if (lineTypeToolbar) {
+                        lineTypeToolbar.style.display = 'none';
                     }
                 }
                 break;
