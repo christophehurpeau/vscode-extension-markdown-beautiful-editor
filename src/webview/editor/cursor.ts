@@ -224,8 +224,12 @@ export function getSelectionMarkdownPosition(container: HTMLElement, selection: 
  *
  * @param container The editor container element
  * @param pos The cursor position to restore
+ * @param preventScroll Whether to prevent scrolling when setting cursor (default: false)
  */
-export function restoreCursorPosition(container: HTMLElement, pos: CursorPosition): void {
+export function restoreCursorPosition(container: HTMLElement, pos: CursorPosition, preventScroll = false): void {
+    // Save scroll position if we need to prevent scrolling
+    const scrollTop = preventScroll ? container.scrollTop : 0;
+
     const children = container.children;
     if (pos.lineIndex >= children.length) {
         return;
@@ -281,6 +285,11 @@ export function restoreCursorPosition(container: HTMLElement, pos: CursorPositio
             selection.removeAllRanges();
             selection.addRange(range);
         }
+
+        // Restore scroll position if preventScroll is enabled
+        if (preventScroll) {
+            container.scrollTop = scrollTop;
+        }
         return;
     }
 
@@ -293,5 +302,10 @@ export function restoreCursorPosition(container: HTMLElement, pos: CursorPositio
             selection.removeAllRanges();
             selection.addRange(range);
         }
+    }
+
+    // Restore scroll position if preventScroll is enabled
+    if (preventScroll) {
+        container.scrollTop = scrollTop;
     }
 }

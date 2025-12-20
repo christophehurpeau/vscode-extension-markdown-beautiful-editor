@@ -795,16 +795,17 @@ function applyLineType(lineIndex: number, type: string): void {
     editorContainer.innerHTML = markdownToStyledHtml(newMarkdown);
     isExternalUpdate = false;
 
-    // Restore scroll position
+    // Restore scroll position FIRST (before cursor restoration)
     editorContainer.scrollTop = scrollTop;
 
     // Place cursor at beginning of line content (after any markdown prefix)
     // This ensures cursor stays on the same line after type change
-    editorContainer.focus();
+    // Focus without scrolling by using preventScroll option
+    editorContainer.focus({ preventScroll: true });
     restoreCursorPosition(editorContainer, {
         lineIndex: lineIndex,
         offset: 0
-    });
+    }, true); // preventScroll = true
 
     updateTocFromMarkdown(newMarkdown);
 }
