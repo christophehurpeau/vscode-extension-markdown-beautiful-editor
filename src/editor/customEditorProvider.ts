@@ -258,6 +258,20 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
             }
         };
 
+        // Function to update diff availability in the webview
+        const updateDiffAvailability = async () => {
+            const diffAvailable = await this.isDiffAvailable(document.uri);
+            const currentContent = document.getText();
+            const processedContent = processImagePaths(currentContent);
+
+            webviewPanel.webview.postMessage({
+                type: 'update',
+                content: processedContent,
+                originalContent: currentContent,
+                diffAvailable
+            });
+        };
+
         // Handle messages from webview
         const messageHandler = webviewPanel.webview.onDidReceiveMessage(async (message) => {
             switch (message.type) {
@@ -343,6 +357,67 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                     break;
             }
         });
+
+        // Set up git repository event listeners
+        const setupGitListeners = async () => {
+            try {
+                const gitExtension = vscode.extensions.getExtension('vscode.git');
+                if (!gitExtension) {
+                    return;
+                }
+
+                // Activate the git extension if not already activated
+                const git = gitExtension.isActive ? gitExtension.exports : await gitExtension.activate();
+                const api = git.getAPI(1);
+
+                if (!api) {
+                    return;
+                }
+
+                // Listen for git state changes (when git extension initializes)
+                const gitStateHandler = api.onDidChangeState(async () => {
+                    await updateDiffAvailability();
+                });
+
+                // Listen for repository changes (commits, checkouts, etc.)
+                const gitRepoHandlers: vscode.Disposable[] = [];
+                for (const repo of api.repositories) {
+                    if (document.uri.fsPath.startsWith(repo.rootUri.fsPath)) {
+                        // Listen to repository state changes
+                        const stateHandler = repo.state.onDidChange(async () => {
+                            await updateDiffAvailability();
+                        });
+                        gitRepoHandlers.push(stateHandler);
+                    }
+                }
+
+                // Listen for new repositories being opened
+                const openRepoHandler = api.onDidOpenRepository(async (repo: any) => {
+                    if (document.uri.fsPath.startsWith(repo.rootUri.fsPath)) {
+                        await updateDiffAvailability();
+
+                        // Also listen to this new repository's state changes
+                        const stateHandler = repo.state.onDidChange(async () => {
+                            await updateDiffAvailability();
+                        });
+                        gitRepoHandlers.push(stateHandler);
+                    }
+                });
+
+                // Clean up git handlers on dispose
+                webviewPanel.onDidDispose(() => {
+                    gitStateHandler.dispose();
+                    openRepoHandler.dispose();
+                    gitRepoHandlers.forEach(h => h.dispose());
+                });
+            } catch (error) {
+                // Git extension not available or failed to activate - silently continue
+                console.log('Could not set up git listeners:', error);
+            }
+        };
+
+        // Set up git listeners asynchronously (don't block webview setup)
+        setupGitListeners();
 
         // Watch for external document changes (e.g., from other editors, source control)
         const changeHandler = vscode.workspace.onDidChangeTextDocument(async (e) => {

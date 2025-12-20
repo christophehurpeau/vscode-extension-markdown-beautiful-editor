@@ -487,6 +487,7 @@ function hideFormattingToolbar(): void {
 
 function updateLineTypeToolbarState(): void {
     if (!lineTypeToolbar || !editorContainer || currentLineIndex < 0) {
+        console.log('Early return from updateLineTypeToolbarState');
         return;
     }
 
@@ -503,7 +504,8 @@ function updateLineTypeToolbarState(): void {
     const buttons = lineTypeToolbar.querySelectorAll('.line-type-btn');
     buttons.forEach((button) => {
         const type = (button as HTMLElement).dataset.type;
-        button.classList.toggle('active', type === currentType);
+        const isActive = type === currentType;
+        button.classList.toggle('active', isActive);
     });
 }
 
@@ -1204,13 +1206,13 @@ function initEditor(container: HTMLElement, markdown: string): void {
     // Update TOC and set up scroll spy
     updateTocFromMarkdown(markdown);
     setupScrollSpy();
-    
+
+    // Initialize formatting toolbar and line type toolbar FIRST
+    initToolbar();
+
     // Focus editor and restore/set cursor position
     container.focus();
-    
-    // Focus the editor first
-    container.focus();
-    
+
     // Restore state from previous session (cursor position, scroll)
     const storedState = getStoredState(vscode);
     if (storedState && storedState.cursorPosition) {
@@ -1218,21 +1220,27 @@ function initEditor(container: HTMLElement, markdown: string): void {
         if (storedState.scrollTop) {
             container.scrollTop = storedState.scrollTop;
         }
+        // Update toolbar state based on restored cursor position
+        currentLineIndex = storedState.cursorPosition.lineIndex;
+        updateLineTypeToolbarState();
     } else {
         // No stored state - place cursor at the beginning
         placeCursorAtStart(container);
+        // Update toolbar state for first line
+        currentLineIndex = 0;
+        updateLineTypeToolbarState();
     }
-    
+
     // Save state on blur (when focus leaves the editor)
     container.addEventListener('blur', () => {
         saveState();
     });
-    
+
     // Save state after edits
     container.addEventListener('input', () => {
         saveState();
     });
-    
+
     // Handle window/document focus (Cmd+Tab back to VS Code)
     window.addEventListener('focus', () => {
         // Window regained focus - restore editor focus and cursor
@@ -1245,9 +1253,6 @@ function initEditor(container: HTMLElement, markdown: string): void {
             container.scrollTop = state.scrollTop;
         }
     });
-    
-    // Initialize formatting toolbar and line type toolbar
-    initToolbar();
 
     // Track cursor position changes to update line type toolbar
     container.addEventListener('click', (e) => {
