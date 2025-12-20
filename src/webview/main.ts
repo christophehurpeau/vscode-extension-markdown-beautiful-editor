@@ -1,5 +1,19 @@
 import { updateToc, setupScrollSpy } from './toc';
-import * as Diff from 'diff';
+import {
+    markdownToStyledHtml,
+    getLineType,
+    MENU_LINE_TYPES} from './markdown/parser';
+import { extractMarkdown, getSelectedMarkdownText } from './markdown/serializer';
+import {
+    saveState as saveEditorState,
+    getStoredState} from './editor/state';
+import {
+    placeCursorAtStart,
+    saveCursorPosition,
+    getSelectionMarkdownPosition,
+    restoreCursorPosition} from './editor/cursor';
+import {
+    initDiffView} from './editor/diff';
 
 // Acquire VS Code API
 declare function acquireVsCodeApi(): {
@@ -9,20 +23,6 @@ declare function acquireVsCodeApi(): {
 };
 
 const vscode = acquireVsCodeApi();
-
-// Cursor position interface (defined early for use in EditorState)
-interface CursorPosition {
-    lineIndex: number;
-    offset: number;
-}
-
-// Selection position interface for tracking selection boundaries in markdown
-interface SelectionPosition {
-    startLineIndex: number;
-    startOffset: number;
-    endLineIndex: number;
-    endOffset: number;
-}
 
 // Track if we're currently applying an external update to avoid loops
 let isExternalUpdate = false;
@@ -42,731 +42,14 @@ let isDiffModeActive = false;
 let storedOriginalContent: string | null = null;
 let storedCurrentContent: string | null = null;
 
-// State management for persistence across tab switches
-interface EditorState {
-    cursorPosition: CursorPosition | null;
-    scrollTop: number;
-}
-
+// Wrapper functions for state management (to avoid passing vscode everywhere)
 function saveState(): void {
     if (!editorContainer) {
         return;
     }
-    const state: EditorState = {
-        cursorPosition: saveCursorPosition(editorContainer),
-        scrollTop: editorContainer.scrollTop
-    };
-    vscode.setState(state);
-}
-
-function getStoredState(): EditorState | null {
-    return vscode.getState() as EditorState | null;
-}
-
-// Check if a line is a blockquote (but not a GitHub alert)
-function isBlockquoteLine(line: string): boolean {
-    // It's a blockquote if it starts with > but is NOT a GitHub alert header
-    if (!line.match(/^>+\s?/)) {
-        return false;
-    }
-    // Exclude GitHub alert headers
-    if (line.match(/^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/i)) {
-        return false;
-    }
-    return true;
-}
-
-// Get the depth of a blockquote line (number of > markers)
-function getBlockquoteDepth(line: string): number {
-    const match = line.match(/^(>+)/);
-    return match ? match[1].length : 0;
-}
-
-// Line type definitions - single source of truth for type detection, icons, and menu
-interface LineTypeDefinition {
-    type: string;
-    pattern: RegExp;
-    icon: string;
-    label?: string; // Label for menu (if shown in menu)
-}
-
-// Types for line detection (order matters - more specific patterns first)
-const LINE_TYPES: LineTypeDefinition[] = [
-    { type: 'h1', pattern: /^#{1}\s/, icon: 'H₁', label: 'Heading 1' },
-    { type: 'h2', pattern: /^#{2}\s/, icon: 'H₂', label: 'Heading 2' },
-    { type: 'h3', pattern: /^#{3}\s/, icon: 'H₃', label: 'Heading 3' },
-    { type: 'h4', pattern: /^#{4}\s/, icon: 'H₄', label: 'Heading 4' },
-    { type: 'h5', pattern: /^#{5}\s/, icon: 'H₅', label: 'Heading 5' },
-    { type: 'h6', pattern: /^#{6}\s/, icon: 'H₆', label: 'Heading 6' },
-    { type: 'hr', pattern: /^(-{3,}|\*{3,}|_{3,})\s*$/, icon: '―', label: 'Horizontal Rule' },
-    { type: 'task', pattern: /^[-*+]\s\[[ xX]\]/, icon: '☐', label: 'Task List' },
-    { type: 'ul', pattern: /^[-*+]\s/, icon: '•', label: 'Bullet List' },
-    { type: 'ol', pattern: /^\d+\.\s/, icon: '1.', label: 'Numbered List' },
-    { type: 'alert', pattern: /^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/i, icon: '!' }, // No menu entry
-    { type: 'quote', pattern: /^>/, icon: '❝', label: 'Quote' },
-    { type: 'code', pattern: /^```/, icon: '{}', label: 'Code Block' },
-];
-
-const DEFAULT_LINE_TYPE: LineTypeDefinition = { type: 'paragraph', pattern: /^/, icon: 'T', label: 'Text' };
-
-// Menu items (subset of LINE_TYPES that appear in the menu, in display order)
-const MENU_LINE_TYPES: LineTypeDefinition[] = [
-    DEFAULT_LINE_TYPE,
-    ...LINE_TYPES.filter(t => t.label), // Only types with labels
-];
-
-// Get the line type for a given line
-function getLineType(line: string): LineTypeDefinition {
-    for (const def of LINE_TYPES) {
-        if (def.pattern.test(line)) {
-            return def;
-        }
-    }
-    return DEFAULT_LINE_TYPE;
-}
-
-// Get the icon for a line type
-function getLineTypeIcon(line: string): string {
-    return getLineType(line).icon;
-}
-
-// Generate line prefix (line number + type button)
-// isCodeContent: true for lines inside code blocks (not the ``` fences themselves)
-function generateLinePrefix(lineNumber: number, line: string, isCodeContent: boolean = false): string {
-    if (isCodeContent) {
-        // Code content lines: no icon, no button interaction
-        return `<span class="line-prefix" contenteditable="false"><span class="line-number">${lineNumber}</span><span class="line-type-btn disabled"></span></span>`;
-    }
-    const icon = getLineTypeIcon(line);
-    return `<span class="line-prefix" contenteditable="false"><span class="line-number">${lineNumber}</span><button type="button" class="line-type-btn" data-line="${lineNumber - 1}" title="Change line type">${icon}</button></span>`;
-}
-
-// Parse markdown text into styled HTML for display
-function markdownToStyledHtml(markdown: string): string {
-    const lines = markdown.split('\n');
-    
-    // First pass: determine line types and blockquote grouping
-    interface LineInfo {
-        line: string;
-        isBlockquote: boolean;
-        blockquoteDepth: number;
-        isAlertHeader: boolean;
-        isAlertContent: boolean;
-        isCodeFence: boolean;
-        isCodeContent: boolean;
-        alertType: string | null;
-    }
-    
-    const lineInfos: LineInfo[] = [];
-    let inCodeBlock = false;
-    let currentAlertType: string | null = null;
-    
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const info: LineInfo = {
-            line,
-            isBlockquote: false,
-            blockquoteDepth: 0,
-            isAlertHeader: false,
-            isAlertContent: false,
-            isCodeFence: false,
-            isCodeContent: false,
-            alertType: null
-        };
-        
-        // Handle code blocks
-        if (line.startsWith('```')) {
-            currentAlertType = null;
-            info.isCodeFence = true;
-            inCodeBlock = !inCodeBlock;
-            lineInfos.push(info);
-            continue;
-        }
-        
-        if (inCodeBlock) {
-            info.isCodeContent = true;
-            lineInfos.push(info);
-            continue;
-        }
-        
-        // Check for GitHub alert header
-        const alertMatch = line.match(/^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/i);
-        if (alertMatch) {
-            currentAlertType = alertMatch[1].toLowerCase();
-            info.isAlertHeader = true;
-            info.alertType = currentAlertType;
-            lineInfos.push(info);
-            continue;
-        }
-        
-        // Check if this is a continuation of an alert
-        if (currentAlertType && line.match(/^>\s?/)) {
-            info.isAlertContent = true;
-            info.alertType = currentAlertType;
-            lineInfos.push(info);
-            continue;
-        }
-        
-        // Reset alert state if line doesn't start with >
-        if (!line.match(/^>\s?/)) {
-            currentAlertType = null;
-        }
-        
-        // Check for regular blockquote
-        if (isBlockquoteLine(line)) {
-            info.isBlockquote = true;
-            info.blockquoteDepth = getBlockquoteDepth(line);
-        }
-        
-        lineInfos.push(info);
-    }
-    
-    // Second pass: generate HTML with blockquote grouping classes
-    const htmlLines: string[] = [];
-    inCodeBlock = false;
-    
-    for (let i = 0; i < lineInfos.length; i++) {
-        const info = lineInfos[i];
-        const prevInfo = i > 0 ? lineInfos[i - 1] : null;
-        const nextInfo = i < lineInfos.length - 1 ? lineInfos[i + 1] : null;
-        const lineNum = i + 1;
-        
-        // Code fence - these ARE clickable to convert back to text
-        if (info.isCodeFence) {
-            const prefix = generateLinePrefix(lineNum, info.line, false);
-            if (!inCodeBlock) {
-                inCodeBlock = true;
-                const lang = info.line.slice(3).trim();
-                htmlLines.push(`<div class="line code-fence code-start">${prefix}<span class="line-content"><span class="code-inner">\`\`\`${escapeHtml(lang)}</span></span></div>`);
-            } else {
-                inCodeBlock = false;
-                htmlLines.push(`<div class="line code-fence code-end">${prefix}<span class="line-content"><span class="code-inner">\`\`\`</span></span></div>`);
-            }
-            continue;
-        }
-        
-        // Code content
-        if (info.isCodeContent) {
-            const prefix = generateLinePrefix(lineNum, info.line, true);
-            const content = escapeHtml(info.line);
-            const isEmpty = !content;
-            htmlLines.push(`<div class="line code-content${isEmpty ? ' empty-line' : ''}">${prefix}<span class="line-content"><span class="code-inner">${content || '<br>'}</span></span></div>`);
-            continue;
-        }
-        
-        const prefix = generateLinePrefix(lineNum, info.line);
-        
-        // GitHub alert header
-        if (info.isAlertHeader) {
-            const alertMatch = info.line.match(/^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/i);
-            const alertType = alertMatch![1].toUpperCase();
-            const isLast = !nextInfo?.isAlertContent;
-            let classes = `line md-alert md-alert-${info.alertType} alert-first`;
-            if (isLast) {classes += ' alert-last alert-single';}
-            htmlLines.push(`<div class="${classes}">${prefix}<span class="line-content"><span class="alert-inner"><span class="md-syntax">&gt; [!</span><span class="md-alert-type">${alertType}</span><span class="md-syntax">]</span></span></span></div>`);
-            continue;
-        }
-        
-        // GitHub alert content
-        if (info.isAlertContent) {
-            const content = info.line.replace(/^>\s?/, '');
-            const styledContent = styleInline(content);
-            const isLast = !nextInfo?.isAlertContent;
-            let classes = `line md-alert-content md-alert-${info.alertType}`;
-            if (isLast) {classes += ' alert-last';}
-            htmlLines.push(`<div class="${classes}">${prefix}<span class="line-content"><span class="alert-inner"><span class="md-syntax">&gt;</span> ${styledContent}</span></span></div>`);
-            continue;
-        }
-        
-        // Regular blockquote with grouping
-        if (info.isBlockquote) {
-            const isFirst = !prevInfo?.isBlockquote;
-            const isLast = !nextInfo?.isBlockquote;
-            const depth = Math.min(info.blockquoteDepth, 3); // Cap at 3 levels
-            
-            let classes = 'line blockquote-line';
-            if (isFirst) {classes += ' blockquote-first';}
-            if (isLast) {classes += ' blockquote-last';}
-            if (depth > 1) {classes += ` blockquote-depth-${depth}`;}
-            
-            const styledLine = styleLine(info.line);
-            htmlLines.push(`<div class="${classes}">${prefix}<span class="line-content">${styledLine}</span></div>`);
-            continue;
-        }
-        
-        // Regular line
-        const styledLine = styleLine(info.line);
-        const isEmpty = !styledLine;
-        htmlLines.push(`<div class="line${isEmpty ? ' empty-line' : ''}">${prefix}<span class="line-content">${styledLine || '<br>'}</span></div>`);
-    }
-    
-    return htmlLines.join('');
-}
-
-// Style a single line of markdown
-function styleLine(line: string): string {
-    if (!line) {
-        return '';
-    }
-    
-    // Headings - style the # symbols and text
-    const headingMatch = line.match(/^(#{1,6})\s(.*)$/);
-    if (headingMatch) {
-        const level = headingMatch[1].length;
-        const hashes = headingMatch[1];
-        const text = styleInline(headingMatch[2]);
-        return `<span class="md-heading md-h${level}"><span class="md-syntax">${hashes}</span> ${text}</span>`;
-    }
-    
-    // GitHub Alerts: > [!NOTE], > [!TIP], > [!IMPORTANT], > [!WARNING], > [!CAUTION]
-    const alertMatch = line.match(/^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/i);
-    if (alertMatch) {
-        const alertType = alertMatch[1].toUpperCase();
-        return `<span class="md-alert md-alert-${alertType.toLowerCase()}"><span class="md-syntax">&gt; [!</span><span class="md-alert-type">${alertType}</span><span class="md-syntax">]</span></span>`;
-    }
-    
-    // Blockquotes (handle multiple > for nesting)
-    const quoteMatch = line.match(/^(>+)\s?(.*)$/);
-    if (quoteMatch) {
-        const markers = quoteMatch[1];
-        const depth = markers.length;
-        const content = styleInline(quoteMatch[2]);
-        return `<span class="md-blockquote md-quote-${depth}"><span class="md-syntax">${escapeHtml(markers)}</span> ${content}</span>`;
-    }
-    
-    // Task lists: - [ ] or - [x]
-    const taskMatch = line.match(/^(\s*)([-*+])\s\[([ xX])\]\s(.*)$/);
-    if (taskMatch) {
-        const indent = taskMatch[1];
-        const marker = taskMatch[2];
-        const checked = taskMatch[3].toLowerCase() === 'x';
-        const content = styleInline(taskMatch[4]);
-        const checkClass = checked ? 'md-task-checked' : 'md-task-unchecked';
-        return `${escapeHtml(indent)}<span class="md-task ${checkClass}"><span class="md-syntax">${marker} [${taskMatch[3]}]</span> ${content}</span>`;
-    }
-    
-    // Unordered lists
-    const ulMatch = line.match(/^(\s*)([-*+])\s(.*)$/);
-    if (ulMatch) {
-        const indent = ulMatch[1];
-        const marker = ulMatch[2];
-        const content = styleInline(ulMatch[3]);
-        return `${escapeHtml(indent)}<span class="md-list"><span class="md-syntax">${marker}</span> ${content}</span>`;
-    }
-    
-    // Ordered lists
-    const olMatch = line.match(/^(\s*)(\d+\.)\s(.*)$/);
-    if (olMatch) {
-        const indent = olMatch[1];
-        const marker = olMatch[2];
-        const content = styleInline(olMatch[3]);
-        return `${escapeHtml(indent)}<span class="md-list"><span class="md-syntax">${marker}</span> ${content}</span>`;
-    }
-    
-    // Horizontal rules
-    if (/^(-{3,}|_{3,}|\*{3,})$/.test(line.trim())) {
-        return `<span class="md-hr"><span class="md-hr-text">${escapeHtml(line)}</span></span>`;
-    }
-    
-    // Table rows
-    const tableMatch = line.match(/^\|(.+)\|$/);
-    if (tableMatch) {
-        const cells = line.split('|').slice(1, -1);
-        const styledCells = cells.map(cell => {
-            // Check if it's a separator row
-            if (/^[\s:-]+$/.test(cell)) {
-                return `<span class="md-table-sep">${escapeHtml(cell)}</span>`;
-            }
-            return styleInline(cell);
-        });
-        return `<span class="md-table"><span class="md-syntax">|</span>${styledCells.join('<span class="md-syntax">|</span>')}<span class="md-syntax">|</span></span>`;
-    }
-    
-    // Definition lists (term followed by : definition)
-    const defMatch = line.match(/^:\s(.*)$/);
-    if (defMatch) {
-        const content = styleInline(defMatch[1]);
-        return `<span class="md-definition"><span class="md-syntax">:</span> ${content}</span>`;
-    }
-    
-    // Footnote definitions
-    const footnoteDefMatch = line.match(/^\[\^([^\]]+)\]:\s(.*)$/);
-    if (footnoteDefMatch) {
-        const id = footnoteDefMatch[1];
-        const content = styleInline(footnoteDefMatch[2]);
-        return `<span class="md-footnote-def"><span class="md-syntax">[^${escapeHtml(id)}]:</span> ${content}</span>`;
-    }
-    
-    // Regular paragraph with inline styling
-    return styleInline(line);
-}
-
-// Style inline markdown elements
-function styleInline(text: string): string {
-    if (!text) {
-        return '';
-    }
-    
-    // First, handle escaped characters BEFORE escaping HTML
-    // Replace \* with a placeholder to protect it
-    const ESCAPE_PLACEHOLDER = '\u0000ESC\u0000';
-    let result = text;
-    
-    // Collect escaped sequences and replace with placeholders
-    const escapedChars: string[] = [];
-    result = result.replace(/\\([*_`\[\]()#+-\.!\\])/g, (_match, char) => {
-        escapedChars.push(char);
-        return ESCAPE_PLACEHOLDER + (escapedChars.length - 1) + ESCAPE_PLACEHOLDER;
-    });
-    
-    // Now escape HTML
-    result = escapeHtml(result);
-    
-    // Images: ![alt](url) - must come before links
-    result = result.replace(
-        /!\[([^\]]*)\]\(([^)]+)\)/g,
-        '<span class="md-image"><span class="md-syntax">![</span><span class="md-alt">$1</span><span class="md-syntax">](</span><span class="md-url">$2</span><span class="md-syntax">)</span></span>'
-    );
-    
-    // Footnote references: [^id]
-    result = result.replace(
-        /\[\^([^\]]+)\]/g,
-        '<span class="md-footnote"><span class="md-syntax">[^</span>$1<span class="md-syntax">]</span></span>'
-    );
-    
-    // Links: [text](url)
-    result = result.replace(
-        /\[([^\]]+)\]\(([^)]+)\)/g,
-        '<span class="md-link"><span class="md-syntax">[</span><span class="md-text">$1</span><span class="md-syntax">](</span><span class="md-url">$2</span><span class="md-syntax">)</span></span>'
-    );
-    
-    // Use placeholders for asterisks/underscores in output to prevent re-matching
-    const ASTERISK = '\u0001';
-    const UNDERSCORE = '\u0002';
-    
-    // Bold + Italic: ***text*** (must come before bold and italic)
-    result = result.replace(
-        /\*\*\*(.+?)\*\*\*/g,
-        `<span class="md-bold-italic"><span class="md-syntax">${ASTERISK}${ASTERISK}${ASTERISK}</span><strong><em>$1</em></strong><span class="md-syntax">${ASTERISK}${ASTERISK}${ASTERISK}</span></span>`
-    );
-    
-    // Bold: **text** (must come before italic)
-    result = result.replace(
-        /\*\*(.+?)\*\*/g,
-        `<span class="md-bold"><span class="md-syntax">${ASTERISK}${ASTERISK}</span><strong>$1</strong><span class="md-syntax">${ASTERISK}${ASTERISK}</span></span>`
-    );
-    
-    // Bold: __text__ (use word boundary-like matching)
-    result = result.replace(
-        /(?<![a-zA-Z0-9])__(.+?)__(?![a-zA-Z0-9])/g,
-        `<span class="md-bold"><span class="md-syntax">${UNDERSCORE}${UNDERSCORE}</span><strong>$1</strong><span class="md-syntax">${UNDERSCORE}${UNDERSCORE}</span></span>`
-    );
-    
-    // Italic: *text* (but not **)
-    result = result.replace(
-        /(?<!\*)\*([^*]+)\*(?!\*)/g,
-        `<span class="md-italic"><span class="md-syntax">${ASTERISK}</span><em>$1</em><span class="md-syntax">${ASTERISK}</span></span>`
-    );
-    
-    // Italic: _text_ (use word boundary-like matching, but not __)
-    result = result.replace(
-        /(?<!_)_([^_]+)_(?!_)/g,
-        `<span class="md-italic"><span class="md-syntax">${UNDERSCORE}</span><em>$1</em><span class="md-syntax">${UNDERSCORE}</span></span>`
-    );
-    
-    // Restore asterisks and underscores
-    result = result.replace(new RegExp(ASTERISK, 'g'), '*');
-    result = result.replace(new RegExp(UNDERSCORE, 'g'), '_');
-    
-    // Inline code: `code`
-    result = result.replace(
-        /`([^`]+)`/g,
-        '<span class="md-code"><span class="md-syntax">`</span><code>$1</code><span class="md-syntax">`</span></span>'
-    );
-    
-    // Math inline: $formula$
-    result = result.replace(
-        /\$([^$]+)\$/g,
-        '<span class="md-math"><span class="md-syntax">$</span><span class="md-math-content">$1</span><span class="md-syntax">$</span></span>'
-    );
-    
-    // Strikethrough: ~~text~~
-    result = result.replace(
-        /~~([^~]+)~~/g,
-        '<span class="md-strike"><span class="md-syntax">~~</span><del>$1</del><span class="md-syntax">~~</span></span>'
-    );
-    
-    // Restore escaped characters
-    result = result.replace(
-        new RegExp(ESCAPE_PLACEHOLDER + '(\\d+)' + ESCAPE_PLACEHOLDER, 'g'),
-        (_match, index) => {
-            const char = escapedChars[parseInt(index, 10)];
-            return `<span class="md-escaped"><span class="md-syntax">\\</span>${escapeHtml(char)}</span>`;
-        }
-    );
-    
-    return result;
-}
-
-// Escape HTML special characters
-function escapeHtml(text: string): string {
-    return text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
-
-// Get selected text, extracting only from .line-content elements
-function getSelectedMarkdownText(selection: Selection): string {
-    if (!selection.rangeCount || !editorContainer) {
-        return '';
-    }
-    
-    const range = selection.getRangeAt(0);
-    
-    // If selection is within a single line-content, just return the text
-    const commonAncestor = range.commonAncestorContainer;
-    if (commonAncestor instanceof Text || 
-        (commonAncestor instanceof HTMLElement && commonAncestor.closest('.line-content'))) {
-        return selection.toString();
-    }
-    
-    // Multi-line selection: extract text from each line-content
-    const lines: string[] = [];
-    const children = editorContainer.children;
-    
-    for (let i = 0; i < children.length; i++) {
-        const lineEl = children[i];
-        const lineContent = lineEl.querySelector('.line-content');
-        if (!lineContent) {
-            continue;
-        }
-        
-        // Check if this line is within the selection
-        if (selection.containsNode(lineContent, true)) {
-            // Get the text from this line-content
-            const lineRange = document.createRange();
-            lineRange.selectNodeContents(lineContent);
-            
-            // Intersect with selection
-            if (range.compareBoundaryPoints(Range.START_TO_START, lineRange) > 0) {
-                lineRange.setStart(range.startContainer, range.startOffset);
-            }
-            if (range.compareBoundaryPoints(Range.END_TO_END, lineRange) < 0) {
-                lineRange.setEnd(range.endContainer, range.endOffset);
-            }
-            
-            lines.push(lineRange.toString());
-        }
-    }
-    
-    return lines.join('\n');
-}
-
-// Extract plain markdown text from the editor
-function extractMarkdown(container: HTMLElement): string {
-    const lines: string[] = [];
-    
-    // Get all direct children - they should be .line divs, but browser might add others on edit
-    const children = container.children;
-    
-    for (let i = 0; i < children.length; i++) {
-        const child = children[i];
-        // Only get text from .line-content, not line numbers or buttons
-        const lineContent = child.querySelector('.line-content');
-        const text = lineContent ? lineContent.textContent || '' : child.textContent || '';
-        lines.push(text);
-    }
-    
-    return lines.join('\n');
-}
-
-// Place cursor at the start of the editor
-function placeCursorAtStart(container: HTMLElement): void {
-    const selection = window.getSelection();
-    if (!selection) {
-        return;
-    }
-    
-    // Find the first line-content element
-    const firstLineContent = container.querySelector('.line-content');
-    if (!firstLineContent) {
-        return;
-    }
-    
-    // Find the first text node within the line-content
-    const treeWalker = document.createTreeWalker(firstLineContent, NodeFilter.SHOW_TEXT);
-    const firstTextNode = treeWalker.nextNode();
-    
-    const range = document.createRange();
-    if (firstTextNode) {
-        range.setStart(firstTextNode, 0);
-        range.collapse(true);
-    } else {
-        // No text node (empty line), place cursor at start of line content
-        range.selectNodeContents(firstLineContent);
-        range.collapse(true);
-    }
-    
-    selection.removeAllRanges();
-    selection.addRange(range);
-}
-
-// Save and restore cursor position
-function saveCursorPosition(container: HTMLElement): CursorPosition | null {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) {
-        return null;
-    }
-    
-    const range = selection.getRangeAt(0);
-    const node = range.startContainer;
-    const offset = range.startOffset;
-    
-    // Find the line element (direct child of container)
-    let lineEl: HTMLElement | null = null;
-    let current: Node | null = node;
-    while (current && current !== container) {
-        if (current.parentNode === container && current instanceof HTMLElement) {
-            lineEl = current;
-            break;
-        }
-        current = current.parentNode;
-    }
-    
-    if (!lineEl) {
-        return null;
-    }
-    
-    // Find line index among all direct children
-    const children = container.children;
-    let lineIndex = -1;
-    for (let i = 0; i < children.length; i++) {
-        if (children[i] === lineEl) {
-            lineIndex = i;
-            break;
-        }
-    }
-    
-    if (lineIndex === -1) {
-        return null;
-    }
-
-    // Calculate offset within the line's text content (only in .line-content, not .line-prefix)
-    const lineContent = lineEl.querySelector('.line-content');
-    if (!lineContent) {
-        return { lineIndex, offset: 0 };
-    }
-
-    const treeWalker = document.createTreeWalker(lineContent, NodeFilter.SHOW_TEXT);
-    let charCount = 0;
-    let foundNode: Node | null = null;
-
-    while (treeWalker.nextNode()) {
-        const currentNode = treeWalker.currentNode;
-        if (currentNode === node) {
-            foundNode = node;
-            charCount += offset;
-            break;
-        }
-        charCount += (currentNode.textContent || '').length;
-    }
-
-    if (!foundNode) {
-        // Node not found in tree walker, use offset directly
-        charCount = offset;
-    }
-    
-    return { lineIndex, offset: charCount };
-}
-
-// Get selection start and end positions in markdown coordinates
-function getSelectionMarkdownPosition(container: HTMLElement, selection: Selection): SelectionPosition | null {
-    if (!selection || selection.rangeCount === 0) {
-        return null;
-    }
-
-    const range = selection.getRangeAt(0);
-
-    // Helper function to get position for a node and offset
-    const getPositionForNode = (node: Node, offset: number): { lineIndex: number; offset: number } | null => {
-        // Find the line element (direct child of container)
-        let lineEl: HTMLElement | null = null;
-        let current: Node | null = node;
-        while (current && current !== container) {
-            if (current.parentNode === container && current instanceof HTMLElement) {
-                lineEl = current;
-                break;
-            }
-            current = current.parentNode;
-        }
-
-        if (!lineEl) {
-            return null;
-        }
-
-        // Find line index among all direct children
-        const children = container.children;
-        let lineIndex = -1;
-        for (let i = 0; i < children.length; i++) {
-            if (children[i] === lineEl) {
-                lineIndex = i;
-                break;
-            }
-        }
-
-        if (lineIndex === -1) {
-            return null;
-        }
-
-        // Calculate offset within the line's text content
-        const lineContent = lineEl.querySelector('.line-content');
-        if (!lineContent) {
-            return { lineIndex, offset: 0 };
-        }
-
-        const treeWalker = document.createTreeWalker(lineContent, NodeFilter.SHOW_TEXT);
-        let charCount = 0;
-        let foundNode: Node | null = null;
-
-        while (treeWalker.nextNode()) {
-            const currentNode = treeWalker.currentNode;
-            if (currentNode === node) {
-                foundNode = node;
-                charCount += offset;
-                break;
-            }
-            charCount += (currentNode.textContent || '').length;
-        }
-
-        if (!foundNode) {
-            // Node not found in tree walker, use offset directly
-            charCount = offset;
-        }
-
-        return { lineIndex, offset: charCount };
-    };
-
-    // Get start position
-    const startPos = getPositionForNode(range.startContainer, range.startOffset);
-    if (!startPos) {
-        return null;
-    }
-
-    // Get end position
-    const endPos = getPositionForNode(range.endContainer, range.endOffset);
-    if (!endPos) {
-        return null;
-    }
-
-    return {
-        startLineIndex: startPos.lineIndex,
-        startOffset: startPos.offset,
-        endLineIndex: endPos.lineIndex,
-        endOffset: endPos.offset
-    };
+    const cursorPosition = saveCursorPosition(editorContainer);
+    const scrollTop = editorContainer.scrollTop;
+    saveEditorState(vscode, cursorPosition, scrollTop);
 }
 
 // Delete selected text from the editor
@@ -848,77 +131,6 @@ function deleteSelection(selection: Selection): boolean {
     updateTocFromMarkdown(newMarkdown);
 
     return true;
-}
-
-function restoreCursorPosition(container: HTMLElement, pos: CursorPosition): void {
-    const children = container.children;
-    if (pos.lineIndex >= children.length) {
-        return;
-    }
-    
-    const lineEl = children[pos.lineIndex];
-    // Only walk through text nodes in .line-content, not .line-prefix
-    const lineContent = lineEl.querySelector('.line-content');
-    if (!lineContent) {
-        return;
-    }
-    
-    const treeWalker = document.createTreeWalker(lineContent, NodeFilter.SHOW_TEXT);
-    
-    let charCount = 0;
-    let targetNode: Node | null = null;
-    let targetOffset = 0;
-    
-    while (treeWalker.nextNode()) {
-        const currentNode = treeWalker.currentNode;
-        const nodeLength = (currentNode.textContent || '').length;
-        
-        if (charCount + nodeLength >= pos.offset) {
-            targetNode = currentNode;
-            targetOffset = pos.offset - charCount;
-            break;
-        }
-        charCount += nodeLength;
-    }
-    
-    // If no text node found or offset beyond content, place cursor at end of line-content
-    if (!targetNode) {
-        const range = document.createRange();
-        // Try to find the last text node
-        const lastTextWalker = document.createTreeWalker(lineContent, NodeFilter.SHOW_TEXT);
-        let lastTextNode: Node | null = null;
-        while (lastTextWalker.nextNode()) {
-            lastTextNode = lastTextWalker.currentNode;
-        }
-        
-        if (lastTextNode) {
-            // Place cursor at end of last text node
-            range.setStart(lastTextNode, lastTextNode.textContent?.length || 0);
-            range.collapse(true);
-        } else {
-            // No text nodes, place at start of line-content
-            range.selectNodeContents(lineContent);
-            range.collapse(true);
-        }
-        
-        const selection = window.getSelection();
-        if (selection) {
-            selection.removeAllRanges();
-            selection.addRange(range);
-        }
-        return;
-    }
-    
-    if (targetNode) {
-        const selection = window.getSelection();
-        if (selection) {
-            const range = document.createRange();
-            range.setStart(targetNode, Math.min(targetOffset, targetNode.textContent?.length || 0));
-            range.collapse(true);
-            selection.removeAllRanges();
-            selection.addRange(range);
-        }
-    }
 }
 
 // Send edit to VS Code (debounced)
@@ -1743,18 +955,18 @@ function initEditor(container: HTMLElement, markdown: string): void {
         const selection = window.getSelection();
         if (selection && selection.rangeCount > 0) {
             // Extract only text from .line-content elements
-            const text = getSelectedMarkdownText(selection);
+            const text = getSelectedMarkdownText(selection, editorContainer);
             e.clipboardData?.setData('text/plain', text);
         }
     });
-    
+
     // Handle cut (copy + delete)
     container.addEventListener('cut', (e) => {
         e.preventDefault();
         const selection = window.getSelection();
         if (selection && selection.rangeCount > 0) {
             // Extract only text from .line-content elements
-            const text = getSelectedMarkdownText(selection);
+            const text = getSelectedMarkdownText(selection, editorContainer);
             e.clipboardData?.setData('text/plain', text);
 
             // Delete the selection using our new function (instead of execCommand)
@@ -2034,7 +1246,7 @@ function initEditor(container: HTMLElement, markdown: string): void {
     container.focus();
     
     // Restore state from previous session (cursor position, scroll)
-    const storedState = getStoredState();
+    const storedState = getStoredState(vscode);
     if (storedState && storedState.cursorPosition) {
         restoreCursorPosition(container, storedState.cursorPosition);
         if (storedState.scrollTop) {
@@ -2058,7 +1270,7 @@ function initEditor(container: HTMLElement, markdown: string): void {
     // Handle window/document focus (Cmd+Tab back to VS Code)
     window.addEventListener('focus', () => {
         // Window regained focus - restore editor focus and cursor
-        const state = getStoredState();
+        const state = getStoredState(vscode);
         container.focus();
         if (state && state.cursorPosition) {
             restoreCursorPosition(container, state.cursorPosition);
@@ -2118,143 +1330,6 @@ function updateEditorContent(markdown: string): void {
     }
 }
 
-/**
- * Initialize diff view with side-by-side comparison
- */
-function initDiffView(container: HTMLElement, originalMarkdown: string, modifiedMarkdown: string): void {
-    // Make container non-editable for diff view
-    container.setAttribute('contenteditable', 'false');
-
-    // Create side-by-side diff layout
-    container.innerHTML = `
-        <div class="diff-container">
-            <div class="diff-panel diff-original">
-                <div class="diff-header">Original (HEAD)</div>
-                <div class="diff-content" id="diff-original-content" contenteditable="false" spellcheck="false"></div>
-            </div>
-            <div class="diff-panel diff-modified">
-                <div class="diff-header">Modified (Working Copy)</div>
-                <div class="diff-content" id="diff-modified-content" contenteditable="false" spellcheck="false"></div>
-            </div>
-        </div>
-    `;
-
-    // Render both versions
-    const originalContent = document.getElementById('diff-original-content');
-    const modifiedContent = document.getElementById('diff-modified-content');
-
-    if (originalContent && modifiedContent) {
-        originalContent.innerHTML = markdownToStyledHtml(originalMarkdown);
-        modifiedContent.innerHTML = markdownToStyledHtml(modifiedMarkdown);
-
-        // Highlight differences line by line
-        highlightDifferences(originalContent, modifiedContent, originalMarkdown, modifiedMarkdown);
-
-        // Synchronize scrolling
-        const originalPanel = originalContent.closest('.diff-panel') as HTMLElement;
-        const modifiedPanel = modifiedContent.closest('.diff-panel') as HTMLElement;
-
-        if (originalPanel && modifiedPanel) {
-            let isScrolling = false;
-            originalPanel.addEventListener('scroll', () => {
-                if (!isScrolling) {
-                    isScrolling = true;
-                    modifiedPanel.scrollTop = originalPanel.scrollTop;
-                    setTimeout(() => { isScrolling = false; }, 50);
-                }
-            });
-            modifiedPanel.addEventListener('scroll', () => {
-                if (!isScrolling) {
-                    isScrolling = true;
-                    originalPanel.scrollTop = modifiedPanel.scrollTop;
-                    setTimeout(() => { isScrolling = false; }, 50);
-                }
-            });
-        }
-    }
-
-    // Hide TOC in diff mode
-    const toc = document.getElementById('toc');
-    if (toc) {
-        toc.style.display = 'none';
-    }
-
-    // Keep toolbar visible in diff mode (for the close button)
-    // The button visibility is managed by the toggleDiff message handler
-}
-
-/**
- * Compute diff using the diff library for accurate change detection
- */
-function computeDiff(originalText: string, modifiedText: string): {
-    added: Set<number>;
-    removed: Set<number>;
-} {
-    const added = new Set<number>();
-    const removed = new Set<number>();
-
-    // Use the diff library to compute line-by-line changes
-    const changes = Diff.diffLines(originalText, modifiedText);
-
-    let originalLineIndex = 0;
-    let modifiedLineIndex = 0;
-
-    for (const change of changes) {
-        const lineCount = change.count || 0;
-
-        if (change.removed) {
-            // Mark lines as removed in the original
-            for (let i = 0; i < lineCount; i++) {
-                removed.add(originalLineIndex + i);
-            }
-            originalLineIndex += lineCount;
-        } else if (change.added) {
-            // Mark lines as added in the modified
-            for (let i = 0; i < lineCount; i++) {
-                added.add(modifiedLineIndex + i);
-            }
-            modifiedLineIndex += lineCount;
-        } else {
-            // Unchanged lines - advance both indices
-            originalLineIndex += lineCount;
-            modifiedLineIndex += lineCount;
-        }
-    }
-
-    return { added, removed };
-}
-
-/**
- * Highlight differences between original and modified content
- */
-function highlightDifferences(
-    originalContainer: HTMLElement,
-    modifiedContainer: HTMLElement,
-    originalMarkdown: string,
-    modifiedMarkdown: string
-): void {
-    // Compute diff using the diff library
-    const diff = computeDiff(originalMarkdown, modifiedMarkdown);
-
-    // Get line elements
-    const originalLineElements = originalContainer.querySelectorAll('.line');
-    const modifiedLineElements = modifiedContainer.querySelectorAll('.line');
-
-    // Highlight removed lines in original
-    diff.removed.forEach(idx => {
-        if (idx < originalLineElements.length) {
-            originalLineElements[idx].classList.add('diff-line-removed');
-        }
-    });
-
-    // Highlight added lines in modified
-    diff.added.forEach(idx => {
-        if (idx < modifiedLineElements.length) {
-            modifiedLineElements[idx].classList.add('diff-line-added');
-        }
-    });
-}
-
 // Initialize
 function init(): void {
     const container = document.getElementById('editor');
@@ -2311,7 +1386,7 @@ function init(): void {
 
                 if (message.diffMode && message.originalVersionContent) {
                     // Initialize in diff mode
-                    initDiffView(container, message.originalVersionContent, content);
+                    initDiffView(container, message.originalVersionContent, content, markdownToStyledHtml);
                 } else {
                     // Normal editor mode
                     initEditor(container, content);
@@ -2326,7 +1401,7 @@ function init(): void {
             case 'focus': {
                 // Tab became active - focus editor and restore cursor position
                 if (editorContainer) {
-                    const state = getStoredState();
+                    const state = getStoredState(vscode);
                     editorContainer.focus();
                     if (state && state.cursorPosition) {
                         restoreCursorPosition(editorContainer, state.cursorPosition);
@@ -2379,7 +1454,7 @@ function init(): void {
                     const currentMarkdown = extractMarkdown(container);
                     storedCurrentContent = currentMarkdown;
                     storedOriginalContent = originalVersionContent;
-                    initDiffView(container, originalVersionContent, currentMarkdown);
+                    initDiffView(container, originalVersionContent, currentMarkdown, markdownToStyledHtml);
 
                     // Update button states
                     if (diffToggleBtn) {
