@@ -214,24 +214,25 @@ function updateTocFromMarkdown(markdown: string): void {
 // ============================================
 
 let formattingToolbar: HTMLElement | null = null;
-let lineTypeMenu: HTMLElement | null = null;
+let lineTypeToolbar: HTMLElement | null = null;
 let currentLineIndex: number = -1;
 
 function initToolbar(): void {
     formattingToolbar = document.getElementById('formatting-toolbar');
-    lineTypeMenu = document.getElementById('line-type-menu');
-    
-    if (!formattingToolbar || !lineTypeMenu) {
+    lineTypeToolbar = document.getElementById('line-type-toolbar');
+
+    if (!formattingToolbar) {
         return;
     }
-    
-    // Generate line type menu from MENU_LINE_TYPES
-    lineTypeMenu.innerHTML = MENU_LINE_TYPES.map(def => `
-        <button type="button" data-type="${def.type}" class="line-type-option">
-            <span class="line-type-icon">${def.icon}</span>
-            <span class="line-type-label">${def.label}</span>
-        </button>
-    `).join('');
+
+    // Generate line type toolbar buttons from MENU_LINE_TYPES
+    if (lineTypeToolbar) {
+        lineTypeToolbar.innerHTML = MENU_LINE_TYPES.map(def => `
+            <button type="button" data-type="${def.type}" class="toolbar-btn line-type-btn" title="${def.label}">
+                <span class="toolbar-btn-icon">${def.icon}</span>
+            </button>
+        `).join('');
+    }
     
     // Handle formatting toolbar button clicks
     formattingToolbar.addEventListener('mousedown', (e) => {
@@ -251,30 +252,29 @@ function initToolbar(): void {
         }
     });
     
-    // Handle line type menu button clicks
-    lineTypeMenu.addEventListener('click', (e) => {
-        const button = (e.target as HTMLElement).closest('button');
-        if (!button) {
-            return;
-        }
-        
-        const type = button.dataset.type;
-        if (type && currentLineIndex >= 0) {
-            applyLineType(currentLineIndex, type);
-            hideLineTypeMenu();
-        }
-    });
-    
-    // Hide menus when clicking outside
+    // Handle line type toolbar button clicks
+    if (lineTypeToolbar) {
+        lineTypeToolbar.addEventListener('click', (e) => {
+            const button = (e.target as HTMLElement).closest('button');
+            if (!button) {
+                return;
+            }
+
+            const type = button.dataset.type;
+            if (type && currentLineIndex >= 0 && editorContainer) {
+                applyLineType(currentLineIndex, type);
+                // Update button states after applying
+                updateLineTypeToolbarState();
+            }
+        });
+    }
+
+    // Hide formatting toolbar when clicking outside
     document.addEventListener('mousedown', (e) => {
         const target = e.target as HTMLElement;
-        
+
         if (formattingToolbar && !formattingToolbar.contains(target)) {
             hideFormattingToolbar();
-        }
-        
-        if (lineTypeMenu && !lineTypeMenu.contains(target) && !target.closest('#editor > *::before')) {
-            hideLineTypeMenu();
         }
     });
     
@@ -485,66 +485,25 @@ function hideFormattingToolbar(): void {
     }
 }
 
-function showLineTypeMenu(lineElement: HTMLElement, lineIndex: number): void {
-    if (!lineTypeMenu || !editorContainer) {
+function updateLineTypeToolbarState(): void {
+    if (!lineTypeToolbar || !editorContainer || currentLineIndex < 0) {
         return;
     }
-    
-    currentLineIndex = lineIndex;
-    
-    // Get line rect
-    const rect = lineElement.getBoundingClientRect();
-    
-    // Position menu to the left of the line
-    const menuWidth = 180;
-    let left = rect.left - menuWidth - 8;
-    let top = rect.top;
-    
-    // If not enough space on left, show on right
-    if (left < 8) {
-        left = rect.left + 50; // After line number
-    }
-    
-    // Keep within viewport vertically
-    const menuHeight = 450; // Approximate
-    if (top + menuHeight > window.innerHeight - 8) {
-        top = window.innerHeight - menuHeight - 8;
-    }
-    
-    lineTypeMenu.style.left = `${left}px`;
-    lineTypeMenu.style.top = `${top}px`;
-    lineTypeMenu.style.display = 'block';
-    
-    // Mark current line type as active
-    updateLineTypeMenuState(lineIndex);
-}
 
-function hideLineTypeMenu(): void {
-    if (lineTypeMenu) {
-        lineTypeMenu.style.display = 'none';
-    }
-    currentLineIndex = -1;
-}
-
-function updateLineTypeMenuState(lineIndex: number): void {
-    if (!lineTypeMenu || !editorContainer) {
-        return;
-    }
-    
     const markdown = extractMarkdown(editorContainer);
     const lines = markdown.split('\n');
-    const line = lines[lineIndex] || '';
-    
+    const line = lines[currentLineIndex] || '';
+
     // Detect current line type using shared definitions
     const lineTypeDef = getLineType(line);
-    // Map 'alert' type to 'quote' for menu purposes (alerts are a special kind of quote)
+    // Map 'alert' type to 'quote' for toolbar purposes (alerts are a special kind of quote)
     const currentType = lineTypeDef.type === 'alert' ? 'quote' : lineTypeDef.type;
-    
-    // Update active state
-    const options = lineTypeMenu.querySelectorAll('.line-type-option');
-    options.forEach((option) => {
-        const type = (option as HTMLElement).dataset.type;
-        option.classList.toggle('active', type === currentType);
+
+    // Update active state on toolbar buttons
+    const buttons = lineTypeToolbar.querySelectorAll('.line-type-btn');
+    buttons.forEach((button) => {
+        const type = (button as HTMLElement).dataset.type;
+        button.classList.toggle('active', type === currentType);
     });
 }
 
@@ -1280,26 +1239,30 @@ function initEditor(container: HTMLElement, markdown: string): void {
         }
     });
     
-    // Initialize formatting toolbar and line-type menu
+    // Initialize formatting toolbar and line type toolbar
     initToolbar();
-    
-    // Handle click on line-type button to show menu
+
+    // Track cursor position changes to update line type toolbar
     container.addEventListener('click', (e) => {
-        const target = e.target as HTMLElement;
-        const lineTypeBtn = target.closest('.line-type-btn') as HTMLElement;
-        
-        if (lineTypeBtn) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const lineIndex = parseInt(lineTypeBtn.dataset.line || '-1', 10);
-            const lineElement = lineTypeBtn.closest('#editor > *') as HTMLElement;
-            
-            if (lineIndex >= 0 && lineElement) {
-                showLineTypeMenu(lineElement, lineIndex);
-            }
-        }
+        updateCurrentLineIndex();
     });
+
+    container.addEventListener('keyup', (e) => {
+        updateCurrentLineIndex();
+    });
+}
+
+// Update the current line index based on cursor position
+function updateCurrentLineIndex(): void {
+    if (!editorContainer) {
+        return;
+    }
+
+    const cursorPos = saveCursorPosition(editorContainer);
+    if (cursorPos) {
+        currentLineIndex = cursorPos.lineIndex;
+        updateLineTypeToolbarState();
+    }
 }
 
 // Update editor content from external source (e.g., undo/redo)

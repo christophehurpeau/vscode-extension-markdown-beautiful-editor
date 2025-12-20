@@ -82,18 +82,11 @@ function getBlockquoteDepth(line: string): number {
 }
 
 /**
- * Generate line prefix (line number + type button)
+ * Generate line prefix (line number)
  * @param lineNumber The line number (1-indexed)
- * @param line The markdown line content
- * @param isCodeContent true for lines inside code blocks (not the ``` fences themselves)
  */
-export function generateLinePrefix(lineNumber: number, line: string, isCodeContent: boolean = false): string {
-    if (isCodeContent) {
-        // Code content lines: no icon, no button interaction
-        return `<span class="line-prefix" contenteditable="false"><span class="line-number">${lineNumber}</span><span class="line-type-btn disabled"></span></span>`;
-    }
-    const icon = getLineTypeIcon(line);
-    return `<span class="line-prefix" contenteditable="false"><span class="line-number">${lineNumber}</span><button type="button" class="line-type-btn" data-line="${lineNumber - 1}" title="Change line type">${icon}</button></span>`;
+export function generateLinePrefix(lineNumber: number): string {
+    return `<span class="line-prefix" contenteditable="false"><span class="line-number">${lineNumber}</span></span>`;
 }
 
 /**
@@ -418,7 +411,7 @@ export function markdownToStyledHtml(markdown: string): string {
 
         // Code fence - these ARE clickable to convert back to text
         if (info.isCodeFence) {
-            const prefix = generateLinePrefix(lineNum, info.line, false);
+            const prefix = generateLinePrefix(lineNum);
             if (!inCodeBlock) {
                 inCodeBlock = true;
                 const lang = info.line.slice(3).trim();
@@ -432,14 +425,14 @@ export function markdownToStyledHtml(markdown: string): string {
 
         // Code content
         if (info.isCodeContent) {
-            const prefix = generateLinePrefix(lineNum, info.line, true);
+            const prefix = generateLinePrefix(lineNum);
             const content = escapeHtml(info.line);
             const isEmpty = !content;
             htmlLines.push(`<div class="line code-content${isEmpty ? ' empty-line' : ''}">${prefix}<span class="line-content"><span class="code-inner">${content || '<br>'}</span></span></div>`);
             continue;
         }
 
-        const prefix = generateLinePrefix(lineNum, info.line);
+        const prefix = generateLinePrefix(lineNum);
 
         // GitHub alert header
         if (info.isAlertHeader) {
