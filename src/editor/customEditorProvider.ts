@@ -345,29 +345,34 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
         });
 
         // Watch for external document changes (e.g., from other editors, source control)
-        const changeHandler = vscode.workspace.onDidChangeTextDocument((e) => {
+        const changeHandler = vscode.workspace.onDidChangeTextDocument(async (e) => {
             if (e.document.uri.toString() !== document.uri.toString()) {
                 return;
             }
-            
+
             // Skip if we're currently applying an edit from the webview
             if (isApplyingEdit) {
                 return;
             }
-            
+
             // Skip if content matches what we last sent/received
             const currentContent = document.getText();
             if (currentContent === lastKnownContent) {
                 return;
             }
-            
+
             // External change detected - update the webview
             lastKnownContent = currentContent;
             const processedContent = processImagePaths(currentContent);
+
+            // Check if diff is available with the new content
+            const diffAvailable = await this.isDiffAvailable(document.uri);
+
             webviewPanel.webview.postMessage({
                 type: 'update',
                 content: processedContent,
-                originalContent: currentContent
+                originalContent: currentContent,
+                diffAvailable
             });
         });
 

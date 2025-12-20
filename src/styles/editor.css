@@ -85,7 +85,7 @@ html, body {
 
 #editor {
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0;
     outline: none;
     min-height: 100%;
     padding-bottom: 50vh;

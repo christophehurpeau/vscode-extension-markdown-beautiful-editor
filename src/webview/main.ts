@@ -1396,6 +1396,18 @@ function init(): void {
             case 'update': {
                 const updateContent = message.originalContent || message.content || '';
                 updateEditorContent(updateContent);
+
+                // Update diff button visibility based on diffAvailable flag
+                const diffToggleBtn = document.getElementById('diff-toggle-btn');
+                if (diffToggleBtn) {
+                    if (message.diffAvailable) {
+                        console.log('Showing diff button after update');
+                        diffToggleBtn.style.display = 'flex';
+                    } else {
+                        console.log('Hiding diff button after update - no changes');
+                        diffToggleBtn.style.display = 'none';
+                    }
+                }
                 break;
             }
             case 'focus': {
