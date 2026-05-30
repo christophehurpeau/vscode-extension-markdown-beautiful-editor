@@ -1,13 +1,13 @@
 import * as assert from 'assert';
 import * as Diff from 'diff';
+import { computeDiff } from '../../webview/editor/diff';
 
 /**
  * Unit tests for diff mode functionality
  *
  * These tests verify:
- * - Diff computation accuracy
+ * - Diff computation accuracy (via the real `computeDiff` from diff.ts)
  * - Line change detection (added/removed)
- * - Content storage and restoration
  */
 describe('Diff Mode Tests', () => {
 
@@ -130,44 +130,7 @@ describe('Diff Mode Tests', () => {
     });
 
     describe('Line Index Mapping', () => {
-        /**
-         * Tests the algorithm for mapping diff changes to line indices
-         * This is the logic used in computeDiff() in main.ts
-         */
-
-        function computeDiff(originalText: string, modifiedText: string): {
-            added: Set<number>;
-            removed: Set<number>;
-        } {
-            const added = new Set<number>();
-            const removed = new Set<number>();
-
-            const changes = Diff.diffLines(originalText, modifiedText);
-
-            let originalLineIndex = 0;
-            let modifiedLineIndex = 0;
-
-            for (const change of changes) {
-                const lineCount = change.count || 0;
-
-                if (change.removed) {
-                    for (let i = 0; i < lineCount; i++) {
-                        removed.add(originalLineIndex + i);
-                    }
-                    originalLineIndex += lineCount;
-                } else if (change.added) {
-                    for (let i = 0; i < lineCount; i++) {
-                        added.add(modifiedLineIndex + i);
-                    }
-                    modifiedLineIndex += lineCount;
-                } else {
-                    originalLineIndex += lineCount;
-                    modifiedLineIndex += lineCount;
-                }
-            }
-
-            return { added, removed };
-        }
+        // Exercises the real computeDiff() exported from diff.ts.
 
         it('Should map added line indices correctly', () => {
             const original = 'Line 0\nLine 1\nLine 2';
@@ -222,113 +185,6 @@ describe('Diff Mode Tests', () => {
             assert.ok(result.removed.has(1), 'Line 1 should be removed');
             assert.ok(result.removed.has(2), 'Line 2 should be removed');
             assert.strictEqual(result.removed.size, 2);
-        });
-    });
-
-    describe('Diff Mode State Management', () => {
-        /**
-         * Tests for state management during diff mode toggle
-         * Simulates the global state variables used in main.ts
-         */
-
-        it('Should store content when entering diff mode', () => {
-            // Simulate entering diff mode
-            let storedCurrentContent: string | null = null;
-            let storedOriginalContent: string | null = null;
-
-            const currentMarkdown = '# Current\n\nContent';
-            const originalMarkdown = '# Original\n\nContent';
-
-            // Enter diff mode
-            storedCurrentContent = currentMarkdown;
-            storedOriginalContent = originalMarkdown;
-
-            assert.strictEqual(storedCurrentContent, currentMarkdown);
-            assert.strictEqual(storedOriginalContent, originalMarkdown);
-        });
-
-        it('Should restore content when exiting diff mode', () => {
-            // Setup: in diff mode with stored content
-            let storedCurrentContent: string | null = '# Current\n\nContent';
-            const storedOriginalContent: string | null = '# Original\n\nContent';
-
-            // Exit diff mode
-            const restoredContent = storedCurrentContent || '';
-
-            assert.strictEqual(restoredContent, '# Current\n\nContent');
-
-            // Clear stored content
-            storedCurrentContent = null;
-
-            assert.strictEqual(storedCurrentContent, null);
-        });
-
-        it('Should clear both stored contents on exit', () => {
-            let storedCurrentContent: string | null = '# Current';
-            let storedOriginalContent: string | null = '# Original';
-
-            // Exit diff mode
-            storedCurrentContent = null;
-            storedOriginalContent = null;
-
-            assert.strictEqual(storedCurrentContent, null);
-            assert.strictEqual(storedOriginalContent, null);
-        });
-
-        it('Should use fallback if stored content is null', () => {
-            let storedCurrentContent: string | null = null;
-            const fallbackContent = '# Fallback';
-
-            const restoredContent = storedCurrentContent || fallbackContent;
-
-            assert.strictEqual(restoredContent, fallbackContent);
-        });
-    });
-
-    describe('Diff Content Preservation', () => {
-        /**
-         * Tests to ensure content is properly preserved across diff mode transitions
-         */
-
-        it('Should preserve multi-line content', () => {
-            const content = '# Heading\n\nParagraph 1\n\nParagraph 2\n\n- List item';
-            let stored: string | null = null;
-
-            // Store
-            stored = content;
-
-            // Restore
-            const restored = stored || '';
-
-            assert.strictEqual(restored, content);
-            assert.strictEqual(restored.split('\n').length, content.split('\n').length);
-        });
-
-        it('Should preserve special markdown characters', () => {
-            const content = '**bold** *italic* `code` ~~strike~~ [link](url)';
-            let stored: string | null = null;
-
-            // Store
-            stored = content;
-
-            // Restore
-            const restored = stored || '';
-
-            assert.strictEqual(restored, content);
-        });
-
-        it('Should preserve empty lines', () => {
-            const content = 'Line 1\n\n\nLine 4';
-            let stored: string | null = null;
-
-            // Store
-            stored = content;
-
-            // Restore
-            const restored = stored || '';
-
-            assert.strictEqual(restored, content);
-            assert.strictEqual(restored.split('\n').length, 4);
         });
     });
 });

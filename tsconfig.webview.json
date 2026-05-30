@@ -1,12 +1,15 @@
 {
     "compilerOptions": {
         "module": "ESNext",
-        "tsBuildInfoFile": "node_modules/.cache/tsc/tsbuildinfo",
+        "tsBuildInfoFile": "node_modules/.cache/tsc/webview.tsbuildinfo",
         "target": "ES2022",
         "lib": ["ES2022", "DOM", "DOM.Iterable"],
         "sourceMap": true,
         "rootDir": "src/webview",
-        "outDir": "out/webview",
+        // Type-check artifact only — the real bundle is produced by esbuild.
+        // Kept out of out/webview so it never clobbers the CommonJS output the
+        // unit tests load from there.
+        "outDir": "out/.webview-typecheck",
         "strict": true,
         "skipLibCheck": true,
         "esModuleInterop": true,
@@ -16,6 +19,9 @@
     },
     "include": [
         "src/webview/**/*.ts"
+    ],
+    "references": [
+        { "path": "./tsconfig.shared.json" }
     ]
 }
 

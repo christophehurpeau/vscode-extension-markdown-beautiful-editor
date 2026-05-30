@@ -1,4 +1,4 @@
-import { updateToc, setupScrollSpy } from './toc';
+import { updateToc, setupScrollSpy, extractHeadingsFromMarkdown } from './toc';
 import {
     markdownToStyledHtml,
     getLineType,
@@ -6,7 +6,8 @@ import {
 import { extractMarkdown, getSelectedMarkdownText } from './markdown/serializer';
 import {
     saveState as saveEditorState,
-    getStoredState} from './editor/state';
+    getStoredState,
+    type CursorPosition} from './editor/state';
 import {
     placeCursorAtStart,
     saveCursorPosition,
@@ -14,6 +15,8 @@ import {
     restoreCursorPosition} from './editor/cursor';
 import {
     initDiffView} from './editor/diff';
+import { deleteRange, stripLinePrefix, applyLinePrefix } from './editor/operations';
+import type { HostToWebviewMessage, WebviewToHostMessage } from '../shared/messages';
 
 // Acquire VS Code API
 declare function acquireVsCodeApi(): {
@@ -23,6 +26,11 @@ declare function acquireVsCodeApi(): {
 };
 
 const vscode = acquireVsCodeApi();
+
+// Post a typed message to the extension host.
+function postToHost(message: WebviewToHostMessage): void {
+    vscode.postMessage(message);
+}
 
 // Track if we're currently applying an external update to avoid loops
 let isExternalUpdate = false;
@@ -52,6 +60,25 @@ function saveState(): void {
     saveEditorState(vscode, cursorPosition, scrollTop);
 }
 
+// Send an edit, re-render the editor, restore the cursor and refresh the TOC.
+// This is the single edit→render cycle shared by every editing operation.
+function rerender(markdown: string, cursor: CursorPosition, preventScroll = false): void {
+    if (!editorContainer) {
+        return;
+    }
+    sendEdit(markdown);
+    isExternalUpdate = true;
+    try {
+        editorContainer.innerHTML = markdownToStyledHtml(markdown);
+    } finally {
+        // Always clear the guard, even if rendering throws, so input handling
+        // doesn't get permanently stuck.
+        isExternalUpdate = false;
+    }
+    restoreCursorPosition(editorContainer, cursor, preventScroll);
+    updateTocFromMarkdown(markdown);
+}
+
 // Delete selected text from the editor
 function deleteSelection(selection: Selection): boolean {
     if (!editorContainer) {
@@ -69,66 +96,9 @@ function deleteSelection(selection: Selection): boolean {
         return false;
     }
 
-    // Extract current markdown
-    const markdown = extractMarkdown(editorContainer);
-    const lines = markdown.split('\n');
-
-    // Calculate new markdown and cursor position after deletion
-    let newMarkdown: string;
-    let cursorLineIndex: number;
-    let cursorOffset: number;
-
-    if (selPos.startLineIndex === selPos.endLineIndex) {
-        // SINGLE LINE DELETION
-        const line = lines[selPos.startLineIndex];
-        const beforeSelection = line.slice(0, selPos.startOffset);
-        const afterSelection = line.slice(selPos.endOffset);
-        lines[selPos.startLineIndex] = beforeSelection + afterSelection;
-
-        cursorLineIndex = selPos.startLineIndex;
-        cursorOffset = selPos.startOffset;
-    } else {
-        // MULTI-LINE DELETION
-        const beforeSelection = lines[selPos.startLineIndex].slice(0, selPos.startOffset);
-        const afterSelection = lines[selPos.endLineIndex].slice(selPos.endOffset);
-        const mergedLine = beforeSelection + afterSelection;
-
-        // Build new lines array:
-        // - Lines before selection start
-        // - Merged line
-        // - Lines after selection end
-        const newLines = [
-            ...lines.slice(0, selPos.startLineIndex),
-            mergedLine,
-            ...lines.slice(selPos.endLineIndex + 1)
-        ];
-
-        lines.length = 0;
-        lines.push(...newLines);
-
-        cursorLineIndex = selPos.startLineIndex;
-        cursorOffset = selPos.startOffset;
-    }
-
-    // Join back into markdown
-    newMarkdown = lines.join('\n');
-
-    // Send edit to VS Code
-    sendEdit(newMarkdown);
-
-    // Re-render editor
-    isExternalUpdate = true;
-    editorContainer.innerHTML = markdownToStyledHtml(newMarkdown);
-    isExternalUpdate = false;
-
-    // Restore cursor to deletion point
-    restoreCursorPosition(editorContainer, {
-        lineIndex: cursorLineIndex,
-        offset: cursorOffset
-    });
-
-    // Update TOC
-    updateTocFromMarkdown(newMarkdown);
+    const lines = extractMarkdown(editorContainer).split('\n');
+    const { lines: newLines, cursor } = deleteRange(lines, selPos);
+    rerender(newLines.join('\n'), cursor);
 
     return true;
 }
@@ -145,10 +115,7 @@ function sendEdit(markdown: string): void {
         }
         
         lastSentContent = markdown;
-        vscode.postMessage({
-            type: 'edit',
-            content: markdown
-        });
+        postToHost({ type: 'edit', content: markdown });
     }, EDIT_DEBOUNCE_MS);
 }
 
@@ -181,32 +148,7 @@ function handleInput(): void {
 
 // Update TOC from markdown text
 function updateTocFromMarkdown(markdown: string): void {
-    const headings: Array<{ level: number; text: string }> = [];
-    const lines = markdown.split('\n');
-    
-    for (const line of lines) {
-        const match = line.match(/^(#{1,6})\s+(.*)$/);
-        if (match) {
-            headings.push({
-                level: match[1].length,
-                text: match[2]
-            });
-        }
-    }
-    
-    const mockDoc = {
-        descendants: (callback: (node: { type: { name: string }; attrs: { level: number }; textContent: string }) => boolean) => {
-            for (const heading of headings) {
-                callback({
-                    type: { name: 'heading' },
-                    attrs: { level: heading.level },
-                    textContent: heading.text
-                });
-            }
-        }
-    };
-    
-    updateToc(mockDoc as any);
+    updateToc(extractHeadingsFromMarkdown(markdown));
 }
 
 // ============================================
@@ -487,7 +429,6 @@ function hideFormattingToolbar(): void {
 
 function updateLineTypeToolbarState(): void {
     if (!lineTypeToolbar || !editorContainer || currentLineIndex < 0) {
-        console.log('Early return from updateLineTypeToolbarState');
         return;
     }
 
@@ -618,102 +559,62 @@ function applyInlineFormat(format: string): void {
                 // Remove link formatting - extract just the text
                 const newLine = line.slice(0, selectionStart) + linkMatch[1] + line.slice(selectionEnd);
                 lines[cursorPos.lineIndex] = newLine;
-                const newMarkdown = lines.join('\n');
-                sendEdit(newMarkdown);
-                isExternalUpdate = true;
-                editorContainer.innerHTML = markdownToStyledHtml(newMarkdown);
-                isExternalUpdate = false;
-                restoreCursorPosition(editorContainer, {
+                rerender(lines.join('\n'), {
                     lineIndex: cursorPos.lineIndex,
                     offset: selectionStart + linkMatch[1].length
                 });
-                updateTocFromMarkdown(newMarkdown);
                 return;
             }
             // Add link formatting
             const wrappedLink = `[${selectedText}](url)`;
             const newLineLink = line.slice(0, selectionStart) + wrappedLink + line.slice(selectionEnd);
             lines[cursorPos.lineIndex] = newLineLink;
-            const newMarkdownLink = lines.join('\n');
-            sendEdit(newMarkdownLink);
-            isExternalUpdate = true;
-            editorContainer.innerHTML = markdownToStyledHtml(newMarkdownLink);
-            isExternalUpdate = false;
-            restoreCursorPosition(editorContainer, {
+            rerender(lines.join('\n'), {
                 lineIndex: cursorPos.lineIndex,
                 offset: selectionStart + wrappedLink.length
             });
-            updateTocFromMarkdown(newMarkdownLink);
             return;
         default:
             return;
     }
-    
+
     // Check if text before and after selection has the formatting markers
     const beforeSelection = line.slice(0, selectionStart);
     const afterSelection = line.slice(selectionEnd);
-    
+
     // Check if selection itself is wrapped with markers
     if (beforeSelection.endsWith(prefix) && afterSelection.startsWith(suffix)) {
-        // Remove formatting
-        // Remove formatting
+        // Remove formatting (markers sit just outside the selection)
         const newLine = line.slice(0, selectionStart - prefix.length) + selectedText + line.slice(selectionEnd + suffix.length);
         lines[cursorPos.lineIndex] = newLine;
-        
-        const newMarkdown = lines.join('\n');
-        sendEdit(newMarkdown);
-        isExternalUpdate = true;
-        editorContainer.innerHTML = markdownToStyledHtml(newMarkdown);
-        isExternalUpdate = false;
-        
-        restoreCursorPosition(editorContainer, {
+        rerender(lines.join('\n'), {
             lineIndex: cursorPos.lineIndex,
             offset: selectionStart - prefix.length + selectedText.length
         });
-        updateTocFromMarkdown(newMarkdown);
         return;
     }
-    
+
     // Check if the selected text itself contains the markers (e.g., selecting "**bold**")
     if (selectedText.startsWith(prefix) && selectedText.endsWith(suffix) && selectedText.length > prefix.length + suffix.length) {
         // Remove formatting from selected text
         const innerText = selectedText.slice(prefix.length, -suffix.length);
         const newLine = line.slice(0, selectionStart) + innerText + line.slice(selectionEnd);
         lines[cursorPos.lineIndex] = newLine;
-        
-        const newMarkdown = lines.join('\n');
-        sendEdit(newMarkdown);
-        isExternalUpdate = true;
-        editorContainer.innerHTML = markdownToStyledHtml(newMarkdown);
-        isExternalUpdate = false;
-        
-        restoreCursorPosition(editorContainer, {
+        rerender(lines.join('\n'), {
             lineIndex: cursorPos.lineIndex,
             offset: selectionStart + innerText.length
         });
-        updateTocFromMarkdown(newMarkdown);
         return;
     }
-    
+
     // Add formatting
     const wrappedText = prefix + selectedText + suffix;
     const newLine = line.slice(0, selectionStart) + wrappedText + line.slice(selectionEnd);
     lines[cursorPos.lineIndex] = newLine;
-    
-    const newMarkdown = lines.join('\n');
-    sendEdit(newMarkdown);
-    isExternalUpdate = true;
-    editorContainer.innerHTML = markdownToStyledHtml(newMarkdown);
-    isExternalUpdate = false;
-    
-    // Place cursor after the formatted text
-    const newOffset = selectionStart + wrappedText.length;
-    restoreCursorPosition(editorContainer, {
+    rerender(lines.join('\n'), {
         lineIndex: cursorPos.lineIndex,
-        offset: newOffset
+        offset: selectionStart + wrappedText.length
     });
-    
-    updateTocFromMarkdown(newMarkdown);
 }
 
 function applyLineType(lineIndex: number, type: string): void {
@@ -726,69 +627,9 @@ function applyLineType(lineIndex: number, type: string): void {
 
     const markdown = extractMarkdown(editorContainer);
     const lines = markdown.split('\n');
-    let line = lines[lineIndex] || '';
 
-    // Strip existing line prefix (order matters - check more specific patterns first)
-    // Horizontal rule
-    line = line.replace(/^(-{3,}|\*{3,}|_{3,})\s*$/, '');
-    // Headings
-    line = line.replace(/^#{1,6}\s/, '');
-    // Task list
-    line = line.replace(/^[-*+]\s\[[ xX]\]\s/, '');
-    // Unordered list
-    line = line.replace(/^[-*+]\s/, '');
-    // Ordered list
-    line = line.replace(/^\d+\.\s/, '');
-    // Blockquote (handle nested - multiple > characters)
-    line = line.replace(/^>+\s?/, '');
-    // Code fence
-    line = line.replace(/^```\w*\s*/, '');
-
-    // Apply new prefix
-    switch (type) {
-        case 'paragraph':
-            // Already stripped
-            break;
-        case 'h1':
-            line = `# ${line}`;
-            break;
-        case 'h2':
-            line = `## ${line}`;
-            break;
-        case 'h3':
-            line = `### ${line}`;
-            break;
-        case 'h4':
-            line = `#### ${line}`;
-            break;
-        case 'h5':
-            line = `##### ${line}`;
-            break;
-        case 'h6':
-            line = `###### ${line}`;
-            break;
-        case 'hr':
-            line = `---`;
-            break;
-        case 'ul':
-            line = `- ${line}`;
-            break;
-        case 'ol':
-            line = `1. ${line}`;
-            break;
-        case 'task':
-            line = `- [ ] ${line}`;
-            break;
-        case 'quote':
-            line = `> ${line}`;
-            break;
-        case 'code':
-            // Insert code block (3 lines)
-            line = `\`\`\`\n${line}\n\`\`\``;
-            break;
-    }
-
-    lines[lineIndex] = line;
+    // Strip the current line-type prefix, then apply the requested one.
+    lines[lineIndex] = applyLinePrefix(stripLinePrefix(lines[lineIndex] || ''), type);
     const newMarkdown = lines.join('\n');
 
     // Update editor
@@ -901,22 +742,10 @@ function initEditor(container: HTMLElement, markdown: string): void {
             newOffset = pastedLines[pastedLines.length - 1].length;
         }
         
-        // Update and re-render
-        sendEdit(newMarkdown);
-        isExternalUpdate = true;
-        container.innerHTML = markdownToStyledHtml(newMarkdown);
-        isExternalUpdate = false;
-        
-        // Restore cursor to end of pasted content
-        restoreCursorPosition(container, {
-            lineIndex: newLineIndex,
-            offset: newOffset
-        });
-        
-        // Update TOC
-        updateTocFromMarkdown(newMarkdown);
+        // Update, re-render and place cursor at end of pasted content
+        rerender(newMarkdown, { lineIndex: newLineIndex, offset: newOffset });
     });
-    
+
     // Handle copy to ensure plain markdown text is copied (only line content)
     container.addEventListener('copy', (e) => {
         e.preventDefault();
@@ -1028,22 +857,8 @@ function initEditor(container: HTMLElement, markdown: string): void {
                     ...lines.slice(insertLineIndex + 1)
                 ];
                 
-                const newMarkdown = newLines.join('\n');
-                
-                // Update and re-render
-                sendEdit(newMarkdown);
-                isExternalUpdate = true;
-                container.innerHTML = markdownToStyledHtml(newMarkdown);
-                isExternalUpdate = false;
-                
-                // Place cursor at start of new line
-                restoreCursorPosition(container, {
-                    lineIndex: insertLineIndex + 1,
-                    offset: 0
-                });
-                
-                // Update TOC
-                updateTocFromMarkdown(newMarkdown);
+                // Update, re-render and place cursor at start of new line
+                rerender(newLines.join('\n'), { lineIndex: insertLineIndex + 1, offset: 0 });
             }
         }
         
@@ -1080,22 +895,8 @@ function initEditor(container: HTMLElement, markdown: string): void {
                     ...lines.slice(cursorPos.lineIndex + 1)
                 ];
                 
-                const newMarkdown = newLines.join('\n');
-                
-                // Update and re-render
-                sendEdit(newMarkdown);
-                isExternalUpdate = true;
-                container.innerHTML = markdownToStyledHtml(newMarkdown);
-                isExternalUpdate = false;
-                
-                // Place cursor at the merge point
-                restoreCursorPosition(container, {
-                    lineIndex: cursorPos.lineIndex - 1,
-                    offset: prevLineLength
-                });
-                
-                // Update TOC
-                updateTocFromMarkdown(newMarkdown);
+                // Update, re-render and place cursor at the merge point
+                rerender(newLines.join('\n'), { lineIndex: cursorPos.lineIndex - 1, offset: prevLineLength });
             }
             // Otherwise, let browser handle normal backspace within a line
         }
@@ -1130,19 +931,8 @@ function initEditor(container: HTMLElement, markdown: string): void {
                         ...lines.slice(cursorPos.lineIndex + 2)
                     ];
                     
-                    const newMarkdown = newLines.join('\n');
-                    
-                    // Update and re-render
-                    sendEdit(newMarkdown);
-                    isExternalUpdate = true;
-                    container.innerHTML = markdownToStyledHtml(newMarkdown);
-                    isExternalUpdate = false;
-                    
-                    // Keep cursor at same position
-                    restoreCursorPosition(container, cursorPos);
-                    
-                    // Update TOC
-                    updateTocFromMarkdown(newMarkdown);
+                    // Update, re-render and keep cursor at same position
+                    rerender(newLines.join('\n'), cursorPos);
                 }
             }
             // Otherwise, let browser handle normal delete within a line
@@ -1164,14 +954,11 @@ function initEditor(container: HTMLElement, markdown: string): void {
                     const url = urlSpan.textContent || '';
                     if (url) {
                         // Send message to extension to open the URL
-                        vscode.postMessage({
-                            type: 'openLink',
-                            url: url
-                        });
+                        postToHost({ type: 'openLink', url });
                     }
                 }
             }
-            
+
             // Check if clicked on an image URL
             const imageSpan = target.closest('.md-image');
             if (imageSpan) {
@@ -1180,10 +967,7 @@ function initEditor(container: HTMLElement, markdown: string): void {
                 if (urlSpan) {
                     const url = urlSpan.textContent || '';
                     if (url) {
-                        vscode.postMessage({
-                            type: 'openLink',
-                            url: url
-                        });
+                        postToHost({ type: 'openLink', url });
                     }
                 }
             }
@@ -1322,7 +1106,7 @@ function init(): void {
     if (diffToggleBtn) {
         diffToggleBtn.addEventListener('click', () => {
             // Send message to extension to toggle diff mode
-            vscode.postMessage({ type: 'requestDiffToggle' });
+            postToHost({ type: 'requestDiffToggle' });
         });
     }
 
@@ -1331,13 +1115,13 @@ function init(): void {
     if (diffCloseBtn) {
         diffCloseBtn.addEventListener('click', () => {
             // Send message to extension to toggle diff mode (same as toggle button)
-            vscode.postMessage({ type: 'requestDiffToggle' });
+            postToHost({ type: 'requestDiffToggle' });
         });
     }
 
     // Handle messages from extension
     window.addEventListener('message', (event: MessageEvent) => {
-        const message = event.data;
+        const message = event.data as HostToWebviewMessage;
 
         switch (message.type) {
             case 'init': {
@@ -1505,7 +1289,7 @@ function init(): void {
     });
 
     // Tell extension we're ready
-    vscode.postMessage({ type: 'ready' });
+    postToHost({ type: 'ready' });
 }
 
 // Start when DOM is ready

@@ -1,20 +1,17 @@
 import * as assert from 'assert';
+import { deleteRange } from '../../webview/editor/operations';
 
 /**
  * Integration tests for keyboard-triggered deletion.
  * These tests verify that Delete, Backspace, and Cut commands work correctly
  * with selections in the editor.
+ *
+ * The deletion itself runs through the real `deleteRange` operation; the
+ * wrapper only models the "is there a selection to handle?" guard that the
+ * keyboard handlers apply before delegating.
  */
 describe('Keyboard Deletion Integration', () => {
 
-    /**
-     * Simulates the full workflow of selection deletion triggered by keyboard.
-     * This includes:
-     * 1. Checking if selection exists
-     * 2. Getting selection boundaries
-     * 3. Performing deletion
-     * 4. Positioning cursor
-     */
     function simulateKeyboardDeletion(
         markdown: string,
         hasSelection: boolean,
@@ -22,7 +19,7 @@ describe('Keyboard Deletion Integration', () => {
         startOffset: number,
         endLineIndex: number,
         endOffset: number,
-        key: 'Delete' | 'Backspace' | 'Cut'
+        _key: 'Delete' | 'Backspace' | 'Cut'
     ): {
         newMarkdown: string;
         cursorLineIndex: number;
@@ -39,42 +36,18 @@ describe('Keyboard Deletion Integration', () => {
             };
         }
 
-        // Selection exists - perform deletion
-        const lines = markdown.split('\n');
-
-        let cursorLineIndex: number;
-        let cursorOffset: number;
-
-        if (startLineIndex === endLineIndex) {
-            // SINGLE LINE DELETION
-            const line = lines[startLineIndex];
-            const beforeSelection = line.slice(0, startOffset);
-            const afterSelection = line.slice(endOffset);
-            lines[startLineIndex] = beforeSelection + afterSelection;
-
-            cursorLineIndex = startLineIndex;
-            cursorOffset = startOffset;
-        } else {
-            // MULTI-LINE DELETION
-            const beforeSelection = lines[startLineIndex].slice(0, startOffset);
-            const afterSelection = lines[endLineIndex].slice(endOffset);
-            const mergedLine = beforeSelection + afterSelection;
-
-            const newLines = [
-                ...lines.slice(0, startLineIndex),
-                mergedLine,
-                ...lines.slice(endLineIndex + 1)
-            ];
-
-            lines.length = 0;
-            lines.push(...newLines);
-
-            cursorLineIndex = startLineIndex;
-            cursorOffset = startOffset;
-        }
-
-        const newMarkdown = lines.join('\n');
-        return { newMarkdown, cursorLineIndex, cursorOffset, wasHandled: true };
+        const { lines, cursor } = deleteRange(markdown.split('\n'), {
+            startLineIndex,
+            startOffset,
+            endLineIndex,
+            endOffset
+        });
+        return {
+            newMarkdown: lines.join('\n'),
+            cursorLineIndex: cursor.lineIndex,
+            cursorOffset: cursor.offset,
+            wasHandled: true
+        };
     }
 
     describe('Delete key with selection', () => {

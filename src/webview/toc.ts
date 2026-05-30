@@ -1,42 +1,34 @@
-interface TocItem {
+import { escapeHtml } from './markdown/parser';
+import { restoreCursorPosition } from './editor/cursor';
+
+export interface TocHeading {
     level: number;
     text: string;
-    id: string;
 }
 
-interface DocLike {
-    descendants: (callback: (node: { type: { name: string }; attrs: { level: number }; textContent: string }) => boolean) => void;
-}
-
-// Extract headings from document (ProseMirror doc or mock)
-function extractHeadings(doc: DocLike): TocItem[] {
-    const headings: TocItem[] = [];
-    let headingIndex = 0;
-
-    doc.descendants((node) => {
-        if (node.type.name === 'heading') {
-            const level = node.attrs.level as number;
-            const text = node.textContent;
-            const id = `heading-${headingIndex++}`;
-            
-            if (text.trim()) {
-                headings.push({ level, text, id });
-            }
+/**
+ * Extract headings from raw markdown text.
+ *
+ * Pure (no DOM) so it can be unit-tested directly. Empty headings (e.g. a bare
+ * `# `) are skipped, matching the previous TOC behaviour.
+ */
+export function extractHeadingsFromMarkdown(markdown: string): TocHeading[] {
+    const headings: TocHeading[] = [];
+    for (const line of markdown.split('\n')) {
+        const match = line.match(/^(#{1,6})\s+(.*)$/);
+        if (match && match[2].trim()) {
+            headings.push({ level: match[1].length, text: match[2] });
         }
-        return true;
-    });
-
+    }
     return headings;
 }
 
 // Render TOC to the sidebar
-export function updateToc(doc: DocLike): void {
+export function updateToc(headings: TocHeading[]): void {
     const tocContainer = document.getElementById('toc');
     if (!tocContainer) {
         return;
     }
-
-    const headings = extractHeadings(doc);
 
     if (headings.length === 0) {
         tocContainer.innerHTML = `
@@ -71,39 +63,72 @@ export function updateToc(doc: DocLike): void {
     });
 }
 
-// Scroll to a heading by index
-function scrollToHeading(index: number): void {
-    const editor = document.getElementById('editor');
-    if (!editor) {
-        return;
-    }
-
-    // Find all heading lines in the editor (lines starting with #)
-    const lines = editor.querySelectorAll('.line');
+/**
+ * Map a TOC heading index (Nth heading) to the absolute editor line index.
+ *
+ * Pure (no DOM) so it can be unit-tested directly. `lineTexts` are the
+ * `.line-content` text contents of each editor line, in order. Returns the
+ * line index of the Nth heading, or null if there is no such heading.
+ */
+export function findHeadingLineIndex(lineTexts: string[], headingIndex: number): number | null {
     let headingCount = 0;
-    
-    for (const line of lines) {
-        const text = line.textContent || '';
-        if (/^#{1,6}\s/.test(text)) {
-            if (headingCount === index) {
-                line.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                
-                // Update active state in TOC
-                document.querySelectorAll('.toc-link').forEach((link: Element, i: number) => {
-                    link.classList.toggle('active', i === index);
-                });
-                return;
+    for (let i = 0; i < lineTexts.length; i++) {
+        if (/^#{1,6}\s/.test(lineTexts[i])) {
+            if (headingCount === headingIndex) {
+                return i;
             }
             headingCount++;
         }
     }
+    return null;
 }
 
-// Escape HTML to prevent XSS
-function escapeHtml(text: string): string {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+/**
+ * Dependencies for {@link scrollToHeading}, injectable for testing. The
+ * defaults operate on the live editor DOM.
+ */
+export interface ScrollToHeadingDeps {
+    /** Resolve the editor container element. */
+    getEditor?: () => HTMLElement | null;
+    /** Move keyboard focus and the cursor to the given editor line. */
+    focusLine?: (editor: HTMLElement, lineIndex: number) => void;
+}
+
+function focusEditorLine(editor: HTMLElement, lineIndex: number): void {
+    editor.focus({ preventScroll: true });
+    restoreCursorPosition(editor, { lineIndex, offset: 0 }, true);
+}
+
+// Scroll to a heading by index and move the cursor/focus to it.
+export function scrollToHeading(index: number, deps: ScrollToHeadingDeps = {}): void {
+    const getEditor = deps.getEditor ?? (() => document.getElementById('editor'));
+    const focusLine = deps.focusLine ?? focusEditorLine;
+
+    const editor = getEditor();
+    if (!editor) {
+        return;
+    }
+
+    // Read each line's content text (excluding the .line-prefix line number).
+    const lineEls = Array.from(editor.querySelectorAll('.line')) as HTMLElement[];
+    const lineTexts = lineEls.map((el) => el.querySelector('.line-content')?.textContent || '');
+
+    const lineIndex = findHeadingLineIndex(lineTexts, index);
+    if (lineIndex === null) {
+        return;
+    }
+
+    lineEls[lineIndex].scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Move focus and the cursor to the heading so typing continues there.
+    focusLine(editor, lineIndex);
+
+    // Update active state in TOC
+    if (typeof document !== 'undefined') {
+        document.querySelectorAll('.toc-link').forEach((link: Element, i: number) => {
+            link.classList.toggle('active', i === index);
+        });
+    }
 }
 
 // Set up scroll spy to highlight current heading in TOC

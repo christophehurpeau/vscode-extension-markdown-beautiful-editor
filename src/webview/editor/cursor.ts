@@ -54,21 +54,16 @@ export function placeCursorAtStart(container: HTMLElement): void {
 }
 
 /**
- * Save current cursor position
+ * Compute the markdown line/offset coordinates for a DOM node + offset.
+ *
+ * Shared by {@link saveCursorPosition} and {@link getSelectionMarkdownPosition}.
  *
  * @param container The editor container element
- * @returns Cursor position or null if no cursor
+ * @param node The DOM node the position is anchored in
+ * @param offset The offset within `node`
+ * @returns The position, or null if the node is not inside an editor line
  */
-export function saveCursorPosition(container: HTMLElement): CursorPosition | null {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) {
-        return null;
-    }
-
-    const range = selection.getRangeAt(0);
-    const node = range.startContainer;
-    const offset = range.startOffset;
-
+function getPositionForNode(container: HTMLElement, node: Node, offset: number): CursorPosition | null {
     // Find the line element (direct child of container)
     let lineEl: HTMLElement | null = null;
     let current: Node | null = node;
@@ -127,6 +122,22 @@ export function saveCursorPosition(container: HTMLElement): CursorPosition | nul
 }
 
 /**
+ * Save current cursor position
+ *
+ * @param container The editor container element
+ * @returns Cursor position or null if no cursor
+ */
+export function saveCursorPosition(container: HTMLElement): CursorPosition | null {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+        return null;
+    }
+
+    const range = selection.getRangeAt(0);
+    return getPositionForNode(container, range.startContainer, range.startOffset);
+}
+
+/**
  * Get selection start and end positions in markdown coordinates
  *
  * @param container The editor container element
@@ -140,73 +151,14 @@ export function getSelectionMarkdownPosition(container: HTMLElement, selection: 
 
     const range = selection.getRangeAt(0);
 
-    // Helper function to get position for a node and offset
-    const getPositionForNode = (node: Node, offset: number): { lineIndex: number; offset: number } | null => {
-        // Find the line element (direct child of container)
-        let lineEl: HTMLElement | null = null;
-        let current: Node | null = node;
-        while (current && current !== container) {
-            if (current.parentNode === container && current instanceof HTMLElement) {
-                lineEl = current;
-                break;
-            }
-            current = current.parentNode;
-        }
-
-        if (!lineEl) {
-            return null;
-        }
-
-        // Find line index among all direct children
-        const children = container.children;
-        let lineIndex = -1;
-        for (let i = 0; i < children.length; i++) {
-            if (children[i] === lineEl) {
-                lineIndex = i;
-                break;
-            }
-        }
-
-        if (lineIndex === -1) {
-            return null;
-        }
-
-        // Calculate offset within the line's text content
-        const lineContent = lineEl.querySelector('.line-content');
-        if (!lineContent) {
-            return { lineIndex, offset: 0 };
-        }
-
-        const treeWalker = document.createTreeWalker(lineContent, NodeFilter.SHOW_TEXT);
-        let charCount = 0;
-        let foundNode: Node | null = null;
-
-        while (treeWalker.nextNode()) {
-            const currentNode = treeWalker.currentNode;
-            if (currentNode === node) {
-                foundNode = node;
-                charCount += offset;
-                break;
-            }
-            charCount += (currentNode.textContent || '').length;
-        }
-
-        if (!foundNode) {
-            // Node not found in tree walker, use offset directly
-            charCount = offset;
-        }
-
-        return { lineIndex, offset: charCount };
-    };
-
     // Get start position
-    const startPos = getPositionForNode(range.startContainer, range.startOffset);
+    const startPos = getPositionForNode(container, range.startContainer, range.startOffset);
     if (!startPos) {
         return null;
     }
 
     // Get end position
-    const endPos = getPositionForNode(range.endContainer, range.endOffset);
+    const endPos = getPositionForNode(container, range.endContainer, range.endOffset);
     if (!endPos) {
         return null;
     }

@@ -1,105 +1,17 @@
 import * as assert from 'assert';
+import {
+    LINE_TYPES,
+    DEFAULT_LINE_TYPE,
+    MENU_LINE_TYPES,
+    getLineType,
+} from '../../webview/markdown/parser';
+import { stripLinePrefix, applyLinePrefix } from '../../webview/editor/operations';
 
 /**
  * Unit tests for line type detection, icons, and transformations.
- * These tests cover the LINE_TYPES system used for the line type menu.
+ * These exercise the real production functions imported from the parser and
+ * operations modules (no local re-implementation).
  */
-
-// Replicate the LINE_TYPES definitions from main.ts for testing
-interface LineTypeDefinition {
-    type: string;
-    pattern: RegExp;
-    icon: string;
-    label?: string;
-}
-
-const LINE_TYPES: LineTypeDefinition[] = [
-    { type: 'h1', pattern: /^#{1}\s/, icon: 'H₁', label: 'Heading 1' },
-    { type: 'h2', pattern: /^#{2}\s/, icon: 'H₂', label: 'Heading 2' },
-    { type: 'h3', pattern: /^#{3}\s/, icon: 'H₃', label: 'Heading 3' },
-    { type: 'h4', pattern: /^#{4}\s/, icon: 'H₄', label: 'Heading 4' },
-    { type: 'h5', pattern: /^#{5}\s/, icon: 'H₅', label: 'Heading 5' },
-    { type: 'h6', pattern: /^#{6}\s/, icon: 'H₆', label: 'Heading 6' },
-    { type: 'hr', pattern: /^(-{3,}|\*{3,}|_{3,})\s*$/, icon: '―', label: 'Horizontal Rule' },
-    { type: 'task', pattern: /^[-*+]\s\[[ xX]\]/, icon: '☐', label: 'Task List' },
-    { type: 'ul', pattern: /^[-*+]\s/, icon: '•', label: 'Bullet List' },
-    { type: 'ol', pattern: /^\d+\.\s/, icon: '1.', label: 'Numbered List' },
-    { type: 'alert', pattern: /^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/i, icon: '!' },
-    { type: 'quote', pattern: /^>/, icon: '❝', label: 'Quote' },
-    { type: 'code', pattern: /^```/, icon: '{}', label: 'Code Block' },
-];
-
-const DEFAULT_LINE_TYPE: LineTypeDefinition = { type: 'paragraph', pattern: /^/, icon: 'T', label: 'Text' };
-
-function getLineType(line: string): LineTypeDefinition {
-    for (const def of LINE_TYPES) {
-        if (def.pattern.test(line)) {
-            return def;
-        }
-    }
-    return DEFAULT_LINE_TYPE;
-}
-
-function getLineTypeIcon(line: string): string {
-    return getLineType(line).icon;
-}
-
-/**
- * Simulates stripping line prefix (like applyLineType does)
- */
-function stripLinePrefix(line: string): string {
-    // Horizontal rule
-    line = line.replace(/^(-{3,}|\*{3,}|_{3,})\s*$/, '');
-    // Headings
-    line = line.replace(/^#{1,6}\s/, '');
-    // Task list
-    line = line.replace(/^[-*+]\s\[[ xX]\]\s/, '');
-    // Unordered list
-    line = line.replace(/^[-*+]\s/, '');
-    // Ordered list
-    line = line.replace(/^\d+\.\s/, '');
-    // Blockquote (handle nested - multiple > characters)
-    line = line.replace(/^>+\s?/, '');
-    // Code fence
-    line = line.replace(/^```\w*\s*/, '');
-    return line;
-}
-
-/**
- * Simulates applying a line type prefix
- */
-function applyLinePrefix(content: string, type: string): string {
-    switch (type) {
-        case 'paragraph':
-            return content;
-        case 'h1':
-            return `# ${content}`;
-        case 'h2':
-            return `## ${content}`;
-        case 'h3':
-            return `### ${content}`;
-        case 'h4':
-            return `#### ${content}`;
-        case 'h5':
-            return `##### ${content}`;
-        case 'h6':
-            return `###### ${content}`;
-        case 'hr':
-            return `---`;
-        case 'ul':
-            return `- ${content}`;
-        case 'ol':
-            return `1. ${content}`;
-        case 'task':
-            return `- [ ] ${content}`;
-        case 'quote':
-            return `> ${content}`;
-        case 'code':
-            return `\`\`\`\n${content}\n\`\`\``;
-        default:
-            return content;
-    }
-}
 
 describe('Line Type Detection', () => {
     
@@ -520,11 +432,6 @@ describe('Line Type Transformations', () => {
 });
 
 describe('Menu Line Types', () => {
-    const MENU_LINE_TYPES = [
-        DEFAULT_LINE_TYPE,
-        ...LINE_TYPES.filter(t => t.label),
-    ];
-
     it('should include paragraph/text as first item', () => {
         assert.strictEqual(MENU_LINE_TYPES[0].type, 'paragraph');
         assert.strictEqual(MENU_LINE_TYPES[0].label, 'Text');

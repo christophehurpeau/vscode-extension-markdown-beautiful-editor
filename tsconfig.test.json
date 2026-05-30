@@ -2,7 +2,10 @@
     "compilerOptions": {
         "module": "Node16",
         "target": "ES2022",
-        "lib": ["ES2022"],
+        // DOM types are needed to type-check the production modules the tests
+        // import (cursor/diff reference HTMLElement etc.). The tests only call
+        // the DOM-free functions, so nothing touches the DOM at runtime.
+        "lib": ["ES2022", "DOM", "DOM.Iterable"],
         "sourceMap": true,
         "rootDir": "src",
         "outDir": "out",

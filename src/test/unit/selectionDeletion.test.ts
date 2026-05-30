@@ -1,16 +1,16 @@
 import * as assert from 'assert';
+import { deleteRange } from '../../webview/editor/operations';
 
 /**
  * Unit tests for selection deletion functionality.
  * These tests verify that selected text is correctly deleted when using
  * Delete key, Backspace key, or Cut command.
+ *
+ * They exercise the real `deleteRange` operation; the thin wrapper below only
+ * adapts its return shape to the assertions used throughout this file.
  */
 describe('Selection Deletion', () => {
 
-    /**
-     * Simulates the deletion logic from deleteSelection function.
-     * This tests the core algorithm without requiring DOM manipulation.
-     */
     function simulateDeleteSelection(
         markdown: string,
         startLineIndex: number,
@@ -18,42 +18,13 @@ describe('Selection Deletion', () => {
         endLineIndex: number,
         endOffset: number
     ): { newMarkdown: string; cursorLineIndex: number; cursorOffset: number } {
-        const lines = markdown.split('\n');
-
-        let cursorLineIndex: number;
-        let cursorOffset: number;
-
-        if (startLineIndex === endLineIndex) {
-            // SINGLE LINE DELETION
-            const line = lines[startLineIndex];
-            const beforeSelection = line.slice(0, startOffset);
-            const afterSelection = line.slice(endOffset);
-            lines[startLineIndex] = beforeSelection + afterSelection;
-
-            cursorLineIndex = startLineIndex;
-            cursorOffset = startOffset;
-        } else {
-            // MULTI-LINE DELETION
-            const beforeSelection = lines[startLineIndex].slice(0, startOffset);
-            const afterSelection = lines[endLineIndex].slice(endOffset);
-            const mergedLine = beforeSelection + afterSelection;
-
-            // Build new lines array
-            const newLines = [
-                ...lines.slice(0, startLineIndex),
-                mergedLine,
-                ...lines.slice(endLineIndex + 1)
-            ];
-
-            lines.length = 0;
-            lines.push(...newLines);
-
-            cursorLineIndex = startLineIndex;
-            cursorOffset = startOffset;
-        }
-
-        const newMarkdown = lines.join('\n');
-        return { newMarkdown, cursorLineIndex, cursorOffset };
+        const { lines, cursor } = deleteRange(markdown.split('\n'), {
+            startLineIndex,
+            startOffset,
+            endLineIndex,
+            endOffset
+        });
+        return { newMarkdown: lines.join('\n'), cursorLineIndex: cursor.lineIndex, cursorOffset: cursor.offset };
     }
 
     describe('Single-line deletions', () => {

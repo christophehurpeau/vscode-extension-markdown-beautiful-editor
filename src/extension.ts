@@ -29,8 +29,11 @@ export function activate(context: vscode.ExtensionContext): void {
             }
 
             // Get the URI from the tab input
-            const tabInput = activeTab.input as any;
-            const uri: vscode.Uri | undefined = tabInput?.uri;
+            const tabInput = activeTab.input;
+            const uri: vscode.Uri | undefined =
+                tabInput instanceof vscode.TabInputCustom || tabInput instanceof vscode.TabInputText
+                    ? tabInput.uri
+                    : undefined;
 
             if (!uri) {
                 vscode.window.showErrorMessage('Could not determine active file');

@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
         "module": "Node16",
-        "tsBuildInfoFile": "node_modules/.cache/tsc/tsbuildinfo",
+        "tsBuildInfoFile": "node_modules/.cache/tsc/extension.tsbuildinfo",
         "target": "ES2022",
         "lib": ["ES2022"],
         "sourceMap": true,
@@ -18,7 +18,11 @@
     ],
     "exclude": [
         "src/webview/**/*.ts",
+        "src/shared/**/*.ts",
         "src/test/**/*.ts"
+    ],
+    "references": [
+        { "path": "./tsconfig.shared.json" }
     ]
 }
 

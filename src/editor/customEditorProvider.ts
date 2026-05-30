@@ -1,11 +1,23 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { getWebviewContent } from './webviewContent';
+import type { HostToWebviewMessage, WebviewToHostMessage } from '../shared/messages';
+
+/** Minimal shape of a git Repository from the built-in `vscode.git` API. */
+interface GitRepositoryLike {
+    rootUri: vscode.Uri;
+    state: { onDidChange: vscode.Event<void> };
+}
 
 export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
     private activeWebviewPanels = new Map<string, vscode.WebviewPanel>();
 
     constructor(private readonly context: vscode.ExtensionContext) {}
+
+    /** Post a typed message to a webview. */
+    private post(panel: vscode.WebviewPanel, message: HostToWebviewMessage): void {
+        panel.webview.postMessage(message);
+    }
 
     /**
      * Get the original version of a file from git for diff comparison
@@ -123,7 +135,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
         }
 
         // Toggle diff mode by sending a message to the webview
-        webviewPanel.webview.postMessage({
+        this.post(webviewPanel, {
             type: 'toggleDiff',
             originalVersionContent: originalContent
         });
@@ -238,7 +250,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 
             if (isDiffMode && originalContent) {
                 // Send both original and current content for diff view
-                webviewPanel.webview.postMessage({
+                this.post(webviewPanel, {
                     type: 'init',
                     content: processedContent,
                     originalContent: lastKnownContent,
@@ -248,7 +260,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                 });
             } else {
                 // Normal editor mode
-                webviewPanel.webview.postMessage({
+                this.post(webviewPanel, {
                     type: 'init',
                     content: processedContent,
                     originalContent: lastKnownContent,
@@ -264,7 +276,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
             const currentContent = document.getText();
             const processedContent = processImagePaths(currentContent);
 
-            webviewPanel.webview.postMessage({
+            this.post(webviewPanel, {
                 type: 'update',
                 content: processedContent,
                 originalContent: currentContent,
@@ -273,7 +285,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
         };
 
         // Handle messages from webview
-        const messageHandler = webviewPanel.webview.onDidReceiveMessage(async (message) => {
+        const messageHandler = webviewPanel.webview.onDidReceiveMessage(async (message: WebviewToHostMessage) => {
             switch (message.type) {
                 case 'ready':
                     // Webview is ready, send initial content
@@ -317,7 +329,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                             imageUri = vscode.Uri.file(resolvedPath);
                         }
                         const webviewImageUri = webviewPanel.webview.asWebviewUri(imageUri);
-                        webviewPanel.webview.postMessage({
+                        this.post(webviewPanel, {
                             type: 'imageResolved',
                             originalPath: message.path,
                             resolvedUri: webviewImageUri.toString()
@@ -392,7 +404,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                 }
 
                 // Listen for new repositories being opened
-                const openRepoHandler = api.onDidOpenRepository(async (repo: any) => {
+                const openRepoHandler = api.onDidOpenRepository(async (repo: GitRepositoryLike) => {
                     if (document.uri.fsPath.startsWith(repo.rootUri.fsPath)) {
                         await updateDiffAvailability();
 
@@ -443,7 +455,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
             // Check if diff is available with the new content
             const diffAvailable = await this.isDiffAvailable(document.uri);
 
-            webviewPanel.webview.postMessage({
+            this.post(webviewPanel, {
                 type: 'update',
                 content: processedContent,
                 originalContent: currentContent,
@@ -460,9 +472,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
             
             // Only send focus when transitioning from inactive to active
             if (isNowActive && !wasActive) {
-                webviewPanel.webview.postMessage({
-                    type: 'focus'
-                });
+                this.post(webviewPanel, { type: 'focus' });
             }
             
             wasActive = isNowActive;
