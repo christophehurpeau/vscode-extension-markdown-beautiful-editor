@@ -10,7 +10,7 @@ Scope note: the consolidation refactor deliberately did **not** fix these
 
 | # | Severity | Confidence | Summary |
 |---|----------|-----------|---------|
-| 1 | High | High | Image title dropped on rewrite → data loss on save |
+| 1 | ✅ Fixed | High | Image title dropped on rewrite → data loss on save |
 | 2 | Low | High | Unreachable initial-diff-mode code |
 | 3 | Low | High | Dead `resolveImage` / `imageResolved` round-trip |
 | 4 | Medium | Medium | Tab uses deprecated `execCommand`, bypasses edit pipeline |
@@ -24,23 +24,26 @@ Scope note: the consolidation refactor deliberately did **not** fix these
 
 ---
 
-## 1. Image title dropped on rewrite → data loss
+## 1. Image title dropped on rewrite → data loss ✅ Fixed
 
 **Severity: High · Confidence: High**
 
-[customEditorProvider.ts:196-228](src/editor/customEditorProvider.ts#L196-L228)
+[customEditorProvider.ts:206-241](src/editor/customEditorProvider.ts#L206-L241)
 
-`processImagePaths` matches `![alt](path "title")` but the replacement emits only
-`![${alt}](${webviewUri})` — the title group is matched and discarded. The webview
+`processImagePaths` matched `![alt](path "title")` but the replacement emitted only
+`![${alt}](${webviewUri})` — the title group was matched and discarded. The webview
 then serializes from what it was given, so editing a file that contained
-`![a](img.png "Title")` and saving writes back `![a](img.png)`. Silent data loss.
+`![a](img.png "Title")` and saving wrote back `![a](img.png)`. Silent data loss.
 
-The regex also strips the title even for remote/`data:` URLs and already-converted
-URIs (it returns `match` for those, so they're safe), but the local-path branch
-rebuilds the string without the title.
+The regex also stripped the title even for remote/`data:` URLs and already-converted
+URIs (it returns `match` for those, so they were safe), but the local-path branch
+rebuilt the string without the title.
 
-**Suggested fix:** capture the optional title group and re-append it in the
-replacement.
+**Fix applied:** the optional title group (including its leading whitespace) is now
+captured and re-appended in the replacement. Regression tests added in
+[imagePathProcessing.test.ts](src/test/unit/imagePathProcessing.test.ts) under
+`Image Path Output`, asserting the title survives for double/single-quoted titles
+and that title-less and remote images are unaffected.
 
 ---
 

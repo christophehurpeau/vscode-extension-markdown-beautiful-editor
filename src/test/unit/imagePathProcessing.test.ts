@@ -161,5 +161,46 @@ describe('Image Path Processing', () => {
             assert.strictEqual(matches[0][3], 'title');
         });
     });
+
+    describe('Image Path Output', () => {
+        // Mirrors the production regex + replacement in customEditorProvider.ts:
+        // the optional title group is captured (with its leading whitespace) and
+        // re-appended so editing/saving a titled image does not drop the title.
+        const PROCESS_REGEX = /!\[([^\]]*)\]\(([^)\s'"]+)(\s+['"][^'"]*['"])?\)/g;
+        const process = (markdown: string): string =>
+            markdown.replace(PROCESS_REGEX, (match, alt, imagePath, title = '') => {
+                if (/^(https?:|data:)/i.test(imagePath)) {
+                    return match;
+                }
+                // Stand-in for asWebviewUri — only the title round-trip matters here.
+                return `![${alt}](converted://${imagePath}${title})`;
+            });
+
+        it('should preserve a double-quoted title on the local-path branch', () => {
+            assert.strictEqual(
+                process('![a](img.png "Title")'),
+                '![a](converted://img.png "Title")'
+            );
+        });
+
+        it('should preserve a single-quoted title', () => {
+            assert.strictEqual(
+                process("![a](img.png 'Title')"),
+                "![a](converted://img.png 'Title')"
+            );
+        });
+
+        it('should leave a title-less image unchanged in shape', () => {
+            assert.strictEqual(
+                process('![a](img.png)'),
+                '![a](converted://img.png)'
+            );
+        });
+
+        it('should not alter remote images with titles', () => {
+            const markdown = '![a](https://example.com/i.png "Title")';
+            assert.strictEqual(process(markdown), markdown);
+        });
+    });
 });
 

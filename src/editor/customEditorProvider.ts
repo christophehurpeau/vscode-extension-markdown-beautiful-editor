@@ -206,8 +206,8 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
         const processImagePaths = (markdown: string): string => {
             // Match markdown image syntax: ![alt](path) or ![alt](path "title") or ![alt](path 'title')
             return markdown.replace(
-                /!\[([^\]]*)\]\(([^)\s'"]+)(?:\s+['"][^'"]*['"])?\)/g,
-                (match, alt, imagePath) => {
+                /!\[([^\]]*)\]\(([^)\s'"]+)(\s+['"][^'"]*['"])?\)/g,
+                (match, alt, imagePath, title = '') => {
                     // Skip URLs (http, https, data URIs)
                     if (/^(https?:|data:)/i.test(imagePath)) {
                         return match;
@@ -231,7 +231,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                         
                         // Convert to webview URI
                         const webviewImageUri = webviewPanel.webview.asWebviewUri(imageUri);
-                        return `![${alt}](${webviewImageUri.toString()})`;
+                        return `![${alt}](${webviewImageUri.toString()}${title})`;
                     } catch (e) {
                         console.error('Markdown WYSIWYG: Failed to process image path:', imagePath, e);
                         return match;
