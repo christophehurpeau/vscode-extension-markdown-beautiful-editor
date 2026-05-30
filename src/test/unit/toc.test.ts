@@ -1,5 +1,13 @@
 import * as assert from 'assert';
-import { extractHeadingsFromMarkdown, findHeadingLineIndex, scrollToHeading } from '../../webview/toc';
+import {
+    extractHeadingsFromMarkdown,
+    findHeadingLineIndex,
+    scrollToHeading,
+    slugify,
+    stripInlineMarkdown,
+    computeHeadingSlugs,
+    findHeadingIndexBySlug,
+} from '../../webview/toc';
 import { escapeHtml } from '../../webview/markdown/parser';
 
 /**
@@ -155,6 +163,63 @@ No headings at all.`;
 
             assert.strictEqual(scrolled[2], true, 'should scroll to the heading line');
             assert.strictEqual(focusedLineIndex, 2, 'should move focus/cursor to the heading line');
+        });
+    });
+
+    describe('Heading slugs', () => {
+        it('strips inline markdown from heading text', () => {
+            assert.strictEqual(stripInlineMarkdown('Hello **bold** and *italic*'), 'Hello bold and italic');
+            assert.strictEqual(stripInlineMarkdown('Use `code` here'), 'Use code here');
+            assert.strictEqual(stripInlineMarkdown('A [link](http://x.com) inside'), 'A link inside');
+            assert.strictEqual(stripInlineMarkdown('~~gone~~ text'), 'gone text');
+        });
+
+        it('slugifies the way GitHub does', () => {
+            assert.strictEqual(slugify('Getting Started'), 'getting-started');
+            assert.strictEqual(slugify('Hello, World!'), 'hello-world');
+            assert.strictEqual(slugify('  Trim   Me  '), 'trim-me');
+            assert.strictEqual(slugify('Section 1.2.3'), 'section-123');
+        });
+
+        it('slugifies formatted heading text by its rendered text', () => {
+            assert.strictEqual(slugify('Some **bold** heading'), 'some-bold-heading');
+            assert.strictEqual(slugify('A [labelled](url) link'), 'a-labelled-link');
+        });
+
+        it('keeps unicode letters', () => {
+            assert.strictEqual(slugify('Café Münü'), 'café-münü');
+        });
+
+        it('disambiguates duplicate headings with -1, -2 suffixes', () => {
+            const headings = [
+                { level: 2, text: 'Setup' },
+                { level: 2, text: 'Setup' },
+                { level: 2, text: 'Setup' },
+                { level: 2, text: 'Other' },
+            ];
+            assert.deepStrictEqual(computeHeadingSlugs(headings), ['setup', 'setup-1', 'setup-2', 'other']);
+        });
+
+        it('finds the heading index matching a slug', () => {
+            const headings = extractHeadingsFromMarkdown('# Intro\n## Getting Started\n## Usage');
+            assert.strictEqual(findHeadingIndexBySlug(headings, 'getting-started'), 1);
+            assert.strictEqual(findHeadingIndexBySlug(headings, 'usage'), 2);
+        });
+
+        it('resolves a slug against a formatted heading', () => {
+            const headings = extractHeadingsFromMarkdown('# Hello **bold** and *italic*');
+            assert.strictEqual(findHeadingIndexBySlug(headings, 'hello-bold-and-italic'), 0);
+        });
+
+        it('matches the correct occurrence of a duplicate heading', () => {
+            const headings = extractHeadingsFromMarkdown('## Setup\n## Setup');
+            assert.strictEqual(findHeadingIndexBySlug(headings, 'setup'), 0);
+            assert.strictEqual(findHeadingIndexBySlug(headings, 'setup-1'), 1);
+        });
+
+        it('returns null for an unknown slug', () => {
+            const headings = extractHeadingsFromMarkdown('# Intro');
+            assert.strictEqual(findHeadingIndexBySlug(headings, 'nope'), null);
         });
     });
 

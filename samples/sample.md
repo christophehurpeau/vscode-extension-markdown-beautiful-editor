@@ -62,6 +62,11 @@ Here is an image with title: ![Logo](../images/springbok-logo.png 'Springbok Log
 - [x] Checked task
 - [ ] Another task
 
+## Links
+
+[Link to full](./full.md)
+[Link to full, on links header](./full.md#links)
+
 ## Blockquotes
 
 > This is a blockquote.

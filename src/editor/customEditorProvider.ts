@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { getWebviewContent } from './webviewContent';
 import type { HostToWebviewMessage, WebviewToHostMessage } from '../shared/messages';
+import { parseLinkTarget } from '../shared/links';
 
 /** Minimal shape of a git Repository from the built-in `vscode.git` API. */
 interface GitRepositoryLike {
@@ -11,6 +12,10 @@ interface GitRepositoryLike {
 
 export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
     private activeWebviewPanels = new Map<string, vscode.WebviewPanel>();
+    /** Heading slug to scroll to once a freshly-opened editor signals `ready`, keyed by document URI string. */
+    private pendingAnchors = new Map<string, string>();
+    /** View type id registered for this custom editor (see extension.ts). */
+    private static readonly VIEW_TYPE = 'markdown.beautifulEditor';
 
     constructor(private readonly context: vscode.ExtensionContext) {}
 
@@ -139,6 +144,83 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
             type: 'toggleDiff',
             originalVersionContent: originalContent
         });
+    }
+
+    /**
+     * Open a link clicked in the webview. Web URLs and `mailto:` open externally;
+     * relative/absolute file paths open inside VS Code. A `#fragment` on a
+     * markdown target scrolls that editor to the matching heading — revealing an
+     * already-open editor, or stashing the slug so it scrolls once the freshly
+     * opened editor signals `ready`.
+     *
+     * Pure `#fragment` links (same-document anchors) are handled in the webview
+     * and never reach here.
+     */
+    private async openLink(url: string, documentDirPath: string): Promise<void> {
+        try {
+            // Web URLs and mail links open externally.
+            if (/^(https?:|mailto:)/i.test(url)) {
+                vscode.env.openExternal(vscode.Uri.parse(url));
+                return;
+            }
+            // Already-resolved webview URIs (images) are not navigable.
+            if (url.startsWith('vscode-webview://')) {
+                return;
+            }
+
+            const { path: pathPart, fragment } = parseLinkTarget(url);
+
+            // Defensive: a pure `#fragment` should have been handled in the webview.
+            if (pathPart === '') {
+                return;
+            }
+
+            const resolvedPath = path.isAbsolute(pathPart)
+                ? pathPart
+                : path.resolve(documentDirPath, pathPart);
+            const fileUri = vscode.Uri.file(resolvedPath);
+
+            // Make sure the target exists before trying to open it.
+            try {
+                await vscode.workspace.fs.stat(fileUri);
+            } catch {
+                vscode.window.showErrorMessage(`File not found: ${pathPart} (resolved to ${resolvedPath})`);
+                return;
+            }
+
+            if (pathPart.toLowerCase().endsWith('.md')) {
+                await this.openMarkdownAtAnchor(fileUri, fragment);
+            } else {
+                // Text files open in an editor tab, images in the image viewer, etc.
+                await vscode.commands.executeCommand('vscode.open', fileUri);
+            }
+        } catch (e) {
+            console.error('Failed to open link:', url, e);
+        }
+    }
+
+    /**
+     * Open a markdown file in the beautiful editor and scroll to a heading slug.
+     * If the file is already open, reveal it and scroll immediately; otherwise
+     * stash the slug for {@link pendingAnchors} so it scrolls once the new
+     * editor's webview is ready.
+     */
+    private async openMarkdownAtAnchor(fileUri: vscode.Uri, fragment: string): Promise<void> {
+        const targetKey = fileUri.toString();
+        const existingPanel = this.activeWebviewPanels.get(targetKey);
+
+        if (existingPanel) {
+            existingPanel.reveal();
+            if (fragment) {
+                this.post(existingPanel, { type: 'scrollToAnchor', slug: fragment });
+            }
+            return;
+        }
+
+        if (fragment) {
+            this.pendingAnchors.set(targetKey, fragment);
+        }
+        await vscode.commands.executeCommand('vscode.openWith', fileUri, MarkdownEditorProvider.VIEW_TYPE);
     }
 
     public async resolveCustomTextEditor(
@@ -289,7 +371,16 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
             switch (message.type) {
                 case 'ready':
                     // Webview is ready, send initial content
-                    sendDocument();
+                    await sendDocument();
+                    // If this editor was opened to navigate to an anchor, scroll
+                    // to it now that the content has been sent and rendered.
+                    {
+                        const pendingSlug = this.pendingAnchors.get(uriString);
+                        if (pendingSlug) {
+                            this.pendingAnchors.delete(uriString);
+                            this.post(webviewPanel, { type: 'scrollToAnchor', slug: pendingSlug });
+                        }
+                    }
                     break;
                 case 'requestDiffToggle':
                     // Handle diff toggle request from webview button
@@ -339,33 +430,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                     }
                     break;
                 case 'openLink':
-                    // Open link in browser or handle relative paths
-                    try {
-                        let url = message.url;
-                        
-                        // Check if it's a web URL
-                        if (/^https?:\/\//i.test(url)) {
-                            vscode.env.openExternal(vscode.Uri.parse(url));
-                        } else if (url.startsWith('vscode-webview://')) {
-                            // It's already a webview URI (for images), skip
-                        } else {
-                            // It's a relative path - could be a local file
-                            const resolvedPath = path.resolve(documentDirPath, url);
-                            const fileUri = vscode.Uri.file(resolvedPath);
-                            
-                            // Check if it's a markdown file to open in editor
-                            if (url.endsWith('.md')) {
-                                vscode.workspace.openTextDocument(fileUri).then(doc => {
-                                    vscode.window.showTextDocument(doc);
-                                });
-                            } else {
-                                // Open with default application
-                                vscode.env.openExternal(fileUri);
-                            }
-                        }
-                    } catch (e) {
-                        console.error('Failed to open link:', message.url, e);
-                    }
+                    await this.openLink(message.url, documentDirPath);
                     break;
             }
         });

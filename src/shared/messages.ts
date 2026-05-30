@@ -28,6 +28,9 @@ export type HostToWebviewMessage =
       }
     | { type: 'focus' }
     | { type: 'toggleDiff'; originalVersionContent: string }
+    // Scroll the editor to the heading whose slug matches (e.g. from a
+    // `#fragment` link, including cross-file `other.md#heading` navigation).
+    | { type: 'scrollToAnchor'; slug: string }
     // NOTE: no webview handler exists for this today — see suspected bug #3.
     | { type: 'imageResolved'; originalPath: string; resolvedUri: string };
 

@@ -1,9 +1,10 @@
-import { updateToc, setupScrollSpy, extractHeadingsFromMarkdown } from './toc';
+import { updateToc, setupScrollSpy, extractHeadingsFromMarkdown, findHeadingIndexBySlug, scrollToHeading } from './toc';
 import {
     markdownToStyledHtml,
     getLineType,
     MENU_LINE_TYPES} from './markdown/parser';
 import { extractMarkdown, getSelectedMarkdownText } from './markdown/serializer';
+import { parseLinkTarget } from '../shared/links';
 import {
     saveState as saveEditorState,
     getStoredState,
@@ -149,6 +150,24 @@ function handleInput(): void {
 // Update TOC from markdown text
 function updateTocFromMarkdown(markdown: string): void {
     updateToc(extractHeadingsFromMarkdown(markdown));
+}
+
+// Scroll the editor to the heading matching a slug (`#fragment` without the `#`).
+function scrollToAnchorInEditor(container: HTMLElement, slug: string): void {
+    const headings = extractHeadingsFromMarkdown(extractMarkdown(container));
+    const index = findHeadingIndexBySlug(headings, slug);
+    if (index === null) {
+        return;
+    }
+    // Defer to the next animation frame(s). When this editor was already open
+    // in a background tab, the host reveals it and posts the scroll request in
+    // the same tick; scrolling immediately would run before the panel is laid
+    // out and visible, so `scrollIntoView` would no-op. rAF callbacks are paused
+    // while the webview is hidden and resume once it becomes visible, so this
+    // also naturally waits for the reveal to take effect.
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => scrollToHeading(index));
+    });
 }
 
 // ============================================
@@ -953,8 +972,15 @@ function initEditor(container: HTMLElement, markdown: string): void {
                 if (urlSpan) {
                     const url = urlSpan.textContent || '';
                     if (url) {
-                        // Send message to extension to open the URL
-                        postToHost({ type: 'openLink', url });
+                        const { path: pathPart, fragment } = parseLinkTarget(url);
+                        if (pathPart === '' && fragment) {
+                            // Pure `#fragment`: scroll within the current document.
+                            scrollToAnchorInEditor(container, fragment);
+                        } else {
+                            // Has a path: let the extension host open the file
+                            // (and forward the fragment for cross-file scroll).
+                            postToHost({ type: 'openLink', url });
+                        }
                     }
                 }
             }
@@ -1282,6 +1308,14 @@ function init(): void {
                     if (lineTypeToolbar) {
                         lineTypeToolbar.style.display = 'none';
                     }
+                }
+                break;
+            }
+            case 'scrollToAnchor': {
+                // Scroll to a heading by slug (e.g. opened via `other.md#heading`).
+                const container = document.getElementById('editor');
+                if (container) {
+                    scrollToAnchorInEditor(container, message.slug);
                 }
                 break;
             }

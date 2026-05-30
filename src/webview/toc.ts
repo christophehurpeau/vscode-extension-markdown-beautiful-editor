@@ -79,6 +79,67 @@ export function updateToc(headings: TocHeading[]): void {
 }
 
 /**
+ * Strip inline markdown formatting from heading text so the result matches the
+ * rendered text GitHub slugifies. Removes emphasis/code markers and reduces
+ * `[label](url)` links to their label.
+ */
+export function stripInlineMarkdown(text: string): string {
+    return text
+        // links: [label](url) -> label
+        .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+        // bold/italic/strikethrough markers and inline code backticks
+        .replace(/(\*\*|__|\*|_|~~|`)/g, '');
+}
+
+/**
+ * Slugify heading text the way GitHub does: strip inline markdown, lowercase,
+ * drop punctuation (keeping spaces and hyphens), then replace runs of
+ * whitespace with single hyphens.
+ *
+ * Pure (no DOM) so it can be unit-tested directly.
+ */
+export function slugify(text: string): string {
+    return stripInlineMarkdown(text)
+        .trim()
+        .toLowerCase()
+        // remove anything that isn't a word char (incl. unicode letters), space or hyphen
+        .replace(/[^\p{L}\p{N} \-]/gu, '')
+        .replace(/\s+/g, '-');
+}
+
+/**
+ * Compute a slug for each heading, disambiguating duplicates the way GitHub
+ * does: the first occurrence keeps the bare slug, subsequent occurrences get
+ * `-1`, `-2`, … appended.
+ *
+ * Pure (no DOM) so it can be unit-tested directly.
+ */
+export function computeHeadingSlugs(headings: TocHeading[]): string[] {
+    const seen = new Map<string, number>();
+    return headings.map((heading) => {
+        const base = slugify(heading.text);
+        const count = seen.get(base) ?? 0;
+        seen.set(base, count + 1);
+        return count === 0 ? base : `${base}-${count}`;
+    });
+}
+
+/**
+ * Find the heading index matching a slug (a `#fragment` with the leading `#`
+ * already stripped). Returns the index into the {@link extractHeadingsFromMarkdown}
+ * output — which matches the index convention used by {@link scrollToHeading} —
+ * or null if no heading matches.
+ *
+ * Pure (no DOM) so it can be unit-tested directly.
+ */
+export function findHeadingIndexBySlug(headings: TocHeading[], slug: string): number | null {
+    const target = slug.toLowerCase();
+    const slugs = computeHeadingSlugs(headings);
+    const index = slugs.indexOf(target);
+    return index === -1 ? null : index;
+}
+
+/**
  * Map a TOC heading index (Nth heading) to the absolute editor line index.
  *
  * Pure (no DOM) so it can be unit-tested directly. `lineTexts` are the
