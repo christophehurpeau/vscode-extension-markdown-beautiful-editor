@@ -1,1 +1,36 @@
+# Markdown Beautiful Editor — VS Code Extension
+
+WYSIWYG-style markdown custom editor with visual syntax styling, GitHub alerts, and table of contents. Registered as an optional `customEditor` for `*.md` files.
+
 - Use yarn, not npx.
+
+## Commands
+
+```bash
+yarn compile          # type-check + lint + build (dev)
+yarn watch            # watch mode (esbuild + tsc in parallel)
+yarn package          # production build
+yarn test             # full test suite (compile + lint + unit + integration)
+yarn test:unit        # mocha unit tests only (fast, no VS Code needed)
+yarn test:integration # vscode-test integration tests
+yarn lint             # eslint src/
+yarn check-types      # tsc type check only
+```
+
+## Architecture
+
+Two separate bundles compiled by esbuild:
+- **Extension host** (`src/extension.ts`, `src/editor/`) — runs in Node.js, registers the custom editor
+- **Webview** (`src/webview/`) — runs in the browser inside the VS Code webview panel
+
+Entry points: `src/extension.ts` (host), `src/webview/main.ts` (webview)
+
+## Testing
+
+Unit tests in `src/test/unit/` cover parser, serializer, cursor, diff, and toolbar logic — no VS Code needed.
+Integration test in `src/test/integration/` requires a VS Code instance via `vscode-test`.
+Compiled test output goes to `out/`.
+
+## Publishing
+
+See [PUBLISHING.md](PUBLISHING.md). Uses `vsce` (pinned to 2.15.0 in devDeps).
