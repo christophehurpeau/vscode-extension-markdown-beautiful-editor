@@ -107,6 +107,27 @@ No headings at all.`;
         it('returns null when the heading index is out of range', () => {
             assert.strictEqual(findHeadingLineIndex(['# A', 'text'], 1), null);
         });
+
+        it('skips empty-text heading lines so indices stay aligned with the TOC', () => {
+            // A bare "# " is excluded from the TOC (extractHeadingsFromMarkdown
+            // skips it), so the line walk must skip it too. Otherwise clicking
+            // the TOC entry for "Real" would scroll to the wrong line.
+            const markdown = '# \n\n# Real\n\ntext\n\n## Second';
+            const lineTexts = markdown.split('\n');
+
+            const headings = extractHeadingsFromMarkdown(markdown);
+            assert.deepStrictEqual(headings.map(h => h.text), ['Real', 'Second']);
+
+            // TOC index 0 → "Real" on line 2, index 1 → "Second" on line 6.
+            assert.strictEqual(findHeadingLineIndex(lineTexts, 0), 2);
+            assert.strictEqual(findHeadingLineIndex(lineTexts, 1), 6);
+        });
+
+        it('does not count "#NoSpace" or 7+ hashes as headings', () => {
+            const lineTexts = ['#NoSpace', '####### Nope', '# Valid'];
+            assert.strictEqual(findHeadingLineIndex(lineTexts, 0), 2);
+            assert.strictEqual(findHeadingLineIndex(lineTexts, 1), null);
+        });
     });
 
     describe('Clicking a TOC entry', () => {

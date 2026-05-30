@@ -6,6 +6,21 @@ export interface TocHeading {
     text: string;
 }
 
+const HEADING_RE = /^(#{1,6})\s+(.*)$/;
+
+/**
+ * Whether a line is a heading that appears in the TOC.
+ *
+ * A line counts only when it is an ATX heading (1–6 hashes + whitespace) **and**
+ * its text is non-empty after trimming. This is the single source of truth used
+ * by both heading extraction and line-index lookup, so the TOC entry order can
+ * never diverge from the line-counting walk (e.g. a bare `# ` is ignored by both).
+ */
+export function isTocHeadingLine(text: string): boolean {
+    const match = text.match(HEADING_RE);
+    return match !== null && match[2].trim().length > 0;
+}
+
 /**
  * Extract headings from raw markdown text.
  *
@@ -15,7 +30,7 @@ export interface TocHeading {
 export function extractHeadingsFromMarkdown(markdown: string): TocHeading[] {
     const headings: TocHeading[] = [];
     for (const line of markdown.split('\n')) {
-        const match = line.match(/^(#{1,6})\s+(.*)$/);
+        const match = line.match(HEADING_RE);
         if (match && match[2].trim()) {
             headings.push({ level: match[1].length, text: match[2] });
         }
@@ -73,7 +88,7 @@ export function updateToc(headings: TocHeading[]): void {
 export function findHeadingLineIndex(lineTexts: string[], headingIndex: number): number | null {
     let headingCount = 0;
     for (let i = 0; i < lineTexts.length; i++) {
-        if (/^#{1,6}\s/.test(lineTexts[i])) {
+        if (isTocHeadingLine(lineTexts[i])) {
             if (headingCount === headingIndex) {
                 return i;
             }
@@ -167,8 +182,12 @@ function updateActiveHeading(): void {
     let headingCount = 0;
 
     lines.forEach((line: Element) => {
-        const text = line.textContent || '';
-        if (/^#{1,6}\s/.test(text)) {
+        // Read .line-content only — the .line-prefix holds the rendered line
+        // number, so the full textContent would start with a digit and never
+        // match. This mirrors findHeadingLineIndex so the spy index lines up
+        // with the TOC entry order.
+        const text = line.querySelector('.line-content')?.textContent || '';
+        if (isTocHeadingLine(text)) {
             const rect = line.getBoundingClientRect();
             const editorRect = editorMain.getBoundingClientRect();
             const relativeTop = rect.top - editorRect.top + scrollTop;

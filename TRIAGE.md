@@ -15,7 +15,7 @@ Scope note: the consolidation refactor deliberately did **not** fix these
 | 3 | Low | High | Dead `resolveImage` / `imageResolved` round-trip |
 | 4 | Medium | Medium | Tab uses deprecated `execCommand`, bypasses edit pipeline |
 | 5 | Low (perf) | High | `isDiffAvailable` runs the git lookup twice |
-| 6 | Medium | Medium | TOC index vs editor heading count can diverge (wrong scroll target) |
+| 6 | ✅ Fixed | Medium | TOC index vs editor heading count can diverge (wrong scroll target) |
 | 7 | Medium | Medium | `isExternalUpdate` can stay stuck on a render throw (2 sites) |
 | 8 | Medium | Low | Edits within the debounce window can be lost on close |
 | 9 | Low | Medium | `update` while in init-diff-mode renders onto the diff DOM |
@@ -115,7 +115,7 @@ third time) plus a separate `openTextDocument`/`getText`. The repository lookup 
 
 ---
 
-## 6. TOC index vs editor heading count can diverge
+## 6. TOC index vs editor heading count can diverge ✅ Fixed
 
 **Severity: Medium · Confidence: Medium**
 
@@ -123,17 +123,24 @@ third time) plus a separate `openTextDocument`/`getText`. The repository lookup 
 
 `extractHeadingsFromMarkdown` includes a heading only when `match[2].trim()` is
 non-empty, so a TOC entry's `data-heading-index` is its position **among non-empty
-headings**. But `scrollToHeading` and `updateActiveHeading` locate the target by
+headings**. But `scrollToHeading` and `updateActiveHeading` located the target by
 counting **every** editor line matching `/^#{1,6}\s/` — which includes empty-text
-heading lines (e.g. a bare `# `). When such a line exists above a TOC entry, the
-indices drift and clicking the entry scrolls to the wrong heading (and scroll-spy
-highlights the wrong item).
+heading lines (e.g. a bare `# `). When such a line existed above a TOC entry, the
+indices drifted and clicking the entry scrolled to the wrong heading (and scroll-spy
+highlighted the wrong item).
 
 This predates the consolidation refactor; the old mock-doc path had the same
 mismatch.
 
-**Suggested fix:** make both sides agree — either include empty headings in the TOC
-list, or have the scroll/spy logic skip heading lines with empty text.
+**Fix applied:** introduced a single `isTocHeadingLine(text)` predicate (heading with
+non-empty text) and routed all three sites through it — `extractHeadingsFromMarkdown`,
+`findHeadingLineIndex`, and `updateActiveHeading` — so the TOC entry order can no
+longer diverge from the line-counting walk. While there, `updateActiveHeading` now
+reads `.line-content` instead of the full `.line` `textContent`: the `.line-prefix`
+holds the rendered line number, so the old read started with a digit and never matched
+the heading regex (a latent scroll-spy bug). Regression tests added in
+[toc.test.ts](src/test/unit/toc.test.ts) under `Heading line lookup`, asserting a bare
+`# ` is skipped and indices stay aligned with TOC extraction.
 
 ---
 
