@@ -170,6 +170,22 @@ function scrollToAnchorInEditor(container: HTMLElement, slug: string): void {
     });
 }
 
+// Scroll the editor to the footnote element (definition or reference) matching
+// `id`, using `selector` to pick which side to jump to. Deferred to the next
+// animation frames for the same reasons as `scrollToAnchorInEditor`.
+function scrollToFootnote(container: HTMLElement, id: string, selector: string): void {
+    const escaped = (typeof CSS !== 'undefined' && CSS.escape) ? CSS.escape(id) : id.replace(/"/g, '\\"');
+    const target = container.querySelector(`${selector}[data-footnote-id="${escaped}"]`) as HTMLElement | null;
+    if (!target) {
+        return;
+    }
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+    });
+}
+
 /**
  * Resolve a reference-style link label to its destination URL by finding the
  * matching link reference definition (`[label]: url`) in the document. Labels
@@ -1002,6 +1018,27 @@ function initEditor(container: HTMLElement, markdown: string): void {
                         postToHost({ type: 'openLink', url });
                     }
                 }
+            }
+
+            // Check if clicked on a footnote reference ([^id]) or definition
+            // ([^id]:): jump to the other side, like links do for `#fragment`.
+            const footnoteRef = target.closest('.md-footnote');
+            if (footnoteRef) {
+                e.preventDefault();
+                const id = footnoteRef.getAttribute('data-footnote-id');
+                if (id) {
+                    scrollToFootnote(container, id, '.md-footnote-def');
+                }
+                return;
+            }
+            const footnoteDef = target.closest('.md-footnote-def');
+            if (footnoteDef) {
+                e.preventDefault();
+                const id = footnoteDef.getAttribute('data-footnote-id');
+                if (id) {
+                    scrollToFootnote(container, id, '.md-footnote');
+                }
+                return;
             }
 
             // Check if clicked on an image URL

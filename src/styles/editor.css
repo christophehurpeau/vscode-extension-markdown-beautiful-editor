@@ -484,12 +484,16 @@ body:has(.toc-sidebar:not([style*="display: none"])) .toolbar {
 
 /* Cmd/Ctrl+Click to open links */
 #editor.cmd-held .md-link,
-#editor.cmd-held .md-image {
+#editor.cmd-held .md-image,
+#editor.cmd-held .md-footnote,
+#editor.cmd-held .md-footnote-def {
     cursor: pointer;
 }
 
 #editor.cmd-held .md-link:hover,
-#editor.cmd-held .md-image:hover {
+#editor.cmd-held .md-image:hover,
+#editor.cmd-held .md-footnote:hover,
+#editor.cmd-held .md-footnote-def:hover {
     background: rgba(88, 166, 255, 0.15);
     border-radius: 3px;
 }

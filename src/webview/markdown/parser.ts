@@ -133,7 +133,7 @@ export function styleInline(text: string): string {
     // Footnote references: [^id]
     result = result.replace(
         /\[\^([^\]]+)\]/g,
-        '<span class="md-footnote"><span class="md-syntax">[^</span>$1<span class="md-syntax">]</span></span>'
+        '<span class="md-footnote" data-footnote-id="$1"><span class="md-syntax">[^</span>$1<span class="md-syntax">]</span></span>'
     );
 
     // Links: [text](url)
@@ -326,7 +326,7 @@ export function styleLine(line: string): string {
     if (footnoteDefMatch) {
         const id = footnoteDefMatch[1];
         const content = styleInline(footnoteDefMatch[2]);
-        return `<span class="md-footnote-def"><span class="md-syntax">[^${escapeHtml(id)}]:</span> ${content}</span>`;
+        return `<span class="md-footnote-def" data-footnote-id="${escapeHtml(id)}"><span class="md-syntax">[^${escapeHtml(id)}]:</span> ${content}</span>`;
     }
 
     // Link reference definitions: [label]: url "optional title"

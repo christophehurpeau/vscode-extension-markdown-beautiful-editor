@@ -127,6 +127,12 @@ describe('Markdown Parser', () => {
             assert.strictEqual(text, 'see <https://example.com/a?x=1&y=2> here');
         });
 
+        it('tags a footnote reference with its id for navigation', () => {
+            const html = styleInline('see this[^note] here');
+            assert.ok(html.includes('md-footnote'));
+            assert.ok(html.includes('data-footnote-id="note"'));
+        });
+
         it('styles a mailto autolink', () => {
             const html = styleInline('<mailto:hi@example.com>');
             assert.ok(html.includes('md-autolink'));
@@ -198,6 +204,7 @@ describe('Markdown Parser', () => {
         it('does not treat footnote definitions as link definitions', () => {
             const html = styleLine('[^note]: a footnote');
             assert.ok(html.includes('md-footnote-def'));
+            assert.ok(html.includes('data-footnote-id="note"'));
             assert.ok(!html.includes('md-link-def'));
         });
     });
