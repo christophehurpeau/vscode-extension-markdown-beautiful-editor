@@ -31,6 +31,10 @@ Unit tests in `src/test/unit/` cover parser, serializer, cursor, diff, and toolb
 Integration test in `src/test/integration/` requires a VS Code instance via `vscode-test`.
 Compiled test output goes to `out/`.
 
+Always add unit tests for new or changed logic. Keep logic that can be tested without the DOM in pure functions (e.g. `src/shared/`) so it stays unit-testable; have the thin DOM/webview layer delegate to it.
+
+`yarn test:unit` runs the compiled `out/` and does NOT recompile first — run `yarn compile-tests` (or `yarn test`, which compiles) before it, or stale results will pass silently.
+
 There are two separate build paths: `compile-tests`/unit tests use tsc → `out/`, while the running webview loads the esbuild bundle at `dist/webview.js`. Passing unit tests does NOT mean the live webview is updated. After changing `src/webview/` code, run `yarn compile` (or keep `yarn watch` running) and reload the Extension Development Host (Cmd+R) before testing manually. Verify the bundle picked up a change with `grep -o "<symbol>" dist/webview.js`.
 
 ## Publishing
