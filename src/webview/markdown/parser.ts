@@ -202,6 +202,22 @@ export function escapeHtml(text: string): string {
 }
 
 /**
+ * Split an inline link/image destination (the content between the parens) into
+ * its URL and optional title. A title is anything after the first run of
+ * whitespace following the URL, e.g. `http://x "Title"` or `<http://x> 'Title'`.
+ * URLs never contain unescaped whitespace (or are wrapped in `<>`), so the first
+ * whitespace cleanly separates the two. Mirrors the link-definition logic so the
+ * `md-url` span holds only the URL — keeping it clickable when a title is present.
+ */
+function splitLinkDestination(dest: string): { url: string; title: string } {
+    const match = dest.match(/^(<[^>]*>|\S+)(?:\s+(.+))?$/);
+    if (!match) {
+        return { url: dest, title: '' };
+    }
+    return { url: match[1], title: match[2] ?? '' };
+}
+
+/**
  * Style inline markdown elements (bold, italic, code, links, etc.)
  */
 export function styleInline(text: string): string {
@@ -224,22 +240,48 @@ export function styleInline(text: string): string {
     // Now escape HTML
     result = escapeHtml(result);
 
-    // Images: ![alt](url) - must come before links
+    // Bracket/angle constructs (images, links, footnotes, autolinks) emit HTML
+    // that still contains literal `[`, `]`, `(`, `)` as syntax text. Without
+    // protection, a *later* construct's regex digs into an *earlier* one's output
+    // — e.g. the link regex matches the `](` inside a rendered image and wraps a
+    // broken, empty `.md-link` around it, which then swallows the image's click.
+    // So each construct stashes its finished HTML behind a placeholder and we
+    // restore them all once the bracket-matching passes are done (but before the
+    // emphasis passes, so `[**bold**](url)` still styles inside the link text).
+    const protectedSpans: string[] = [];
+    const PROTECT_OPEN = '';
+    const PROTECT_CLOSE = '';
+    const protect = (html: string): string => {
+        protectedSpans.push(html);
+        return PROTECT_OPEN + (protectedSpans.length - 1) + PROTECT_CLOSE;
+    };
+
+    // Images: ![alt](url "optional title") - must come before links. The title
+    // is split into its own span so `md-url` holds only the URL (clickable).
     result = result.replace(
         /!\[([^\]]*)\]\(([^)]+)\)/g,
-        '<span class="md-image"><span class="md-syntax">![</span><span class="md-alt">$1</span><span class="md-syntax">](</span><span class="md-url">$2</span><span class="md-syntax">)</span></span>'
+        (_match, alt, dest) => {
+            const { url, title } = splitLinkDestination(dest);
+            const titleHtml = title ? ` <span class="md-link-title">${title}</span>` : '';
+            return protect(`<span class="md-image"><span class="md-syntax">![</span><span class="md-alt">${alt}</span><span class="md-syntax">](</span><span class="md-url">${url}</span>${titleHtml}<span class="md-syntax">)</span></span>`);
+        }
     );
 
     // Footnote references: [^id]
     result = result.replace(
         /\[\^([^\]]+)\]/g,
-        '<span class="md-footnote" data-footnote-id="$1"><span class="md-syntax">[^</span>$1<span class="md-syntax">]</span></span>'
+        (_match, id) => protect(`<span class="md-footnote" data-footnote-id="${id}"><span class="md-syntax">[^</span>${id}<span class="md-syntax">]</span></span>`)
     );
 
-    // Links: [text](url)
+    // Links: [text](url "optional title"). The title is split into its own span
+    // so `md-url` holds only the URL (clickable), matching the image handling.
     result = result.replace(
         /\[([^\]]+)\]\(([^)]+)\)/g,
-        '<span class="md-link"><span class="md-syntax">[</span><span class="md-text">$1</span><span class="md-syntax">](</span><span class="md-url">$2</span><span class="md-syntax">)</span></span>'
+        (_match, text, dest) => {
+            const { url, title } = splitLinkDestination(dest);
+            const titleHtml = title ? ` <span class="md-link-title">${title}</span>` : '';
+            return protect(`<span class="md-link"><span class="md-syntax">[</span><span class="md-text">${text}</span><span class="md-syntax">](</span><span class="md-url">${url}</span>${titleHtml}<span class="md-syntax">)</span></span>`);
+        }
     );
 
     // Reference-style links: [text][label] (full) and [text][] (collapsed,
@@ -249,7 +291,7 @@ export function styleInline(text: string): string {
         /\[([^\]]+)\]\[([^\]]*)\]/g,
         (_match, text, label) => {
             const ref = (label || text).trim();
-            return `<span class="md-link md-ref-link" data-ref="${ref}"><span class="md-syntax">[</span><span class="md-text">${text}</span><span class="md-syntax">][</span><span class="md-ref">${label}</span><span class="md-syntax">]</span></span>`;
+            return protect(`<span class="md-link md-ref-link" data-ref="${ref}"><span class="md-syntax">[</span><span class="md-text">${text}</span><span class="md-syntax">][</span><span class="md-ref">${label}</span><span class="md-syntax">]</span></span>`);
         }
     );
 
@@ -262,8 +304,29 @@ export function styleInline(text: string): string {
     // `.md-url` make it clickable like other links.
     result = result.replace(
         /&lt;([a-zA-Z][a-zA-Z0-9+.-]{1,31}:[^\s]*?)&gt;/g,
-        '<span class="md-link md-autolink"><span class="md-syntax">&lt;</span><span class="md-url">$1</span><span class="md-syntax">&gt;</span></span>'
+        (_match, url) => protect(`<span class="md-link md-autolink"><span class="md-syntax">&lt;</span><span class="md-url">${url}</span><span class="md-syntax">&gt;</span></span>`)
     );
+
+    // Restore the protected link/image/footnote/autolink HTML now that every
+    // bracket-matching pass is done. Emphasis/code/etc. below only match
+    // asterisks/underscores/backticks/tildes/dollars, never brackets, so they
+    // can safely run over the restored HTML — and styling inside link text
+    // (e.g. `[**bold**](url)`) keeps working.
+    //
+    // Loop until stable: constructs nest, e.g. a linked image `[![alt](img)](url)`
+    // protects the image first, then protects the link wrapping that placeholder.
+    // A single `.replace()` restores the outer link but won't re-scan the HTML it
+    // just inserted, leaving the inner image placeholder behind (it would render
+    // as a stray digit). Re-running until no placeholder remains unwraps every level.
+    const restorePattern = new RegExp(PROTECT_OPEN + '(\\d+)' + PROTECT_CLOSE, 'g');
+    let previous: string;
+    do {
+        previous = result;
+        result = result.replace(
+            restorePattern,
+            (_match, index) => protectedSpans[parseInt(index, 10)]
+        );
+    } while (result !== previous);
 
     // Use placeholders for asterisks/underscores in output to prevent re-matching
     const ASTERISK = '\u0001';

@@ -108,6 +108,43 @@ describe('Markdown Parser', () => {
             assert.ok(html.includes('img.png'));
         });
 
+        it('renders a linked image (image wrapped in a link)', () => {
+            const html = styleInline(
+                '[![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/ciawICBvQoE/0.jpg)](http://www.youtube.com/watch?v=ciawICBvQoE)'
+            );
+            // Both the outer link and the inner image must be rendered.
+            assert.ok(html.includes('md-link'));
+            assert.ok(html.includes('md-image'));
+            assert.ok(html.includes('IMAGE ALT TEXT HERE'));
+            assert.ok(html.includes('http://img.youtube.com/vi/ciawICBvQoE/0.jpg'));
+            assert.ok(html.includes('http://www.youtube.com/watch?v=ciawICBvQoE'));
+            // No unrestored protection placeholders (\x03/\x04) should leak through;
+            // those previously rendered as a stray digit (e.g. "0").
+            assert.ok(!/[]/.test(html));
+        });
+
+        it('keeps an image title out of the URL span so it stays clickable', () => {
+            const html = styleInline('![alt text](https://example.com/icon.png "Logo Title Text 1")');
+            // The URL span must hold only the URL, not the trailing title.
+            assert.ok(html.includes('<span class="md-url">https://example.com/icon.png</span>'));
+            // The title is rendered in its own span.
+            assert.ok(html.includes('md-link-title'));
+            assert.ok(html.includes('Logo Title Text 1'));
+        });
+
+        it('keeps an image title out of the URL span for relative paths', () => {
+            const html = styleInline('![alt](images/icon.png "A title")');
+            assert.ok(html.includes('<span class="md-url">images/icon.png</span>'));
+            assert.ok(html.includes('md-link-title'));
+        });
+
+        it('keeps a link title out of the URL span so it stays clickable', () => {
+            const html = styleInline('[text](https://example.com "Some title")');
+            assert.ok(html.includes('<span class="md-url">https://example.com</span>'));
+            assert.ok(html.includes('md-link-title'));
+            assert.ok(html.includes('Some title'));
+        });
+
         it('styles a URI autolink as a clickable link', () => {
             const html = styleInline('<http://www.example.com>');
             assert.ok(html.includes('md-autolink'));

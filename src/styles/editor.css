@@ -505,7 +505,8 @@ body:has(.toc-sidebar:not([style*="display: none"])) .toolbar {
     color: var(--vscode-descriptionForeground, #8b949e);
 }
 
-.md-link-def-title {
+.md-link-def-title,
+.md-link-title {
     color: var(--vscode-descriptionForeground, #8b949e);
     font-style: italic;
 }
