@@ -455,6 +455,26 @@ body:has(.toc-sidebar:not([style*="display: none"])) .toolbar {
     font-size: 0.9em;
 }
 
+/* Reference-style links: [text][label] */
+.md-ref-link .md-ref {
+    color: var(--vscode-descriptionForeground, #8b949e);
+    font-size: 0.9em;
+}
+
+/* Link reference definitions: [label]: url "title" */
+.md-link-def .md-ref {
+    color: var(--vscode-textLink-foreground, #58a6ff);
+}
+
+.md-link-def .md-url {
+    color: var(--vscode-descriptionForeground, #8b949e);
+}
+
+.md-link-def-title {
+    color: var(--vscode-descriptionForeground, #8b949e);
+    font-style: italic;
+}
+
 /* Cmd/Ctrl+Click to open links */
 #editor.cmd-held .md-link,
 #editor.cmd-held .md-image {

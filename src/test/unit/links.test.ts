@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { parseLinkTarget } from '../../shared/links';
+import { parseLinkTarget, resolveReferenceUrl, linkDisplayUrl } from '../../shared/links';
 
 describe('parseLinkTarget', () => {
     it('splits a path and fragment', () => {
@@ -22,6 +22,13 @@ describe('parseLinkTarget', () => {
         assert.deepStrictEqual(parseLinkTarget("../LICENSE 'the license'"), { path: '../LICENSE', fragment: '' });
     });
 
+    it('strips a double-quoted title containing an apostrophe', () => {
+        assert.deepStrictEqual(
+            parseLinkTarget('https://www.google.com "Google\'s Homepage"'),
+            { path: 'https://www.google.com', fragment: '' }
+        );
+    });
+
     it('strips a title on a pure fragment', () => {
         assert.deepStrictEqual(parseLinkTarget('#links "tip"'), { path: '', fragment: 'links' });
     });
@@ -36,5 +43,65 @@ describe('parseLinkTarget', () => {
 
     it('leaves a plain web URL untouched', () => {
         assert.deepStrictEqual(parseLinkTarget('https://example.com/page'), { path: 'https://example.com/page', fragment: '' });
+    });
+});
+
+describe('linkDisplayUrl', () => {
+    it("shows only the URL for an inline link with a title", () => {
+        // [I'm an inline-style link with title](https://www.google.com "Google's Homepage")
+        assert.strictEqual(
+            linkDisplayUrl('https://www.google.com "Google\'s Homepage"'),
+            'https://www.google.com'
+        );
+    });
+
+    it('keeps the fragment but drops the title', () => {
+        assert.strictEqual(linkDisplayUrl('./full.md#links "Go to links"'), './full.md#links');
+    });
+
+    it('returns a pure fragment with its leading hash', () => {
+        assert.strictEqual(linkDisplayUrl('#links'), '#links');
+    });
+
+    it('leaves a plain URL untouched', () => {
+        assert.strictEqual(linkDisplayUrl('https://example.com/page'), 'https://example.com/page');
+    });
+});
+
+describe('resolveReferenceUrl', () => {
+    const defs = [
+        { label: 'Arbitrary case-insensitive reference text', url: 'https://www.mozilla.org' },
+        { label: '1', url: 'http://slashdot.org' },
+    ];
+
+    it('resolves a label to its URL', () => {
+        assert.strictEqual(resolveReferenceUrl('1', defs), 'http://slashdot.org');
+    });
+
+    it('matches labels case-insensitively', () => {
+        assert.strictEqual(
+            resolveReferenceUrl('ARBITRARY CASE-INSENSITIVE REFERENCE TEXT', defs),
+            'https://www.mozilla.org'
+        );
+    });
+
+    it('ignores surrounding whitespace on both sides', () => {
+        assert.strictEqual(resolveReferenceUrl('  1  ', [{ label: ' 1 ', url: 'http://x' }]), 'http://x');
+    });
+
+    it('returns an empty string when no definition matches', () => {
+        assert.strictEqual(resolveReferenceUrl('unknown', defs), '');
+    });
+
+    it('returns an empty string when there are no definitions', () => {
+        assert.strictEqual(resolveReferenceUrl('1', []), '');
+    });
+
+    it('returns the first matching definition', () => {
+        const dupes = [
+            { label: 'ref', url: 'http://first' },
+            { label: 'ref', url: 'http://second' },
+        ];
+        assert.strictEqual(resolveReferenceUrl('ref', dupes), 'http://first');
     });
 });

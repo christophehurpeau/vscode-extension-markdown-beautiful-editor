@@ -4,7 +4,7 @@ import {
     getLineType,
     MENU_LINE_TYPES} from './markdown/parser';
 import { extractMarkdown, getSelectedMarkdownText } from './markdown/serializer';
-import { parseLinkTarget } from '../shared/links';
+import { parseLinkTarget, resolveReferenceUrl, linkDisplayUrl } from '../shared/links';
 import {
     saveState as saveEditorState,
     getStoredState,
@@ -168,6 +168,19 @@ function scrollToAnchorInEditor(container: HTMLElement, slug: string): void {
     requestAnimationFrame(() => {
         requestAnimationFrame(() => scrollToHeading(index));
     });
+}
+
+/**
+ * Resolve a reference-style link label to its destination URL by finding the
+ * matching link reference definition (`[label]: url`) in the document. Labels
+ * are matched case-insensitively, per the CommonMark spec.
+ */
+function resolveLinkReference(container: HTMLElement, ref: string): string {
+    const definitions = Array.from(container.querySelectorAll('.md-link-def')).map(def => ({
+        label: def.getAttribute('data-ref') || '',
+        url: def.querySelector('.md-url')?.textContent || '',
+    }));
+    return resolveReferenceUrl(ref, definitions);
 }
 
 // ============================================
@@ -968,19 +981,25 @@ function initEditor(container: HTMLElement, markdown: string): void {
             const linkSpan = target.closest('.md-link');
             if (linkSpan) {
                 e.preventDefault();
+                // Inline links carry the URL directly; reference-style links
+                // ([text][label]) resolve their label against a definition.
                 const urlSpan = linkSpan.querySelector('.md-url');
-                if (urlSpan) {
-                    const url = urlSpan.textContent || '';
-                    if (url) {
-                        const { path: pathPart, fragment } = parseLinkTarget(url);
-                        if (pathPart === '' && fragment) {
-                            // Pure `#fragment`: scroll within the current document.
-                            scrollToAnchorInEditor(container, fragment);
-                        } else {
-                            // Has a path: let the extension host open the file
-                            // (and forward the fragment for cross-file scroll).
-                            postToHost({ type: 'openLink', url });
-                        }
+                let url = urlSpan ? (urlSpan.textContent || '') : '';
+                if (!url) {
+                    const ref = linkSpan.getAttribute('data-ref');
+                    if (ref) {
+                        url = resolveLinkReference(container, ref);
+                    }
+                }
+                if (url) {
+                    const { path: pathPart, fragment } = parseLinkTarget(url);
+                    if (pathPart === '' && fragment) {
+                        // Pure `#fragment`: scroll within the current document.
+                        scrollToAnchorInEditor(container, fragment);
+                    } else {
+                        // Has a path: let the extension host open the file
+                        // (and forward the fragment for cross-file scroll).
+                        postToHost({ type: 'openLink', url });
                     }
                 }
             }
@@ -1000,6 +1019,29 @@ function initEditor(container: HTMLElement, markdown: string): void {
         }
     });
     
+    // Reveal a link's URL as a native tooltip on hover. Inline links and images
+    // carry the URL in their `.md-url` span; reference-style links resolve their
+    // label against the document's definitions. Resolved lazily (rather than at
+    // render time) so it reflects the current state of the document.
+    container.addEventListener('mouseover', (e) => {
+        const linkSpan = (e.target as HTMLElement).closest('.md-link, .md-image');
+        if (!linkSpan) {
+            return;
+        }
+        const urlSpan = linkSpan.querySelector('.md-url');
+        let url = urlSpan ? (urlSpan.textContent || '') : '';
+        if (!url) {
+            const ref = linkSpan.getAttribute('data-ref');
+            url = ref ? resolveLinkReference(container, ref) : '';
+        }
+        const displayUrl = url ? linkDisplayUrl(url) : '';
+        if (displayUrl) {
+            linkSpan.setAttribute('title', displayUrl);
+        } else {
+            linkSpan.removeAttribute('title');
+        }
+    });
+
     // Show pointer cursor when Cmd/Ctrl is held over links
     document.addEventListener('keydown', (e) => {
         if (e.metaKey || e.ctrlKey) {

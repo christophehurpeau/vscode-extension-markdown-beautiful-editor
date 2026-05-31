@@ -18,11 +18,35 @@ export interface LinkTarget {
     fragment: string;
 }
 
+/** A parsed link reference definition: `[label]: url "title"`. */
+export interface LinkDefinition {
+    label: string;
+    url: string;
+}
+
+/**
+ * Resolve a reference-style link label to its destination URL. Labels are
+ * matched case-insensitively and with surrounding whitespace collapsed, per the
+ * CommonMark spec. Returns the first matching definition's URL, or `''` when
+ * none matches. Pure so it can be unit-tested without a DOM.
+ */
+export function resolveReferenceUrl(ref: string, definitions: ReadonlyArray<LinkDefinition>): string {
+    const wanted = ref.trim().toLowerCase();
+    for (const def of definitions) {
+        if (def.label.trim().toLowerCase() === wanted) {
+            return def.url;
+        }
+    }
+    return '';
+}
+
 export function parseLinkTarget(raw: string): LinkTarget {
     let dest = raw.trim();
 
-    // Strip a trailing title: `dest "title"` or `dest 'title'`.
-    const titleMatch = dest.match(/^(.*?)\s+["'][^"']*["']\s*$/);
+    // Strip a trailing title: `dest "title"` or `dest 'title'`. A double-quoted
+    // title may contain apostrophes (and vice versa), so match each quote style
+    // against its own delimiter rather than a shared character class.
+    const titleMatch = dest.match(/^(.*?)\s+(?:"[^"]*"|'[^']*')\s*$/);
     if (titleMatch) {
         dest = titleMatch[1].trim();
     }
@@ -37,4 +61,13 @@ export function parseLinkTarget(raw: string): LinkTarget {
     const fragment = hashIndex === -1 ? '' : dest.slice(hashIndex + 1);
 
     return { path, fragment };
+}
+
+/**
+ * The clean destination URL of a link for display (e.g. a hover tooltip): any
+ * title and angle brackets are stripped, but the `#fragment` is kept.
+ */
+export function linkDisplayUrl(raw: string): string {
+    const { path, fragment } = parseLinkTarget(raw);
+    return fragment ? `${path}#${fragment}` : path;
 }

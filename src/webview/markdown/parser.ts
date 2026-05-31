@@ -142,6 +142,17 @@ export function styleInline(text: string): string {
         '<span class="md-link"><span class="md-syntax">[</span><span class="md-text">$1</span><span class="md-syntax">](</span><span class="md-url">$2</span><span class="md-syntax">)</span></span>'
     );
 
+    // Reference-style links: [text][label] (full) and [text][] (collapsed,
+    // where the label defaults to the text). The label is resolved against a
+    // matching link reference definition at click time.
+    result = result.replace(
+        /\[([^\]]+)\]\[([^\]]*)\]/g,
+        (_match, text, label) => {
+            const ref = (label || text).trim();
+            return `<span class="md-link md-ref-link" data-ref="${ref}"><span class="md-syntax">[</span><span class="md-text">${text}</span><span class="md-syntax">][</span><span class="md-ref">${label}</span><span class="md-syntax">]</span></span>`;
+        }
+    );
+
     // Use placeholders for asterisks/underscores in output to prevent re-matching
     const ASTERISK = '\u0001';
     const UNDERSCORE = '\u0002';
@@ -304,6 +315,21 @@ export function styleLine(line: string): string {
         const id = footnoteDefMatch[1];
         const content = styleInline(footnoteDefMatch[2]);
         return `<span class="md-footnote-def"><span class="md-syntax">[^${escapeHtml(id)}]:</span> ${content}</span>`;
+    }
+
+    // Link reference definitions: [label]: url "optional title"
+    // (footnote definitions, matched above, take precedence over [^id]:)
+    const linkDefMatch = line.match(/^(\s*)\[([^\]^][^\]]*)\]:\s+(\S.*)$/);
+    if (linkDefMatch) {
+        const indent = linkDefMatch[1];
+        const label = linkDefMatch[2];
+        const dest = linkDefMatch[3];
+        // Split the destination into its URL and an optional title.
+        const destMatch = dest.match(/^(<[^>]*>|\S+)(?:\s+(.+))?$/);
+        const url = destMatch ? destMatch[1] : dest;
+        const title = destMatch && destMatch[2] ? destMatch[2] : '';
+        const titleHtml = title ? ` <span class="md-link-def-title">${escapeHtml(title)}</span>` : '';
+        return `${escapeHtml(indent)}<span class="md-link-def" data-ref="${escapeHtml(label.trim())}"><span class="md-syntax">[</span><span class="md-ref">${escapeHtml(label)}</span><span class="md-syntax">]:</span> <span class="md-url">${escapeHtml(url)}</span>${titleHtml}</span>`;
     }
 
     // Regular paragraph with inline styling

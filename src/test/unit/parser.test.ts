@@ -73,6 +73,32 @@ describe('Markdown Parser', () => {
             assert.ok(html.includes('http://example.com'));
         });
 
+        it('styles a full reference-style link', () => {
+            const html = styleInline("[I'm a reference link][some ref]");
+            assert.ok(html.includes('md-ref-link'));
+            assert.ok(html.includes('data-ref="some ref"'));
+            assert.ok(html.includes('md-ref'));
+            assert.ok(html.includes("I'm a reference link") || html.includes('I&#39;m a reference link'));
+        });
+
+        it('uses numbers as reference labels', () => {
+            const html = styleInline('[a link][1]');
+            assert.ok(html.includes('md-ref-link'));
+            assert.ok(html.includes('data-ref="1"'));
+        });
+
+        it('defaults a collapsed reference label to the text', () => {
+            const html = styleInline('[shortcut][]');
+            assert.ok(html.includes('md-ref-link'));
+            assert.ok(html.includes('data-ref="shortcut"'));
+        });
+
+        it('still prefers inline links over reference links', () => {
+            const html = styleInline('[text](http://example.com)');
+            assert.ok(html.includes('md-link'));
+            assert.ok(!html.includes('md-ref-link'));
+        });
+
         it('styles images before links', () => {
             const html = styleInline('![alt](img.png)');
             assert.ok(html.includes('md-image'));
@@ -114,6 +140,33 @@ describe('Markdown Parser', () => {
 
         it('styles a GitHub alert header', () => {
             assert.ok(styleLine('> [!NOTE]').includes('md-alert-note'));
+        });
+
+        it('styles a link reference definition', () => {
+            const html = styleLine('[some ref]: https://example.com');
+            assert.ok(html.includes('md-link-def'));
+            assert.ok(html.includes('data-ref="some ref"'));
+            assert.ok(html.includes('md-url'));
+            assert.ok(html.includes('https://example.com'));
+        });
+
+        it('styles a numeric link reference definition', () => {
+            const html = styleLine('[1]: http://slashdot.org');
+            assert.ok(html.includes('md-link-def'));
+            assert.ok(html.includes('data-ref="1"'));
+            assert.ok(html.includes('http://slashdot.org'));
+        });
+
+        it('styles the optional title of a link reference definition', () => {
+            const html = styleLine('[1]: http://slashdot.org "Slashdot"');
+            assert.ok(html.includes('md-link-def-title'));
+            assert.ok(html.includes('Slashdot'));
+        });
+
+        it('does not treat footnote definitions as link definitions', () => {
+            const html = styleLine('[^note]: a footnote');
+            assert.ok(html.includes('md-footnote-def'));
+            assert.ok(!html.includes('md-link-def'));
         });
     });
 
