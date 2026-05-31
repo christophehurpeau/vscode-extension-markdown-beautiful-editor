@@ -455,6 +455,13 @@ body:has(.toc-sidebar:not([style*="display: none"])) .toolbar {
     font-size: 0.9em;
 }
 
+/* Autolinks: <http://example.com> — the URL itself is the link text */
+.md-autolink .md-url {
+    color: var(--vscode-textLink-foreground, #58a6ff);
+    text-decoration: underline;
+    font-size: inherit;
+}
+
 /* Reference-style links: [text][label] */
 .md-ref-link .md-ref {
     color: var(--vscode-descriptionForeground, #8b949e);

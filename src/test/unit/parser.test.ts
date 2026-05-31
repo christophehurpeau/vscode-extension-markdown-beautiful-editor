@@ -106,6 +106,38 @@ describe('Markdown Parser', () => {
             assert.ok(html.includes('img.png'));
         });
 
+        it('styles a URI autolink as a clickable link', () => {
+            const html = styleInline('<http://www.example.com>');
+            assert.ok(html.includes('md-autolink'));
+            assert.ok(html.includes('md-link'));
+            assert.ok(html.includes('<span class="md-url">http://www.example.com</span>'));
+            // Angle brackets are kept as syntax so the raw text round-trips.
+            assert.ok(html.includes('<span class="md-syntax">&lt;</span>'));
+            assert.ok(html.includes('<span class="md-syntax">&gt;</span>'));
+        });
+
+        it('round-trips the raw <url> as text content', () => {
+            const html = styleInline('see <https://example.com/a?x=1&y=2> here');
+            // Strip tags and decode entities — should equal the original line.
+            const text = html
+                .replace(/<[^>]+>/g, '')
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/&amp;/g, '&');
+            assert.strictEqual(text, 'see <https://example.com/a?x=1&y=2> here');
+        });
+
+        it('styles a mailto autolink', () => {
+            const html = styleInline('<mailto:hi@example.com>');
+            assert.ok(html.includes('md-autolink'));
+            assert.ok(html.includes('<span class="md-url">mailto:hi@example.com</span>'));
+        });
+
+        it('does not treat schemeless angle text as an autolink', () => {
+            const html = styleInline('<not a link>');
+            assert.ok(!html.includes('md-autolink'));
+        });
+
         it('treats escaped markers as literal, not formatting', () => {
             const html = styleInline('\\*not bold\\*');
             assert.ok(html.includes('md-escaped'));

@@ -153,6 +153,18 @@ export function styleInline(text: string): string {
         }
     );
 
+    // URI autolinks: <scheme:...> (e.g. <http://example.com>, <mailto:a@b.c>).
+    // Operates on the HTML-escaped string, so the angle brackets are `&lt;`/`&gt;`
+    // and an `&` inside the URL is `&amp;` — the destination can never contain a
+    // bare `<`/`>` to confuse the delimiters (CommonMark forbids whitespace and
+    // angle brackets inside an autolink). The raw `<url>` is preserved verbatim
+    // across the spans so it round-trips on serialization, and `.md-link`/
+    // `.md-url` make it clickable like other links.
+    result = result.replace(
+        /&lt;([a-zA-Z][a-zA-Z0-9+.-]{1,31}:[^\s]*?)&gt;/g,
+        '<span class="md-link md-autolink"><span class="md-syntax">&lt;</span><span class="md-url">$1</span><span class="md-syntax">&gt;</span></span>'
+    );
+
     // Use placeholders for asterisks/underscores in output to prevent re-matching
     const ASTERISK = '\u0001';
     const UNDERSCORE = '\u0002';
