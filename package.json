@@ -82,6 +82,7 @@
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc -b --watch",
     "package": "yarn run check-types && yarn run lint && node esbuild.js --production",
+    "package:vsce": "vsce package",
     "compile-tests": "tsc -p tsconfig.test.json",
     "watch-tests": "tsc -p tsconfig.test.json -w",
     "check-types": "tsc -b && tsc -p tsconfig.test.json --noEmit",
