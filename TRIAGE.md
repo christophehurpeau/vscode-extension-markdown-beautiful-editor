@@ -13,7 +13,7 @@ Scope note: the consolidation refactor deliberately did **not** fix these
 | 1 | ✅ Fixed | High | Image title dropped on rewrite → data loss on save |
 | 2 | Low | High | Unreachable initial-diff-mode code |
 | 3 | Low | High | Dead `resolveImage` / `imageResolved` round-trip |
-| 4 | Medium | Medium | Tab uses deprecated `execCommand`, bypasses edit pipeline |
+| 4 | ✅ Fixed | Medium | Tab uses deprecated `execCommand`, bypasses edit pipeline |
 | 5 | Low (perf) | High | `isDiffAvailable` runs the git lookup twice |
 | 6 | ✅ Fixed | Medium | TOC index vs editor heading count can diverge (wrong scroll target) |
 | 7 | Medium | Medium | `isExternalUpdate` can stay stuck on a render throw (2 sites) |
@@ -80,22 +80,29 @@ comment. Either an abandoned feature or a half-removed one.
 
 ---
 
-## 4. Tab uses deprecated `execCommand` and bypasses the edit pipeline
+## 4. Tab uses deprecated `execCommand` and bypasses the edit pipeline ✅ Fixed
 
 **Severity: Medium · Confidence: Medium**
 
-[main.ts:830](src/webview/main.ts#L830)
+[main.ts](src/webview/main.ts) — Tab key handler
 
-`document.execCommand('insertText', false, '    ')` is the only edit operation that
-does not go through the markdown-splice + `rerender` path; every other key handler
+`document.execCommand('insertText', false, '    ')` was the only edit operation that
+did not go through the markdown-splice + `rerender` path; every other key handler
 builds the new markdown string explicitly. `execCommand` is deprecated and its
-behavior is inconsistent across environments. It happens to fire an `input` event
-(so `handleInput` re-syncs), but if `execCommand` is ever a no-op the Tab silently
-does nothing, and the inserted spaces land in the contenteditable DOM before the
+behavior is inconsistent across environments. It happened to fire an `input` event
+(so `handleInput` re-synced), but if `execCommand` was ever a no-op the Tab silently
+did nothing, and the inserted spaces landed in the contenteditable DOM before the
 re-render rather than as a controlled markdown edit.
 
-**Suggested fix:** insert the four spaces by splicing the markdown at the cursor
-and calling `rerender`, like the Enter handler does.
+**Fix applied:** the Tab handler now reads the selection in markdown coordinates
+(`getSelectionMarkdownPosition`), splices four spaces in via a new pure
+`insertText` helper in [operations.ts](src/webview/editor/operations.ts), and calls
+`rerender` — the same pipeline as Enter/Backspace. `insertText` collapses any
+selected range first (so Tab-over-selection replaces it) and returns the post-insert
+cursor; it shares `deleteRange`'s purity contract. Unit tests added in
+[operations.test.ts](src/test/unit/operations.test.ts) under `insertText`
+(cursor insert, mid-line insert, single- and multi-line selection replacement,
+newline-containing text).
 
 ---
 

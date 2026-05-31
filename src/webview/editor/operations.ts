@@ -50,6 +50,36 @@ export function deleteRange(lines: string[], range: LineRange): { lines: string[
 }
 
 /**
+ * Insert `text` at a selection range in an array of markdown lines.
+ *
+ * Pure: the input array is not mutated. Any selected range is removed first
+ * (a collapsed range is a no-op delete), then the text is inserted at that
+ * point. `text` may contain newlines. Returns the resulting lines and the
+ * cursor position immediately after the inserted text.
+ */
+export function insertText(lines: string[], range: LineRange, text: string): { lines: string[]; cursor: CursorPosition } {
+    // Collapse any selected range, then insert at the collapse point.
+    const { lines: collapsed, cursor: at } = deleteRange(lines, range);
+    const line = collapsed[at.lineIndex] ?? '';
+    const before = line.slice(0, at.offset);
+    const after = line.slice(at.offset);
+
+    const insertedLines = (before + text + after).split('\n');
+    const newLines = [
+        ...collapsed.slice(0, at.lineIndex),
+        ...insertedLines,
+        ...collapsed.slice(at.lineIndex + 1)
+    ];
+
+    const textLines = text.split('\n');
+    const cursor: CursorPosition = textLines.length === 1
+        ? { lineIndex: at.lineIndex, offset: at.offset + text.length }
+        : { lineIndex: at.lineIndex + textLines.length - 1, offset: textLines[textLines.length - 1].length };
+
+    return { lines: newLines, cursor };
+}
+
+/**
  * Remove any line-type prefix (heading, list, quote, code fence, …) from a line,
  * leaving the bare content.
  *

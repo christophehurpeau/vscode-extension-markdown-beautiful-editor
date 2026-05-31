@@ -16,7 +16,7 @@ import {
     restoreCursorPosition} from './editor/cursor';
 import {
     initDiffView} from './editor/diff';
-import { deleteRange, stripLinePrefix, applyLinePrefix } from './editor/operations';
+import { deleteRange, insertText, stripLinePrefix, applyLinePrefix } from './editor/operations';
 import type { HostToWebviewMessage, WebviewToHostMessage } from '../shared/messages';
 
 // Acquire VS Code API
@@ -872,10 +872,18 @@ function initEditor(container: HTMLElement, markdown: string): void {
         // Cmd/Ctrl+Z for undo (let browser handle it)
         // Cmd/Ctrl+Shift+Z or Cmd/Ctrl+Y for redo (let browser handle it)
         
-        // Tab handling for indentation
+        // Tab handling for indentation — splice four spaces into the markdown
+        // and re-render, matching the rest of the edit pipeline (no execCommand).
         if (e.key === 'Tab') {
             e.preventDefault();
-            document.execCommand('insertText', false, '    ');
+
+            const selection = window.getSelection();
+            const selPos = selection && getSelectionMarkdownPosition(container, selection);
+            if (selPos) {
+                const lines = extractMarkdown(container).split('\n');
+                const { lines: newLines, cursor } = insertText(lines, selPos, '    ');
+                rerender(newLines.join('\n'), cursor);
+            }
         }
         
         // Enter key - insert a proper newline
