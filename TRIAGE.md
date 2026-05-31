@@ -21,6 +21,7 @@ Scope note: the consolidation refactor deliberately did **not** fix these
 | 9 | Low | Medium | `update` while in init-diff-mode renders onto the diff DOM |
 | 10 | Low | Low | Inline link toggle-off regex is greedy |
 | 11 | Low | Low | `extractMarkdown` fallback can capture line-number text |
+| 12 | Medium | Med (repro pending) | Diffs don't render in this editor when it's the default for `*.md` |
 
 ---
 
@@ -231,6 +232,64 @@ the markdown. Requires an unusual DOM mutation to hit.
 
 **Suggested fix:** in the fallback, still exclude `.line-prefix` content, or skip
 children that aren't `.line`.
+
+---
+
+## 12. Diffs don't render in this editor when it's the default for `*.md`
+
+**Severity: Medium · Confidence: Medium (exact symptom repro-pending)**
+
+[package.json](package.json) (`customEditors[].priority: "option"`)
+
+The custom editor does not participate in VS Code's diff views. When it is the
+default editor for `*.md`, opening a diff (Source Control, "Compare with…", gutter
+diffs, multi-diff editor) does not render through this editor.
+
+`priority: "option"` is currently set **as a workaround for this** — it keeps the
+editor opt-in so VS Code routes diffs to the built-in text diff editor instead.
+That workaround is incomplete: a user can set
+`"workbench.editorAssociations": { "*.md": "markdown.beautifulEditor" }`, which
+makes this the default for diffs too and re-exposes the bug in the shipped config.
+
+**Reported symptom:** diff not rendered. **Repro pending** — needs to be pinned to
+one of: (a) blank / nothing rendered, (b) fallback to plain text diff, or (c) two
+non-diff-aware beautiful editors side by side. The observed result is VS Code-version
+dependent (the upstream basic-API path may give (c) on recent builds), so the repro
+should record the VS Code version.
+
+**Root cause:** custom editors can't detect diff context with the finalized API —
+the gap described in [microsoft/vscode#138525](https://github.com/microsoft/vscode/issues/138525).
+
+**Fix — native diff integration via the `customEditorDiffs` API.** VS Code PR
+[microsoft/vscode#313814](https://github.com/microsoft/vscode/pull/313814) adds the
+`customEditorDiffs` API, which lets this editor render VS Code's native diffs instead of
+falling back. For `CustomTextEditorProvider` it adds two optional methods:
+
+- `resolveCustomTextEditorInlineDiff(documents, webviewPanel, token)` — single webview,
+  inline diff of `documents.original` vs `documents.modified`.
+- `resolveCustomTextEditorSideBySideDiff(documents, webviewPanels, token)` — two linked
+  webviews (`webviewPanels.original` / `.modified`) for synced scroll, hidden chrome, etc.
+
+This hooks into *all* of VS Code's diff entry points, unlike the current manual git-HEAD
+toggle in [customEditorProvider.ts:125](src/editor/customEditorProvider.ts#L125). Related:
+a proposed API for computing text diffs with VS Code's own algorithm
+([microsoft/vscode#314939](https://github.com/microsoft/vscode/pull/314939)). Reference
+implementation: the built-in markdown preview
+([previewManager.ts](https://github.com/microsoft/vscode/blob/main/extensions/markdown-language-features/src/preview/previewManager.ts)).
+When implementing, reuse the existing `computeDiff` highlighting from
+[diff.ts](src/webview/editor/diff.ts) and consider retiring the manual toggle.
+
+**Blocked on:** `customEditorDiffs` is a *proposed* API. It requires
+`"enabledApiProposals": ["customEditorDiffs"]` + a vendored `.d.ts`, and **an extension
+using proposed APIs cannot be published to the Marketplace** — it only runs in the
+Extension Development Host or VS Code Insiders with the proposal manually enabled
+([docs](https://code.visualstudio.com/api/advanced-topics/using-proposed-api)). This
+extension is published (`chrp`, currently v0.2.3), so adopting it now would break the
+marketplace build. No finalization date is known as of 2026-05-31; the PR author flags it
+as unstable. **Revisit when** the proposal is finalized (appears in stable `@types/vscode`
+without `enabledApiProposals`). Until then the only mitigations are keeping
+`priority: "option"` and documenting `workbench.diffEditorAssociations` as the user-side
+escape hatch.
 
 ---
 
