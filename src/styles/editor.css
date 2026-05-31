@@ -333,6 +333,34 @@ body:has(.toc-sidebar:not([style*="display: none"])) .toolbar {
     font-family: var(--vscode-editor-font-family, monospace);
 }
 
+/*
+ * Each cell is an inline-block with a min-width set inline (in `ch`, against the
+ * monospace table font). `white-space: nowrap` collapses the author's padding
+ * spaces visually — the serializer keeps them in textContent, so padded and
+ * unpadded sources both align and the file round-trips — while never breaking a
+ * cell onto two lines. Using min-width (not width) lets cells whose styled
+ * content renders wider than its character count (inline code, bold) grow
+ * rather than overflow onto the next pipe.
+ */
+.md-table-cell {
+    display: inline-block;
+    box-sizing: content-box;
+    white-space: nowrap;
+    padding: 0 6px;
+    vertical-align: top;
+}
+
+/* Keep inline code at its character width inside tables so columns stay tight. */
+.md-table-cell .md-code {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.md-col-center { text-align: center; }
+.md-col-right { text-align: right; }
+.md-col-left,
+.md-col-none { text-align: left; }
+
 .md-table-sep {
     color: var(--vscode-editorLineNumber-foreground, #6e7681);
 }

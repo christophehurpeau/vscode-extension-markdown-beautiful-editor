@@ -82,6 +82,106 @@ function getBlockquoteDepth(line: string): number {
 }
 
 /**
+ * Column alignment of a markdown table, derived from the colons in the
+ * delimiter row (`:---` left, `:--:` center, `---:` right, `---` none).
+ */
+export type TableColumnAlign = 'left' | 'center' | 'right' | 'none';
+
+export interface TableColumn {
+    align: TableColumnAlign;
+    /** Width of the widest cell in this column, in characters (trimmed). */
+    width: number;
+}
+
+/**
+ * Whether a line is a table row: a leading and trailing pipe on the same line.
+ * Matches the pattern used by {@link styleLine}'s table branch.
+ */
+export function isTableRowLine(line: string): boolean {
+    return /^\|(.+)\|$/.test(line);
+}
+
+/**
+ * Split a table row into its cells, dropping the outer (empty) edges produced
+ * by the leading and trailing pipes. Surrounding whitespace is preserved so the
+ * serializer can round-trip the original text.
+ */
+function splitTableCells(line: string): string[] {
+    return line.split('|').slice(1, -1);
+}
+
+/**
+ * Whether a line is a table delimiter row (the `|---|:-:|--:|` row): every cell
+ * is dashes with optional surrounding colons.
+ */
+export function isTableDelimiterRow(line: string): boolean {
+    if (!isTableRowLine(line)) {
+        return false;
+    }
+    const cells = splitTableCells(line);
+    return cells.length > 0 && cells.every(c => /^\s*:?-+:?\s*$/.test(c));
+}
+
+/**
+ * Resolve the alignment of a single delimiter cell from its colons.
+ */
+function alignFromDelimiterCell(cell: string): TableColumnAlign {
+    const trimmed = cell.trim();
+    const left = trimmed.startsWith(':');
+    const right = trimmed.endsWith(':');
+    if (left && right) { return 'center'; }
+    if (right) { return 'right'; }
+    if (left) { return 'left'; }
+    return 'none';
+}
+
+/**
+ * Derive per-column alignment and width for a contiguous block of table rows.
+ * Width is the widest trimmed cell across all rows (including the delimiter, so
+ * the pipes line up with the author's dashes), measured in characters.
+ */
+export function parseTableColumns(rows: string[]): TableColumn[] {
+    const delimiterRow = rows.find(isTableDelimiterRow);
+    const aligns = delimiterRow ? splitTableCells(delimiterRow).map(alignFromDelimiterCell) : [];
+    const colCount = Math.max(aligns.length, ...rows.map(r => splitTableCells(r).length));
+
+    const columns: TableColumn[] = [];
+    for (let c = 0; c < colCount; c++) {
+        let width = 1;
+        for (const row of rows) {
+            const cell = splitTableCells(row)[c];
+            if (cell !== undefined) {
+                width = Math.max(width, cell.trim().length);
+            }
+        }
+        columns.push({ align: aligns[c] ?? 'none', width });
+    }
+    return columns;
+}
+
+/**
+ * Render a table row with column alignment. Each cell is an inline-block sized
+ * to its column width (in `ch`, against the monospace table font) and aligned
+ * per the delimiter colons. `white-space` is normalized in CSS so the author's
+ * padding spaces collapse visually while remaining in the text for round-trip.
+ */
+export function styleTableRow(line: string, columns: TableColumn[]): string {
+    const isDelimiter = isTableDelimiterRow(line);
+    const pipe = '<span class="md-syntax">|</span>';
+    const styledCells = splitTableCells(line).map((cell, i) => {
+        const col = columns[i] ?? { align: 'none' as TableColumnAlign, width: cell.trim().length || 1 };
+        // `min-width` (not `width`): cells whose styled content renders wider than
+        // their character budget — inline code, bold — grow instead of wrapping.
+        const style = `min-width:${col.width}ch`;
+        if (isDelimiter) {
+            return `<span class="md-table-cell md-table-sep md-col-${col.align}" style="${style}">${escapeHtml(cell)}</span>`;
+        }
+        return `<span class="md-table-cell md-col-${col.align}" style="${style}">${styleInline(cell)}</span>`;
+    });
+    return `<span class="md-table">${pipe}${styledCells.join(pipe)}${pipe}</span>`;
+}
+
+/**
  * Generate line prefix (line number)
  * @param lineNumber The line number (1-indexed)
  */
@@ -370,6 +470,8 @@ export function markdownToStyledHtml(markdown: string): string {
         isAlertContent: boolean;
         isCodeFence: boolean;
         isCodeContent: boolean;
+        isTableRow: boolean;
+        tableColumns: TableColumn[] | null;
         alertType: string | null;
     }
 
@@ -387,6 +489,8 @@ export function markdownToStyledHtml(markdown: string): string {
             isAlertContent: false,
             isCodeFence: false,
             isCodeContent: false,
+            isTableRow: false,
+            tableColumns: null,
             alertType: null
         };
 
@@ -435,6 +539,32 @@ export function markdownToStyledHtml(markdown: string): string {
         }
 
         lineInfos.push(info);
+    }
+
+    // Intermediate pass: detect contiguous table blocks and attach per-column
+    // alignment/width metadata. A block is only treated as a table if it has a
+    // delimiter row (`|---|:-:|--:|`); otherwise the lines render as plain text.
+    const isPlainLine = (info: LineInfo): boolean =>
+        !info.isCodeFence && !info.isCodeContent &&
+        !info.isAlertHeader && !info.isAlertContent && !info.isBlockquote;
+
+    for (let i = 0; i < lineInfos.length; i++) {
+        if (!isPlainLine(lineInfos[i]) || !isTableRowLine(lineInfos[i].line)) {
+            continue;
+        }
+        let j = i;
+        while (j < lineInfos.length && isPlainLine(lineInfos[j]) && isTableRowLine(lineInfos[j].line)) {
+            j++;
+        }
+        const blockLines = lineInfos.slice(i, j).map(info => info.line);
+        if (blockLines.length >= 2 && blockLines.some(isTableDelimiterRow)) {
+            const columns = parseTableColumns(blockLines);
+            for (let k = i; k < j; k++) {
+                lineInfos[k].isTableRow = true;
+                lineInfos[k].tableColumns = columns;
+            }
+        }
+        i = j - 1;
     }
 
     // Second pass: generate HTML with blockquote grouping classes
@@ -507,6 +637,13 @@ export function markdownToStyledHtml(markdown: string): string {
 
             const styledLine = styleLine(info.line);
             htmlLines.push(`<div class="${classes}">${prefix}<span class="line-content">${styledLine}</span></div>`);
+            continue;
+        }
+
+        // Table row (aligned columns, computed from the whole block above)
+        if (info.isTableRow && info.tableColumns) {
+            const styledLine = styleTableRow(info.line, info.tableColumns);
+            htmlLines.push(`<div class="line table-row">${prefix}<span class="line-content">${styledLine}</span></div>`);
             continue;
         }
 

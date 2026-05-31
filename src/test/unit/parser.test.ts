@@ -5,6 +5,8 @@ import {
     markdownToStyledHtml,
     escapeHtml,
     generateLinePrefix,
+    parseTableColumns,
+    isTableDelimiterRow,
 } from '../../webview/markdown/parser';
 
 /**
@@ -232,6 +234,72 @@ describe('Markdown Parser', () => {
         it('emits one line block per input line', () => {
             const html = markdownToStyledHtml('one\ntwo\nthree');
             assert.strictEqual((html.match(/<div class="line/g) || []).length, 3);
+        });
+    });
+
+    describe('table alignment', () => {
+        const TABLE = [
+            '| Tables        | Are           | Cool  |',
+            '| ------------- |:-------------:| -----:|',
+            '| col 3 is      | right-aligned | $1600 |',
+        ].join('\n');
+
+        it('detects column alignment from the delimiter colons', () => {
+            const cols = parseTableColumns(TABLE.split('\n'));
+            assert.deepStrictEqual(cols.map(c => c.align), ['none', 'center', 'right']);
+        });
+
+        it('sizes each column to the widest cell in the block', () => {
+            const cols = parseTableColumns(TABLE.split('\n'));
+            // col1: 13 dashes; col2: ":-------------:" = 15; col3: "-----:" = 6
+            assert.deepStrictEqual(cols.map(c => c.width), [13, 15, 6]);
+        });
+
+        it('still aligns when the source is unpadded', () => {
+            const cols = parseTableColumns([
+                '|Tables|Are|Cool|',
+                '|-|:-:|-:|',
+                '|col 3 is|right-aligned|$1600|',
+            ]);
+            assert.deepStrictEqual(cols.map(c => c.align), ['none', 'center', 'right']);
+            assert.deepStrictEqual(cols.map(c => c.width), [8, 13, 5]);
+        });
+
+        it('recognizes a delimiter row only with dashes and optional colons', () => {
+            assert.ok(isTableDelimiterRow('| --- |:-:| --: |'));
+            assert.ok(!isTableDelimiterRow('| a | b |'));
+            assert.ok(!isTableDelimiterRow('plain text'));
+        });
+
+        it('renders rows with inline-block cells, widths and alignment classes', () => {
+            const html = markdownToStyledHtml(TABLE);
+            assert.ok(html.includes('class="line table-row"'));
+            assert.ok(html.includes('md-table-cell md-col-center" style="min-width:15ch"'));
+            assert.ok(html.includes('md-table-cell md-col-right" style="min-width:6ch"'));
+            // delimiter row keeps the separator styling
+            assert.ok(html.includes('md-table-cell md-table-sep'));
+        });
+
+        it('leaves cell text intact so the source round-trips', () => {
+            const html = markdownToStyledHtml(TABLE);
+            const text = html
+                .split('<div class="line')
+                .slice(1)
+                .map(seg => {
+                    const m = seg.match(/<span class="line-content">([\s\S]*?)<\/span><\/div>/);
+                    return (m ? m[1] : '')
+                        .replace(/<[^>]+>/g, '')
+                        .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+                        .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+                })
+                .join('\n');
+            assert.strictEqual(text, TABLE);
+        });
+
+        it('does not treat a pipe block without a delimiter as a table', () => {
+            const html = markdownToStyledHtml('| a | b |\n| c | d |');
+            assert.ok(!html.includes('table-row'));
+            assert.ok(html.includes('md-table')); // falls back to styleLine's table styling
         });
     });
 });
