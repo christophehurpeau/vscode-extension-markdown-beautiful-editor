@@ -17,6 +17,24 @@ export function activate(context: vscode.ExtensionContext): void {
         )
     );
 
+    // Register command to open the current markdown file in the Beautiful Editor
+    context.subscriptions.push(
+        vscode.commands.registerCommand('markdown.beautifulEditor.open', async (uri?: vscode.Uri) => {
+            const target = uri ?? vscode.window.activeTextEditor?.document.uri;
+
+            if (!target) {
+                vscode.window.showErrorMessage('No active markdown file');
+                return;
+            }
+
+            await vscode.commands.executeCommand(
+                'vscode.openWith',
+                target,
+                'markdown.beautifulEditor'
+            );
+        })
+    );
+
     // Register toggle diff mode command
     context.subscriptions.push(
         vscode.commands.registerCommand('markdown.beautifulEditor.toggleDiffMode', async () => {

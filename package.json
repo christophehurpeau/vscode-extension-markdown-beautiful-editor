@@ -54,11 +54,26 @@
     ],
     "commands": [
       {
+        "command": "markdown.beautifulEditor.open",
+        "title": "Open with Markdown Beautiful Editor",
+        "category": "Markdown Beautiful Editor",
+        "icon": "$(sparkle-filled)"
+      },
+      {
         "command": "markdown.beautifulEditor.toggleDiffMode",
         "title": "Toggle Diff Mode",
         "category": "Markdown Beautiful Editor"
       }
-    ]
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "markdown.beautifulEditor.open",
+          "when": "editorLangId == markdown && !notebookEditorFocused",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "yarn run package",
