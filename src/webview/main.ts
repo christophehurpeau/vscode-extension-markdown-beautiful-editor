@@ -4,7 +4,7 @@ import {
     getLineType,
     MENU_LINE_TYPES} from './markdown/parser';
 import { extractMarkdown, getSelectedMarkdownText } from './markdown/serializer';
-import { parseLinkTarget, resolveReferenceUrl, linkDisplayUrl } from '../shared/links';
+import { parseLinkTarget, resolveReferenceUrl, linkDisplayUrl, inlineLinkText } from '../shared/links';
 import {
     saveState as saveEditorState,
     getStoredState,
@@ -602,14 +602,14 @@ function applyInlineFormat(format: string): void {
             break;
         case 'link':
             // Links are special - check if already a link
-            const linkMatch = selectedText.match(/^\[(.+)\]\(.+\)$/);
-            if (linkMatch) {
+            const linkLabel = inlineLinkText(selectedText);
+            if (linkLabel !== null) {
                 // Remove link formatting - extract just the text
-                const newLine = line.slice(0, selectionStart) + linkMatch[1] + line.slice(selectionEnd);
+                const newLine = line.slice(0, selectionStart) + linkLabel + line.slice(selectionEnd);
                 lines[cursorPos.lineIndex] = newLine;
                 rerender(lines.join('\n'), {
                     lineIndex: cursorPos.lineIndex,
-                    offset: selectionStart + linkMatch[1].length
+                    offset: selectionStart + linkLabel.length
                 });
                 return;
             }

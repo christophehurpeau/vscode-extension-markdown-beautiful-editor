@@ -64,6 +64,21 @@ export function parseLinkTarget(raw: string): LinkTarget {
 }
 
 /**
+ * If `text` is exactly a single inline link — `[label](dest)` with nothing
+ * before or after — return its label, otherwise `null`. Used by the toolbar to
+ * toggle a link off (unwrap it back to plain text).
+ *
+ * The label and destination groups exclude their own closing delimiter (`]`
+ * and `)`) rather than using a greedy `.+`, so a selection spanning two links
+ * (`[a](b) [c](d)`) or a link plus trailing `](…)` text does not match and get
+ * unwrapped incorrectly. Pure so it can be unit-tested without a DOM.
+ */
+export function inlineLinkText(text: string): string | null {
+    const match = text.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    return match ? match[1] : null;
+}
+
+/**
  * The clean destination URL of a link for display (e.g. a hover tooltip): any
  * title and angle brackets are stripped, but the `#fragment` is kept.
  */

@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { parseLinkTarget, resolveReferenceUrl, linkDisplayUrl } from '../../shared/links';
+import { parseLinkTarget, resolveReferenceUrl, linkDisplayUrl, inlineLinkText } from '../../shared/links';
 
 describe('parseLinkTarget', () => {
     it('splits a path and fragment', () => {
@@ -65,6 +65,40 @@ describe('linkDisplayUrl', () => {
 
     it('leaves a plain URL untouched', () => {
         assert.strictEqual(linkDisplayUrl('https://example.com/page'), 'https://example.com/page');
+    });
+});
+
+describe('inlineLinkText', () => {
+    it('returns the label of a single inline link', () => {
+        assert.strictEqual(inlineLinkText('[text](url)'), 'text');
+    });
+
+    it('matches a link whose destination carries a title', () => {
+        assert.strictEqual(inlineLinkText('[text](url "a title")'), 'text');
+    });
+
+    it('returns null for plain text', () => {
+        assert.strictEqual(inlineLinkText('not a link'), null);
+    });
+
+    it('does not unwrap a selection spanning two links', () => {
+        assert.strictEqual(inlineLinkText('[a](b) [c](d)'), null);
+    });
+
+    it('does not unwrap a link followed by trailing link-like text', () => {
+        assert.strictEqual(inlineLinkText('[a](b)](c)'), null);
+    });
+
+    it('does not unwrap text preceding a link', () => {
+        assert.strictEqual(inlineLinkText('before [a](b)'), null);
+    });
+
+    it('returns null for an empty destination', () => {
+        assert.strictEqual(inlineLinkText('[text]()'), null);
+    });
+
+    it('returns null for an empty label', () => {
+        assert.strictEqual(inlineLinkText('[](url)'), null);
     });
 });
 

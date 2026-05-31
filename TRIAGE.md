@@ -19,7 +19,7 @@ Scope note: the consolidation refactor deliberately did **not** fix these
 | 7 | Medium | Medium | `isExternalUpdate` can stay stuck on a render throw (2 sites) |
 | 8 | Medium | Low | Edits within the debounce window can be lost on close |
 | 9 | Low | Medium | `update` while in init-diff-mode renders onto the diff DOM |
-| 10 | Low | Low | Inline link toggle-off regex is greedy |
+| 10 | ✅ Fixed | Low | Inline link toggle-off regex is greedy |
 | 11 | Low | Low | `extractMarkdown` fallback can capture line-number text |
 | 12 | Medium | Med (repro pending) | Diffs don't render in this editor when it's the default for `*.md` |
 
@@ -203,7 +203,7 @@ or set `storedOriginalContent` on that path too.
 
 ---
 
-## 10. Inline link toggle-off regex is greedy
+## 10. Inline link toggle-off regex is greedy ✅ Fixed
 
 **Severity: Low · Confidence: Low**
 
@@ -213,8 +213,11 @@ The greedy `.+` groups mean a selection spanning two links or a link plus traili
 `](...)` text could match and be unwrapped incorrectly. Narrow edge case; needs a
 crafted selection to trigger.
 
-**Suggested fix:** make the groups non-greedy / anchor more tightly, and add a unit
-test once the inline-format logic is extracted from the DOM handler.
+**Fix applied:** extracted the match into a pure `inlineLinkText` helper in
+[links.ts](src/shared/links.ts) using delimiter-excluding groups
+(`/^\[([^\]]+)\]\(([^)]+)\)$/`) so a selection spanning two links or with trailing
+`](…)` text no longer unwraps. Covered by unit tests in
+[links.test.ts](src/test/unit/links.test.ts).
 
 ---
 
