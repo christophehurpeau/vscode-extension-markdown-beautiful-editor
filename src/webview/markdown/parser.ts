@@ -232,7 +232,7 @@ export function styleInline(text: string): string {
 
     // Collect escaped sequences and replace with placeholders
     const escapedChars: string[] = [];
-    result = result.replace(/\\([*_`\[\]()#+-\.!\\])/g, (_match, char) => {
+    result = result.replace(/\\([*_`\[\]()#+-\.!$\\])/g, (_match, char) => {
         escapedChars.push(char);
         return ESCAPE_PLACEHOLDER + (escapedChars.length - 1) + ESCAPE_PLACEHOLDER;
     });
@@ -372,9 +372,12 @@ export function styleInline(text: string): string {
         '<span class="md-code"><span class="md-syntax">`</span><code>$1</code><span class="md-syntax">`</span></span>'
     );
 
-    // Math inline: $formula$
+    // Math inline: $formula$ (Pandoc rule). The opening `$` must be followed by a
+    // non-space character and the closing `$` preceded by a non-space character,
+    // and the closing `$` must not be followed by a digit. This keeps currency
+    // amounts like "$20 and $40" or "$20,000 and $30,000" as plain text.
     result = result.replace(
-        /\$([^$]+)\$/g,
+        /\$(?=\S)([^$]*?)(?<=\S)\$(?!\d)/g,
         '<span class="md-math"><span class="md-syntax">$</span><span class="md-math-content">$1</span><span class="md-syntax">$</span></span>'
     );
 

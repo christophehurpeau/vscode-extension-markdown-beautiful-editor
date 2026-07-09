@@ -68,6 +68,36 @@ describe('Markdown Parser', () => {
             assert.ok(html.includes('<del>gone</del>'));
         });
 
+        it('styles inline math', () => {
+            const html = styleInline('$x + y$');
+            assert.ok(html.includes('md-math'));
+            assert.ok(html.includes('md-math-content'));
+        });
+
+        it('does not treat currency amounts as inline math', () => {
+            const html = styleInline(
+                'the cost will start at $20 and may get up to $40 depending on the usage'
+            );
+            assert.ok(!html.includes('md-math'), 'currency text should not be styled as math');
+            assert.ok(html.includes('$20'));
+            assert.ok(html.includes('$40'));
+        });
+
+        it('does not treat a single currency amount as inline math', () => {
+            const html = styleInline('it costs $5 today');
+            assert.ok(!html.includes('md-math'));
+        });
+
+        it('does not treat adjacent currency amounts as inline math', () => {
+            const html = styleInline('$20,000 and $30,000');
+            assert.ok(!html.includes('md-math'));
+        });
+
+        it('does not style math with a leading space after the opening $', () => {
+            const html = styleInline('a $ x + y$ b');
+            assert.ok(!html.includes('md-math'));
+        });
+
         it('styles links with text and url parts', () => {
             const html = styleInline('[text](http://example.com)');
             assert.ok(html.includes('md-link'));
@@ -188,6 +218,12 @@ describe('Markdown Parser', () => {
             assert.ok(html.includes('md-escaped'));
             assert.ok(!html.includes('md-bold'));
             assert.ok(!html.includes('<strong>'));
+        });
+
+        it('treats an escaped dollar as literal, not math', () => {
+            const html = styleInline('\\$x + y\\$');
+            assert.ok(html.includes('md-escaped'));
+            assert.ok(!html.includes('md-math'));
         });
     });
 
