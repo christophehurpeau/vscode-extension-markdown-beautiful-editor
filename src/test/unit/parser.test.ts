@@ -375,4 +375,105 @@ describe('Markdown Parser', () => {
             assert.ok(html.includes('md-table')); // falls back to styleLine's table styling
         });
     });
+
+    /**
+     * GFM inline edge cases. These assert the CommonMark/GFM-correct outcome, not
+     * the current regex behavior. The `it.skip` cases fail on the regex parser
+     * today (they are the bugs a spec-driven parser would eliminate); each is a
+     * checklist item — un-skip when the underlying parsing is fixed.
+     */
+    describe('styleInline — GFM edge cases', () => {
+        const countClass = (html: string, cls: string): number =>
+            (html.match(new RegExp(`md-${cls}\\b`, 'g')) || []).length;
+        const urlOf = (html: string): string =>
+            html.match(/md-url">([^<]*)</)?.[1] ?? '';
+
+        it('does not treat intraword double-underscore as bold', () => {
+            const html = styleInline('snake__case__word');
+            assert.ok(!html.includes('md-bold'));
+        });
+
+        it('styles multiple bold spans on one line', () => {
+            assert.strictEqual(countClass(styleInline('**a** and **b**'), 'bold'), 2);
+        });
+
+        it('styles multiple strikethrough spans on one line', () => {
+            assert.strictEqual(countClass(styleInline('~~a~~ and ~~b~~'), 'strike'), 2);
+        });
+
+        it('styles emphasis inside link text', () => {
+            const html = styleInline('[**b**](u)');
+            assert.ok(html.includes('md-link'));
+            assert.ok(html.includes('md-bold'));
+        });
+
+        it.skip('treats inline code content as literal (no emphasis inside)', () => {
+            // BUG: emphasis passes run before the code-span pass, so `**x**`
+            // inside backticks is wrongly wrapped in md-bold.
+            const html = styleInline('`**x**`');
+            assert.ok(html.includes('md-code'));
+            assert.ok(!html.includes('md-bold'));
+        });
+
+        it.skip('keeps balanced parens inside a link URL', () => {
+            // BUG: [^)]+ stops at the first ')', truncating the URL.
+            const html = styleInline('[w](http://e/a_(b))');
+            assert.strictEqual(urlOf(html), 'http://e/a_(b)');
+        });
+
+        it.skip('does not treat intraword underscore as italic', () => {
+            // BUG: italic-underscore lacks the alphanumeric guard that
+            // bold-underscore has, so `_case_` in `snake_case_word` becomes italic.
+            const html = styleInline('snake_case_word');
+            assert.ok(!html.includes('md-italic'));
+        });
+
+        it.skip('does not treat space-flanked asterisks as italic', () => {
+            // BUG: CommonMark flanking rules forbid emphasis when the marker is
+            // surrounded by whitespace; the regex still matches.
+            const html = styleInline('a * b * c');
+            assert.ok(!html.includes('md-italic'));
+        });
+    });
+
+    /**
+     * Round-trip fidelity is the load-bearing contract for any future parser
+     * swap: the rendered HTML's text content, read back line by line the way the
+     * serializer does, must reproduce the source byte-for-byte. If a new parser
+     * keeps these green, the source survives a render→edit→serialize cycle.
+     */
+    describe('round-trip fidelity', () => {
+        const renderedText = (src: string): string =>
+            markdownToStyledHtml(src)
+                .split('<div class="line')
+                .slice(1)
+                .map(seg => {
+                    const m = seg.match(/<span class="line-content">([\s\S]*?)<\/span><\/div>/);
+                    return (m ? m[1] : '')
+                        .replace(/<[^>]+>/g, '')
+                        .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+                        .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+                })
+                .join('\n');
+
+        const corpus: Record<string, string> = {
+            headings: '# H1\n## H2 with **bold**',
+            lists: '- a\n- b\n1. one\n2. two',
+            tasks: '- [ ] todo\n- [x] done',
+            nestedQuote: '> a\n>> nested',
+            alert: '> [!NOTE]\n> body',
+            codeBlock: '```js\nconst x = 1;\n**not bold**\n```',
+            table: '| a | b |\n|---|---|\n| 1 | 2 |',
+            inlineMix: 'text **b** *i* `c` [l](u) ![a](i.png) ~~s~~',
+            linkWithParens: '[w](http://e/a_(b))',
+            escapes: '\\*lit\\* and \\$5',
+            blankLines: 'a\n\n\nb',
+        };
+
+        for (const [name, src] of Object.entries(corpus)) {
+            it(`round-trips ${name}`, () => {
+                assert.strictEqual(renderedText(src), src);
+            });
+        }
+    });
 });
