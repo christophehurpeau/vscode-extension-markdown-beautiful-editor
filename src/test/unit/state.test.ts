@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { saveState, getStoredState, type CursorPosition } from '../../webview/editor/state';
+import { saveState, saveTocPreference, getStoredState, type CursorPosition } from '../../webview/editor/state';
 
 /**
  * Unit tests for editor state persistence. `state.ts` is decoupled from the
@@ -44,6 +44,38 @@ describe('Editor State', () => {
         assert.deepStrictEqual(getStoredState(vscode), {
             cursorPosition: { lineIndex: 2, offset: 2 },
             scrollTop: 20,
+        });
+    });
+
+    describe('TOC preference', () => {
+        it('round-trips the preference on its own', () => {
+            const vscode = createFakeVscode();
+            saveTocPreference(vscode, 'hidden');
+            assert.strictEqual(getStoredState(vscode)?.tocPreference, 'hidden');
+        });
+
+        it('survives a later cursor/scroll save', () => {
+            const vscode = createFakeVscode();
+            saveTocPreference(vscode, 'visible');
+            saveState(vscode, { lineIndex: 3, offset: 0 }, 42);
+
+            assert.deepStrictEqual(getStoredState(vscode), {
+                cursorPosition: { lineIndex: 3, offset: 0 },
+                scrollTop: 42,
+                tocPreference: 'visible',
+            });
+        });
+
+        it('keeps cursor/scroll when the preference changes', () => {
+            const vscode = createFakeVscode();
+            saveState(vscode, { lineIndex: 5, offset: 2 }, 100);
+            saveTocPreference(vscode, 'hidden');
+
+            assert.deepStrictEqual(getStoredState(vscode), {
+                cursorPosition: { lineIndex: 5, offset: 2 },
+                scrollTop: 100,
+                tocPreference: 'hidden',
+            });
         });
     });
 });

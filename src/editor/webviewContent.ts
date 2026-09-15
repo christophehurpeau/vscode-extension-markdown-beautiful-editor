@@ -18,14 +18,27 @@ export function getWebviewContent(
 </head>
 <body>
     <!-- Top toolbar -->
+    <!-- Table of contents toggle, pinned to the top-left corner -->
+    <button type="button" id="toc-toggle-btn" class="toolbar-btn toc-toggle-btn" title="Toggle Table of Contents" aria-pressed="true">
+        <span class="toolbar-btn-icon">☰</span>
+    </button>
+
     <div id="toolbar" class="toolbar">
         <!-- Line type buttons (left-aligned) -->
         <div id="line-type-toolbar" class="toolbar-section">
             <!-- Content is generated dynamically from MENU_LINE_TYPES in main.ts -->
         </div>
 
-        <!-- Spacer to push diff button to the right -->
+        <!-- Spacer to push the right-aligned sections away from the line types -->
         <div class="toolbar-spacer"></div>
+
+        <!-- Font toggle, kept apart from the editing buttons: it is a view
+             preference for this panel only, not an edit. -->
+        <div class="toolbar-section toolbar-section-separated">
+            <button type="button" id="font-toggle-btn" class="toolbar-btn" title="Toggle monospace font (this panel only)" aria-pressed="false">
+                <span class="toolbar-btn-icon">Aa</span>
+            </button>
+        </div>
 
         <!-- Diff buttons (right-aligned) -->
         <button type="button" id="diff-toggle-btn" class="toolbar-btn" title="Toggle Diff Mode" style="display: none;">

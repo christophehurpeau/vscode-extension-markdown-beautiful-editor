@@ -3,6 +3,17 @@
     box-sizing: border-box;
 }
 
+:root {
+    --mbe-font-mono: var(--vscode-editor-font-family, 'SF Mono', Monaco, 'Cascadia Code', Consolas, monospace);
+    --mbe-font-ui: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+    /* Content font; switched by the `font-mono` body class (setting + toolbar toggle) */
+    --mbe-font-content: var(--mbe-font-ui);
+}
+
+body.font-mono {
+    --mbe-font-content: var(--mbe-font-mono);
+}
+
 html, body {
     margin: 0;
     padding: 0;
@@ -10,7 +21,7 @@ html, body {
     overflow: hidden;
     background: var(--vscode-editor-background);
     color: var(--vscode-editor-foreground);
-    font-family: var(--vscode-editor-font-family, 'SF Mono', Monaco, 'Cascadia Code', Consolas, monospace);
+    font-family: var(--mbe-font-content);
     font-size: var(--vscode-editor-font-size, 14px);
     line-height: 1.7;
 }
@@ -26,11 +37,12 @@ html, body {
     align-items: center;
     justify-content: space-between;
     gap: 6px;
-    padding: 0 12px;
+    /* Left padding clears the pinned TOC toggle; see .toc-toggle-btn below */
+    padding: 0 12px 0 36px;
     background: var(--vscode-editor-background);
     border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.2));
     z-index: 100;
-    transition: left 0.2s ease;
+    transition: padding-left 0.2s ease;
 }
 
 .toolbar-section {
@@ -43,16 +55,46 @@ html, body {
     flex: 1;
 }
 
-/* Adjust toolbar when TOC is visible */
-body:has(.toc-sidebar:not([style*="display: none"])) .toolbar {
-    left: 200px;
+/* Divider marking a section as unrelated to the editing buttons. The rule sits
+   on the left of the section so it never dangles when the diff buttons that
+   follow are hidden. */
+.toolbar-section-separated {
+    margin-left: 6px;
+    padding-left: 10px;
+    border-left: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
 }
 
-/* Adjust toolbar for narrow viewports (when TOC is hidden) */
-@media (max-width: 600px) {
-    .toolbar {
-        left: 0;
-    }
+/* The toggle renders its own label in the font currently applied to content */
+body.font-mono #font-toggle-btn .toolbar-btn-icon {
+    font-family: var(--mbe-font-mono);
+}
+
+/* Align the toolbar contents with the editor column when the TOC is shown */
+body:not(.toc-hidden) .toolbar {
+    padding-left: 200px;
+}
+
+/* Pinned to the top-left corner, so the toggle keeps the same position whether
+   the sidebar is shown or hidden — only the toolbar contents shift. */
+.toc-toggle-btn {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 0;
+    z-index: 101;
+}
+
+/* Diff mode hides the editing chrome, the TOC toggle included */
+body.diff-mode .toc-toggle-btn {
+    display: none;
+}
+
+body.diff-mode.toc-hidden .toolbar {
+    padding-left: 12px;
 }
 
 .toolbar-btn {
@@ -65,7 +107,7 @@ body:has(.toc-sidebar:not([style*="display: none"])) .toolbar {
     background: transparent;
     color: var(--vscode-foreground, #cccccc);
     font-size: 13px;
-    font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+    font-family: var(--mbe-font-ui);
     cursor: pointer;
     transition: background 0.1s ease;
 }
@@ -142,10 +184,11 @@ body:has(.toc-sidebar:not([style*="display: none"])) .toolbar {
     -ms-user-select: none;
 }
 
-/* Line number */
+/* Line number — monospace so the digits stay aligned in either content font */
 .line-number {
     flex-shrink: 0;
     width: 32px;
+    font-family: var(--mbe-font-mono);
     text-align: right;
     color: var(--vscode-editorLineNumber-foreground, #6e7681);
     font-size: 0.85em;
@@ -253,11 +296,12 @@ body:has(.toc-sidebar:not([style*="display: none"])) .toolbar {
     color: var(--vscode-editor-foreground);
 }
 
-/* Inline code */
+/* Inline code — always monospace, whatever font the prose uses */
 .md-code {
     background: rgba(110, 118, 129, 0.2);
     padding: 3px 2px;
     border-radius: 5px;
+    font-family: var(--mbe-font-mono);
 }
 
 .md-code code {
@@ -328,9 +372,9 @@ body:has(.toc-sidebar:not([style*="display: none"])) .toolbar {
     opacity: 0.7;
 }
 
-/* Tables */
+/* Tables — kept monospace so the `ch`-based column widths keep aligning */
 .md-table {
-    font-family: var(--vscode-editor-font-family, monospace);
+    font-family: var(--mbe-font-mono);
 }
 
 /*
@@ -637,13 +681,14 @@ body:has(.toc-sidebar:not([style*="display: none"])) .toolbar {
     padding-bottom: 0 !important;
 }
 
-/* Code block inner content */
+/* Code block inner content — always monospace, whatever font the prose uses */
 .code-fence .code-inner,
 .code-content .code-inner {
     display: block;
     background: rgba(110, 118, 129, 0.15);
     padding: 2px 16px;
     font-size: 0.95em;
+    font-family: var(--mbe-font-mono);
 }
 
 /* Opening fence - top radius */
@@ -693,7 +738,7 @@ body:has(.toc-sidebar:not([style*="display: none"])) .toolbar {
     border-right: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
     overflow-y: auto;
     background: var(--vscode-sideBar-background, var(--vscode-editor-background));
-    font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+    font-family: var(--mbe-font-ui);
 }
 
 .toc-title {
@@ -753,11 +798,10 @@ body:has(.toc-sidebar:not([style*="display: none"])) .toolbar {
     font-style: italic;
 }
 
-/* Responsive: hide TOC on narrow viewports */
-@media (max-width: 600px) {
-    .toc-sidebar {
-        display: none;
-    }
+/* Hidden by the toolbar toggle, and by default on narrow viewports
+   (TOC_AUTO_HIDE_MAX_WIDTH in src/shared/tocVisibility.ts) */
+body.toc-hidden .toc-sidebar {
+    display: none;
 }
 
 /* ============================================
@@ -799,6 +843,7 @@ body:has(.toc-sidebar:not([style*="display: none"])) .toolbar {
     background: transparent;
     color: var(--vscode-foreground, #cccccc);
     font-size: 13px;
+    font-family: var(--mbe-font-ui);
     cursor: pointer;
     transition: background 0.1s ease;
 }
@@ -829,7 +874,7 @@ body:has(.toc-sidebar:not([style*="display: none"])) .toolbar {
 }
 
 .formatting-toolbar button code {
-    font-family: inherit;
+    font-family: var(--mbe-font-mono);
     font-size: 10px;
 }
 

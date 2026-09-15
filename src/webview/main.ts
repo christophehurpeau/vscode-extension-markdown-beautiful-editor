@@ -1,4 +1,11 @@
-import { updateToc, setupScrollSpy, extractHeadingsFromMarkdown, findHeadingIndexBySlug, scrollToHeading } from './toc';
+import { updateToc, setupScrollSpy, extractHeadingsFromMarkdown, findHeadingIndexBySlug, scrollToHeading, setTocVisible } from './toc';
+import { resolveTocVisibility, toggledTocPreference, type TocVisibilityPreference } from '../shared/tocVisibility';
+import {
+    defaultEditorFontFamily,
+    monoFontBodyClass,
+    resolveEditorFontFamily,
+    toggledEditorFontFamily,
+    type EditorFontFamily} from '../shared/fontFamily';
 import {
     markdownToStyledHtml,
     getLineType,
@@ -7,6 +14,7 @@ import { extractMarkdown, getSelectedMarkdownText } from './markdown/serializer'
 import { parseLinkTarget, resolveReferenceUrl, linkDisplayUrl, inlineLinkText } from '../shared/links';
 import {
     saveState as saveEditorState,
+    saveTocPreference,
     getStoredState,
     type CursorPosition} from './editor/state';
 import {
@@ -50,6 +58,12 @@ let editorContainer: HTMLElement | null = null;
 let isDiffModeActive = false;
 let storedOriginalContent: string | null = null;
 let storedCurrentContent: string | null = null;
+
+// Diff mode hides the editing chrome (line type toolbar, TOC toggle) via CSS.
+function setDiffModeActive(active: boolean): void {
+    isDiffModeActive = active;
+    document.body.classList.toggle('diff-mode', active);
+}
 
 // Wrapper functions for state management (to avoid passing vscode everywhere)
 function saveState(): void {
@@ -150,6 +164,74 @@ function handleInput(): void {
 // Update TOC from markdown text
 function updateTocFromMarkdown(markdown: string): void {
     updateToc(extractHeadingsFromMarkdown(markdown));
+}
+
+// `null` until the user toggles the TOC, in which case the viewport width decides.
+let tocPreference: TocVisibilityPreference = null;
+
+function isTocVisible(): boolean {
+    return resolveTocVisibility({ preference: tocPreference, viewportWidth: window.innerWidth });
+}
+
+function applyTocVisibility(): void {
+    setTocVisible(isTocVisible());
+}
+
+function toggleToc(): void {
+    tocPreference = toggledTocPreference(isTocVisible());
+    saveTocPreference(vscode, tocPreference);
+    applyTocVisibility();
+}
+
+function initTocToggle(): void {
+    tocPreference = getStoredState(vscode)?.tocPreference ?? null;
+    applyTocVisibility();
+
+    document.getElementById('toc-toggle-btn')?.addEventListener('click', toggleToc);
+
+    // Re-evaluate the width-based default on resize; an explicit preference wins.
+    window.addEventListener('resize', applyTocVisibility);
+}
+
+// ============================================
+// Content font (setting + temporary toolbar toggle)
+// ============================================
+
+// Mirrors the `markdown.beautifulEditor.fontFamily` setting.
+let fontFamilySetting: EditorFontFamily = defaultEditorFontFamily;
+// The toolbar toggle's choice: deliberately not persisted, so it lasts only as
+// long as this panel and never writes the user's setting.
+let fontFamilyOverride: EditorFontFamily | null = null;
+
+function currentFontFamily(): EditorFontFamily {
+    return resolveEditorFontFamily({ setting: fontFamilySetting, override: fontFamilyOverride });
+}
+
+function applyFontFamily(): void {
+    const isMono = currentFontFamily() === 'mono';
+    document.body.classList.toggle(monoFontBodyClass, isMono);
+    const button = document.getElementById('font-toggle-btn');
+    if (button) {
+        button.classList.toggle('active', isMono);
+        button.setAttribute('aria-pressed', String(isMono));
+    }
+}
+
+function toggleFontFamily(): void {
+    fontFamilyOverride = toggledEditorFontFamily(currentFontFamily());
+    applyFontFamily();
+}
+
+function setFontFamilySetting(fontFamily: EditorFontFamily): void {
+    fontFamilySetting = fontFamily;
+    // A deliberate settings change wins over the temporary toggle.
+    fontFamilyOverride = null;
+    applyFontFamily();
+}
+
+function initFontToggle(): void {
+    document.getElementById('font-toggle-btn')?.addEventListener('click', toggleFontFamily);
+    applyFontFamily();
 }
 
 // Scroll the editor to the heading matching a slug (`#fragment` without the `#`).
@@ -706,15 +788,12 @@ function initEditor(container: HTMLElement, markdown: string): void {
     editorContainer = container;
     lastSentContent = markdown;
 
-    // Show toolbar and TOC (in case we're switching from diff mode)
+    // Show toolbar (in case we're switching from diff mode)
     const toolbar = document.getElementById('toolbar');
     if (toolbar) {
         toolbar.style.display = 'flex';
     }
-    const toc = document.getElementById('toc');
-    if (toc) {
-        toc.style.display = 'block';
-    }
+    applyTocVisibility();
 
     // Render initial content
     container.innerHTML = markdownToStyledHtml(markdown);
@@ -1214,6 +1293,9 @@ function init(): void {
     container.setAttribute('contenteditable', 'true');
     container.setAttribute('spellcheck', 'false');
 
+    initTocToggle();
+    initFontToggle();
+
     // Set up diff toggle button
     const diffToggleBtn = document.getElementById('diff-toggle-btn');
     if (diffToggleBtn) {
@@ -1239,12 +1321,13 @@ function init(): void {
         switch (message.type) {
             case 'init': {
                 const content = message.originalContent || message.content || '';
+                setFontFamilySetting(message.fontFamily);
 
                 console.log('Received init message. diffAvailable:', message.diffAvailable, 'diffMode:', message.diffMode);
 
                 if (message.diffMode && message.originalVersionContent) {
                     // Initialize in diff mode
-                    isDiffModeActive = true;
+                    setDiffModeActive(true);
                     initDiffView(container, message.originalVersionContent, content, markdownToStyledHtml);
 
                     // Show close button, hide diff button and line type toolbar in diff mode
@@ -1263,7 +1346,7 @@ function init(): void {
                     }
                 } else {
                     // Normal editor mode
-                    isDiffModeActive = false;
+                    setDiffModeActive(false);
                     initEditor(container, content);
 
                     // Show/hide diff button based on availability, show line type toolbar
@@ -1347,7 +1430,7 @@ function init(): void {
 
                 if (isDiffModeActive) {
                     // Switch back to normal editor mode
-                    isDiffModeActive = false;
+                    setDiffModeActive(false);
                     // Restore the content we stored before entering diff mode
                     const currentMarkdown = storedCurrentContent || extractMarkdown(container);
                     container.setAttribute('contenteditable', 'true');
@@ -1376,7 +1459,7 @@ function init(): void {
                     if (!originalVersionContent) {
                         break;
                     }
-                    isDiffModeActive = true;
+                    setDiffModeActive(true);
                     // Store current content before entering diff mode
                     const currentMarkdown = extractMarkdown(container);
                     storedCurrentContent = currentMarkdown;
@@ -1396,6 +1479,10 @@ function init(): void {
                         lineTypeToolbar.style.display = 'none';
                     }
                 }
+                break;
+            }
+            case 'fontFamily': {
+                setFontFamilySetting(message.fontFamily);
                 break;
             }
             case 'scrollToAnchor': {

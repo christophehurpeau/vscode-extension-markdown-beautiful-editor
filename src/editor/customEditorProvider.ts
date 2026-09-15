@@ -3,6 +3,13 @@ import * as path from 'path';
 import { getWebviewContent } from './webviewContent';
 import type { HostToWebviewMessage, WebviewToHostMessage } from '../shared/messages';
 import { parseLinkTarget } from '../shared/links';
+import { parseEditorFontFamily, type EditorFontFamily } from '../shared/fontFamily';
+
+const fontFamilySettingSection = 'markdown.beautifulEditor.fontFamily';
+
+function getConfiguredFontFamily(resource: vscode.Uri): EditorFontFamily {
+    return parseEditorFontFamily(vscode.workspace.getConfiguration(undefined, resource).get(fontFamilySettingSection));
+}
 
 /** Minimal shape of a git Repository from the built-in `vscode.git` API. */
 interface GitRepositoryLike {
@@ -330,6 +337,8 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
             // Check if diff is available (file in git with changes)
             const diffAvailable = await this.isDiffAvailable(document.uri);
 
+            const fontFamily = getConfiguredFontFamily(document.uri);
+
             if (isDiffMode && originalContent) {
                 // Send both original and current content for diff view
                 this.post(webviewPanel, {
@@ -338,7 +347,8 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                     originalContent: lastKnownContent,
                     diffMode: true,
                     originalVersionContent: processImagePaths(originalContent),
-                    diffAvailable
+                    diffAvailable,
+                    fontFamily
                 });
             } else {
                 // Normal editor mode
@@ -347,7 +357,8 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                     content: processedContent,
                     originalContent: lastKnownContent,
                     diffMode: false,
-                    diffAvailable
+                    diffAvailable,
+                    fontFamily
                 });
             }
         };
@@ -528,6 +539,12 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
             });
         });
 
+        const configHandler = vscode.workspace.onDidChangeConfiguration((e) => {
+            if (e.affectsConfiguration(fontFamilySettingSection, document.uri)) {
+                this.post(webviewPanel, { type: 'fontFamily', fontFamily: getConfiguredFontFamily(document.uri) });
+            }
+        });
+
         // Track previous active state to detect tab switches
         let wasActive = webviewPanel.active;
         
@@ -546,6 +563,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
         webviewPanel.onDidDispose(() => {
             messageHandler.dispose();
             changeHandler.dispose();
+            configHandler.dispose();
             viewStateHandler.dispose();
             // Remove from active panels map
             this.activeWebviewPanels.delete(uriString);

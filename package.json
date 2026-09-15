@@ -2,7 +2,7 @@
   "name": "markdown-beautiful-editor",
   "displayName": "Markdown Beautiful Editor",
   "description": "A beautiful WYSIWYG-style markdown editor with visual syntax styling, GitHub alerts, and table of contents",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "publisher": "chrp",
   "author": {
     "name": "Christophe Hurpeau"
@@ -65,6 +65,24 @@
         "category": "Markdown Beautiful Editor"
       }
     ],
+    "configuration": {
+      "title": "Markdown Beautiful Editor",
+      "properties": {
+        "markdown.beautifulEditor.fontFamily": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "mono"
+          ],
+          "enumDescriptions": [
+            "Use the UI (proportional) font for prose.",
+            "Use the editor (monospace) font for prose."
+          ],
+          "default": "normal",
+          "description": "Font used for markdown content. Inline code and fenced code blocks always use the monospace editor font."
+        }
+      }
+    },
     "menus": {
       "editor/title": [
         {

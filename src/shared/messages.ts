@@ -10,6 +10,8 @@
  * bundles.
  */
 
+import type { EditorFontFamily } from './fontFamily';
+
 /** Messages sent from the extension host to the webview. */
 export type HostToWebviewMessage =
     | {
@@ -19,7 +21,10 @@ export type HostToWebviewMessage =
           diffMode: boolean;
           originalVersionContent?: string;
           diffAvailable: boolean;
+          fontFamily: EditorFontFamily;
       }
+    // The `fontFamily` setting changed; drops any temporary toolbar override.
+    | { type: 'fontFamily'; fontFamily: EditorFontFamily }
     | {
           type: 'update';
           content: string;

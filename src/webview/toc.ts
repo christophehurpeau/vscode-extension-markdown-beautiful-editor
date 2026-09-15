@@ -38,6 +38,24 @@ export function extractHeadingsFromMarkdown(markdown: string): TocHeading[] {
     return headings;
 }
 
+/**
+ * Show or hide the TOC sidebar and sync the toolbar toggle button.
+ *
+ * Visibility is driven by a `toc-hidden` class on `<body>` rather than an
+ * inline style so the CSS keeps sole control of the layout (the toolbar is
+ * offset by the sidebar width when it is shown).
+ */
+export function setTocVisible(visible: boolean): void {
+    document.body.classList.toggle('toc-hidden', !visible);
+
+    const toggleButton = document.getElementById('toc-toggle-btn');
+    if (toggleButton) {
+        toggleButton.classList.toggle('active', visible);
+        toggleButton.setAttribute('aria-pressed', String(visible));
+        toggleButton.title = visible ? 'Hide Table of Contents' : 'Show Table of Contents';
+    }
+}
+
 // Render TOC to the sidebar
 export function updateToc(headings: TocHeading[]): void {
     const tocContainer = document.getElementById('toc');
