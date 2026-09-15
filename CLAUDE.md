@@ -2,19 +2,19 @@
 
 WYSIWYG-style markdown custom editor with visual syntax styling, GitHub alerts, and table of contents. Registered as an optional `customEditor` for `*.md` files.
 
-- Use yarn, not npx.
+- Use pnpm, not npx.
 
 ## Commands
 
 ```bash
-yarn compile          # type-check + lint + build (dev)
-yarn watch            # watch mode (esbuild + tsc in parallel)
-yarn package          # production build
-yarn test             # full test suite (compile + lint + unit + integration)
-yarn test:unit        # mocha unit tests only (fast, no VS Code needed)
-yarn test:integration # vscode-test integration tests
-yarn lint             # eslint src/
-yarn check-types      # tsc type check only
+pnpm compile          # type-check + lint + build (dev)
+pnpm watch            # watch mode (esbuild + tsc in parallel)
+pnpm package          # production build
+pnpm test             # full test suite (compile + lint + unit + integration)
+pnpm test:unit        # mocha unit tests only (fast, no VS Code needed)
+pnpm test:integration # vscode-test integration tests
+pnpm lint             # eslint src/
+pnpm check-types      # tsc type check only
 ```
 
 ## Architecture
@@ -33,9 +33,9 @@ Compiled test output goes to `out/`.
 
 Always add unit tests for new or changed logic. Keep logic that can be tested without the DOM in pure functions (e.g. `src/shared/`) so it stays unit-testable; have the thin DOM/webview layer delegate to it.
 
-`yarn test:unit` runs the compiled `out/` and does NOT recompile first — run `yarn compile-tests` (or `yarn test`, which compiles) before it, or stale results will pass silently.
+`pnpm test:unit` runs the compiled `out/` and does NOT recompile first — run `pnpm compile-tests` (or `pnpm test`, which compiles) before it, or stale results will pass silently.
 
-There are two separate build paths: `compile-tests`/unit tests use tsc → `out/`, while the running webview loads the esbuild bundle at `dist/webview.js`. Passing unit tests does NOT mean the live webview is updated. After changing `src/webview/` code, run `yarn compile` (or keep `yarn watch` running) and reload the Extension Development Host (Cmd+R) before testing manually. Verify the bundle picked up a change with `grep -o "<symbol>" dist/webview.js`.
+There are two separate build paths: `compile-tests`/unit tests use tsc → `out/`, while the running webview loads the esbuild bundle at `dist/webview.js`. Passing unit tests does NOT mean the live webview is updated. After changing `src/webview/` code, run `pnpm compile` (or keep `pnpm watch` running) and reload the Extension Development Host (Cmd+R) before testing manually. Verify the bundle picked up a change with `grep -o "<symbol>" dist/webview.js`.
 
 ## Publishing
 

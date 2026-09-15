@@ -28,7 +28,7 @@ Full support for GitHub's alert syntax:
 - Auto-generated sidebar TOC from document headings
 - Click to navigate to any section
 - Scroll spy highlights current section
-- Collapsible for more editing space
+- Toggle it from the toolbar (☰) for more editing space; hidden by default on narrow viewports
 
 ### 🛠️ Formatting Toolbar
 - **Selection-based toolbar**: Appears when you select text
@@ -41,6 +41,12 @@ Full support for GitHub's alert syntax:
 - **Supported types**: Text, Headings (H1-H6), Bullet List, Numbered List, Task List, Quote, Code Block, Horizontal Rule
 - **Visual indicators**: Each line shows its type with a distinctive icon
 - **Nested support**: Properly handles nested blockquotes
+
+### 🔤 Content Font
+- **Proportional by default**: Prose renders with the UI font
+- **Monospace option**: `markdown.beautifulEditor.fontFamily` set to `mono` uses the editor font
+- **Temporary toggle**: The `Aa` button on the right of the toolbar switches the font for the current panel only, without changing the setting
+- **Code stays monospace**: Inline code, fenced code blocks and tables always use the editor font
 
 ### 🎯 Editor Features
 - **Line Numbers**: Always visible line numbers for easy reference
@@ -142,25 +148,25 @@ Horizontal rule
 
 ### Prerequisites
 - Node.js 18+
-- Yarn
+- pnpm
 
 ### Setup
 ```bash
 git clone https://github.com/yourusername/vscode-extension-markdown-beautiful-editor.git
 cd vscode-extension-markdown-beautiful-editor
-yarn install
+pnpm install
 ```
 
 ### Build
 ```bash
-yarn run compile      # Build extension
-yarn run watch        # Watch mode for development
+pnpm run compile      # Build extension
+pnpm run watch        # Watch mode for development
 ```
 
 ### Test
 ```bash
-yarn run test:unit    # Run unit tests
-yarn run test         # Run all tests
+pnpm run test:unit    # Run unit tests
+pnpm run test         # Run all tests
 ```
 
 ### Debug
@@ -191,7 +197,7 @@ Contributions are welcome! Please:
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Run tests: `yarn test`
+4. Run tests: `pnpm test`
 5. Submit a pull request
 
 ## License

@@ -14,7 +14,9 @@ node_modules/**
 esbuild.js
 tsconfig*.json
 eslint.config.mjs
-.yarnrc
+pnpm-workspace.yaml
+pnpm-lock.yaml
+.npmrc
 
 # Git
 .git/**
@@ -28,7 +30,6 @@ vsc-extension-quickstart.md
 
 # TypeScript source (bundled)
 **/*.ts
-!**/*.d.ts
 
 # Test files
 **/test/**

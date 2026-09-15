@@ -14,8 +14,10 @@ This document describes how to publish the Markdown WYSIWYG extension to the VS 
    - Save the token securely
 
 3. **vsce CLI**
+   `vsce` is pinned in devDependencies, so run it through pnpm (`pnpm exec vsce ...`).
+   To install it globally instead:
    ```bash
-   npm install -g @vscode/vsce
+   pnpm add -g @vscode/vsce
    ```
 
 ## Before Publishing
@@ -52,42 +54,46 @@ Take screenshots of the extension in action and save to `images/`:
 
 ### 4. Run Tests
 ```bash
-yarn run test:unit
-yarn run check-types
+pnpm run test:unit
+pnpm run check-types
 ```
 
 ### 5. Build Production Bundle
 ```bash
-yarn run package
+pnpm run package
 ```
 
 ## Publishing
 
+Everything is bundled by esbuild and `node_modules` is excluded via `.vscodeignore`, so
+`vsce` is always run with `--no-dependencies`: its npm-based dependency walk does not
+understand pnpm's symlinked `node_modules`.
+
 ### First-time Setup
 ```bash
-vsce login your-publisher-id
+pnpm exec vsce login your-publisher-id
 # Enter your PAT when prompted
 ```
 
 ### Package Extension
 ```bash
-vsce package
+pnpm run package:vsce
 # Creates markdown-beautiful-editor-1.0.0.vsix
 ```
 
 ### Publish to Marketplace
 ```bash
-vsce publish
+pnpm exec vsce publish --no-dependencies
 ```
 
 Or publish a specific version:
 ```bash
-vsce publish 1.0.0
+pnpm exec vsce publish 1.0.0 --no-dependencies
 ```
 
 ### Publish Pre-release
 ```bash
-vsce publish --pre-release
+pnpm exec vsce publish --pre-release --no-dependencies
 ```
 
 ## Post-Publishing
@@ -101,9 +107,9 @@ vsce publish --pre-release
 
 To bump version and publish:
 ```bash
-vsce publish minor  # 1.0.0 -> 1.1.0
-vsce publish major  # 1.0.0 -> 2.0.0
-vsce publish patch  # 1.0.0 -> 1.0.1
+pnpm exec vsce publish minor --no-dependencies  # 1.0.0 -> 1.1.0
+pnpm exec vsce publish major --no-dependencies  # 1.0.0 -> 2.0.0
+pnpm exec vsce publish patch --no-dependencies  # 1.0.0 -> 1.0.1
 ```
 
 ## Troubleshooting
@@ -118,5 +124,5 @@ Ensure `images/icon.png` exists and is a valid 128x128 PNG.
 Create a new PAT with "Marketplace (Publish)" scope.
 
 ### Build errors
-Run `yarn run compile` to check for TypeScript errors.
+Run `pnpm run compile` to check for TypeScript errors.
 

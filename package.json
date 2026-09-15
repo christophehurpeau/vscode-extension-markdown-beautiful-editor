@@ -38,6 +38,7 @@
     "toc"
   ],
   "main": "./dist/extension.js",
+  "packageManager": "pnpm@11.17.0",
   "activationEvents": [],
   "contributes": {
     "customEditors": [
@@ -94,18 +95,18 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "yarn run package",
-    "compile": "yarn run check-types && yarn run lint && node esbuild.js",
-    "watch": "npm-run-all -p watch:*",
+    "vscode:prepublish": "pnpm run package",
+    "compile": "pnpm run check-types && pnpm run lint && node esbuild.js",
+    "watch": "pnpm run --parallel \"/^watch:/\"",
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc -b --watch",
-    "package": "yarn run check-types && yarn run lint && node esbuild.js --production",
-    "package:vsce": "vsce package",
+    "package": "pnpm run check-types && pnpm run lint && node esbuild.js --production",
+    "package:vsce": "vsce package --no-dependencies",
     "compile-tests": "tsc -p tsconfig.test.json",
     "watch-tests": "tsc -p tsconfig.test.json -w",
     "check-types": "tsc -b && tsc -p tsconfig.test.json --noEmit",
     "lint": "eslint src",
-    "test": "yarn run compile-tests && yarn run compile && yarn run lint && yarn test:unit && yarn test:integration",
+    "test": "pnpm run compile-tests && pnpm run compile && pnpm run lint && pnpm run test:unit && pnpm run test:integration",
     "test:unit": "mocha out/test/unit/**/*.test.js",
     "test:integration": "vscode-test"
   },
@@ -119,7 +120,6 @@
     "esbuild": "^0.28.1",
     "eslint": "^9.39.1",
     "mocha": "^10.2.0",
-    "npm-run-all": "^4.1.5",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.48.1",
     "vsce": "2.15.0"
