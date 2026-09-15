@@ -9,9 +9,22 @@ This document describes how to publish the Markdown WYSIWYG extension to the VS 
    - Note your publisher ID
 
 2. **Personal Access Token (PAT)**
-   - Go to https://dev.azure.com/
-   - Create a PAT with "Marketplace (Publish)" scope
-   - Save the token securely
+
+   The PAT comes from Azure DevOps, not from the marketplace site:
+
+   1. Sign in to https://dev.azure.com/ with the same Microsoft account that owns the publisher.
+      Create an organization if you don't have one (any name; it is only used to issue the token).
+   2. Open the user settings menu (icon next to your avatar, top right) →
+      **Personal access tokens** — direct link: https://dev.azure.com/<your-org>/_usersSettings/tokens
+   3. **+ New Token**.
+   4. **Organization**: select **All accessible organizations** (required — a token scoped to a
+      single organization is rejected by the marketplace).
+   5. **Expiration**: max 1 year; note the date, publishing fails once it expires.
+   6. **Scopes**: click **Show all scopes**, find **Marketplace**, check **Manage**.
+   7. **Create**, then copy the token immediately — it is shown only once.
+
+   Store it in a password manager. For CI, pass it as the `VSCE_PAT` environment variable
+   instead of running `vsce login`.
 
 3. **vsce CLI**
    `vsce` is pinned in devDependencies, so run it through pnpm (`pnpm exec vsce ...`).
@@ -72,7 +85,7 @@ understand pnpm's symlinked `node_modules`.
 ### First-time Setup
 ```bash
 pnpm exec vsce login your-publisher-id
-# Enter your PAT when prompted
+# Enter the PAT from Prerequisites step 2 when prompted
 ```
 
 ### Package Extension
@@ -121,7 +134,9 @@ Update `publisher` field in package.json with your publisher ID.
 Ensure `images/icon.png` exists and is a valid 128x128 PNG.
 
 ### "Personal Access Token invalid"
-Create a new PAT with "Marketplace (Publish)" scope.
+Usually one of: the token expired, it was scoped to a single organization instead of
+**All accessible organizations**, or it lacks the **Marketplace → Manage** scope.
+Create a new one following Prerequisites step 2.
 
 ### Build errors
 Run `pnpm run compile` to check for TypeScript errors.
