@@ -16,6 +16,12 @@ A beautiful WYSIWYG-style markdown editor for VS Code that renders markdown synt
 - **Tables**: Clean table rendering with separator styling
 - **Horizontal Rules**: Visual dividers with centered syntax
 
+![Text Formatting](images/formatting.png)
+
+![Code Blocks](images/code.png)
+
+![Lists and Tables](images/structure.png)
+
 ### 🎨 GitHub-Style Alerts
 Full support for GitHub's alert syntax:
 - `[!NOTE]` - Blue informational notes
@@ -23,6 +29,8 @@ Full support for GitHub's alert syntax:
 - `[!IMPORTANT]` - Purple important information
 - `[!WARNING]` - Yellow/orange warnings
 - `[!CAUTION]` - Red caution alerts
+
+![GitHub Alerts](images/alerts.png)
 
 ### 📑 Table of Contents
 - Auto-generated sidebar TOC from document headings
@@ -36,11 +44,15 @@ Full support for GitHub's alert syntax:
 - **Smart detection**: Toolbar highlights active formatting at cursor position
 - **Keyboard shortcuts**: Cmd/Ctrl+B (bold), Cmd/Ctrl+I (italic), Cmd/Ctrl+E (code), Cmd/Ctrl+K (link)
 
+![Formatting Toolbar](images/formatting-toolbar.png)
+
 ### 🔍 Find & Replace
 - **Cmd/Ctrl+F**: Opens a find panel over the document, including the parts scrolled out of view
 - **Match options**: Case sensitivity, whole word, and regular expressions
 - **Replace**: Available whenever the document is editable; a read-only side of a diff shows find only
 - **Occurrences**: Cmd/Ctrl+D selects the next occurrence of the selection
+
+![Find and Replace](images/find.png)
 
 ### ↕️ Multiple Cursors
 - **Alt/Option+Click**: Adds a cursor where you click
@@ -48,6 +60,8 @@ Full support for GitHub's alert syntax:
 - **Cmd/Ctrl+Alt+Up/Down**: Adds a cursor on the line above or below
 - **Escape**: Collapses back to a single cursor
 - **Formatting follows**: Bold/italic/code/link and the line type selector apply at every cursor
+
+![Multiple Cursors](images/multiple-cursors.png)
 
 ### 📋 Line Type Selector
 - **Quick line conversion**: Click the line type icon next to any line number
@@ -69,11 +83,15 @@ Full support for GitHub's alert syntax:
 - **Editable where it can be**: In an **Unstaged** or **Untracked** view the right pane is the file on disk — type in it, or use the `→` button beside a changed block to revert it. A **Staged** view is read-only: that side is the git index, which can't be written directly
 - **Staging stays in git**: Stage, unstage and discard from the Source Control panel as usual
 
+![Beautiful Diff panel](images/diff-panel.png)
+
 ### ⇄ Diff Mode (in the editor)
 
 - **Toggle**: The ⇄ button in the editor toolbar — or the compare button in the tab's title bar — compares the open file against git HEAD, side by side, with markdown styling on both sides
 - **Editable**: The right-hand pane is the live document — type in it and the file is updated, same as editing normally
-- **Revert a chunk**: Each changed block gets a `⇝` button in the narrow column between the two panes — click it to restore that block from HEAD
+- **Revert a chunk**: Each changed block gets a `→` button in the narrow column between the two panes — click it to restore that block from HEAD
+
+![Diff Mode](images/diff-mode.png)
 
 ### 🎯 Editor Features
 - **Line Numbers**: Always visible line numbers for easy reference
@@ -192,17 +210,6 @@ recommended.
 ---
 Horizontal rule
 ```
-
-## Screenshots
-
-### Headings and Text Formatting
-![Text Formatting](images/formatting.png)
-
-### GitHub Alerts
-![GitHub Alerts](images/alerts.png)
-
-### Code Blocks
-![Code Blocks](images/code.png)
 
 ## Development
 

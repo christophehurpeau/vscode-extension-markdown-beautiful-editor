@@ -23,15 +23,28 @@ or the TOC reaches the screenshots without anyone remembering to mirror it here.
 
 | File | Role |
 |------|------|
-| `capture.ts` | The harness, and the shot list: output name, fixture, TOC visibility, viewport |
-| `fixtures/*.md` | One markdown document per output image |
+| `capture.ts` | The harness, and the shot list: surface, output name, fixture, viewport |
+| `fixtures/*.md` | One markdown document per output image (two for a diff) |
 | `vscode-dark-modern.css` | The `--vscode-*` theme variables VS Code would inject |
 
-Each shot is a row in `shots` at the top of `capture.ts`:
+Each shot is a row in `shots`, near the top of `capture.ts`. Its `surface` picks
+which of the three things the bundle can be is captured:
 
 ```ts
-{ output: 'alerts.png', fixture: 'alerts.md', toc: 'hidden', width: 620, height: 570 }
+{ surface: 'editor', output: 'alerts.png', fixture: 'alerts.md', toc: 'hidden', width: 620, height: 570 }
 ```
+
+- `editor` — the custom editor. `stage` runs an interaction first (select text,
+  open the find panel, Alt-drag a rectangle), and `caret: 'visible'` keeps the
+  cursors for a shot that is about them.
+- `editorDiff` — the same editor with diff mode open against `head`, driven by
+  the `toggleDiff` message the host sends when the ⇄ button is clicked.
+- `diffPanel` — the standalone Beautiful Diff tab, which has its own webview
+  body and its own `initDiff` message, with `head` as the left side.
+
+A staged interaction drives the real bundle through Playwright, so a shot fails
+loudly when the gesture stops working — an Alt-drag that adds no cursor, a
+search panel that never opens, a diff whose two sides render no difference.
 
 The viewport is in CSS pixels and the capture is 2x, so the PNG is twice those
 numbers. Height is how the image gets cropped — there is no automatic fit, so
