@@ -1,8 +1,8 @@
-# Markdown WYSIWYG
+# Markdown Beautiful Editor
 
 A beautiful WYSIWYG-style markdown editor for VS Code that renders markdown syntax with visual styling while keeping the raw markdown fully editable.
 
-![Markdown WYSIWYG Editor](images/screenshot.png)
+![Markdown Beautiful Editor Editor](images/screenshot.png)
 
 ## Features
 
@@ -90,7 +90,7 @@ Full support for GitHub's alert syntax:
 ### From VS Code Marketplace
 1. Open VS Code
 2. Go to Extensions (Cmd/Ctrl+Shift+X)
-3. Search for "Markdown WYSIWYG"
+3. Search for "Markdown Beautiful Editor"
 4. Click Install
 
 ### From VSIX
@@ -101,7 +101,7 @@ Full support for GitHub's alert syntax:
 ## Usage
 
 ### Opening Files
-- **Right-click** any `.md` file → **Open With...** → **Markdown WYSIWYG**
+- **Right-click** any `.md` file → **Open With...** → **Markdown Beautiful Editor**
 - Or set as default: **Open With...** → Select editor → **Configure Default Editor...**
 
 ### Diffs

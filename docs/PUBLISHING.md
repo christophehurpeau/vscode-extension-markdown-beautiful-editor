@@ -1,6 +1,6 @@
 # Publishing Guide
 
-This document describes how to publish the Markdown WYSIWYG extension to the VS Code Marketplace.
+This document describes how to publish the Markdown Beautiful Editor extension to the VS Code Marketplace.
 
 ## Prerequisites
 
