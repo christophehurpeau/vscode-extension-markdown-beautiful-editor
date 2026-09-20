@@ -1,5 +1,4 @@
-import { escapeHtml } from './markdown/parser';
-import { restoreCursorPosition } from './editor/cursor';
+import { escapeHtml } from '../shared/escapeHtml';
 
 export interface TocHeading {
     level: number;
@@ -86,14 +85,9 @@ export function updateToc(headings: TocHeading[]): void {
         <ul class="toc-list">${listItems}</ul>
     `;
 
-    // Add click handlers for TOC links
-    tocContainer.querySelectorAll('.toc-link').forEach((link: Element) => {
-        link.addEventListener('click', (e: Event) => {
-            e.preventDefault();
-            const index = parseInt((link as HTMLElement).dataset.headingIndex || '0', 10);
-            scrollToHeading(index);
-        });
-    });
+    // No per-link click handlers here: cm/ui/tocPanel.ts installs a single
+    // delegated handler on the container, which survives this innerHTML
+    // rewrite instead of needing re-attaching on every TOC update.
 }
 
 /**
@@ -177,127 +171,9 @@ export function findHeadingLineIndex(lineTexts: string[], headingIndex: number):
     return null;
 }
 
-/**
- * Dependencies for {@link scrollToHeading}, injectable for testing. The
- * defaults operate on the live editor DOM.
- */
-export interface ScrollToHeadingDeps {
-    /** Resolve the editor container element. */
-    getEditor?: () => HTMLElement | null;
-    /** Move keyboard focus and the cursor to the given editor line. */
-    focusLine?: (editor: HTMLElement, lineIndex: number) => void;
-}
-
-function focusEditorLine(editor: HTMLElement, lineIndex: number): void {
-    editor.focus({ preventScroll: true });
-    restoreCursorPosition(editor, { lineIndex, offset: 0 }, true);
-}
-
-// Scroll to a heading by index and move the cursor/focus to it.
-export function scrollToHeading(index: number, deps: ScrollToHeadingDeps = {}): void {
-    const getEditor = deps.getEditor ?? (() => document.getElementById('editor'));
-    const focusLine = deps.focusLine ?? focusEditorLine;
-
-    const editor = getEditor();
-    if (!editor) {
-        return;
-    }
-
-    // Read each line's content text (excluding the .line-prefix line number).
-    const lineEls = Array.from(editor.querySelectorAll('.line')) as HTMLElement[];
-    const lineTexts = lineEls.map((el) => el.querySelector('.line-content')?.textContent || '');
-
-    const lineIndex = findHeadingLineIndex(lineTexts, index);
-    if (lineIndex === null) {
-        return;
-    }
-
-    lineEls[lineIndex].scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-    // Move focus and the cursor to the heading so typing continues there.
-    focusLine(editor, lineIndex);
-
-    // Update active state in TOC
-    if (typeof document !== 'undefined') {
-        document.querySelectorAll('.toc-link').forEach((link: Element, i: number) => {
-            link.classList.toggle('active', i === index);
-        });
-    }
-}
-
-// Set up scroll spy to highlight current heading in TOC
-export function setupScrollSpy(): void {
-    const editorMain = document.querySelector('.editor-main');
-    if (!editorMain) {
-        return;
-    }
-
-    let ticking = false;
-
-    editorMain.addEventListener('scroll', () => {
-        if (!ticking) {
-            requestAnimationFrame(() => {
-                updateActiveHeading();
-                ticking = false;
-            });
-            ticking = true;
-        }
-    });
-}
-
-function updateActiveHeading(): void {
-    const editor = document.getElementById('editor');
-    const editorMain = document.querySelector('.editor-main');
-    const tocSidebar = document.querySelector('.toc-sidebar');
-    if (!editor || !editorMain) {
-        return;
-    }
-
-    const lines = editor.querySelectorAll('.line');
-    const scrollTop = editorMain.scrollTop;
-    const offset = 100;
-
-    let activeIndex = -1;
-    let headingCount = 0;
-
-    lines.forEach((line: Element) => {
-        // Read .line-content only — the .line-prefix holds the rendered line
-        // number, so the full textContent would start with a digit and never
-        // match. This mirrors findHeadingLineIndex so the spy index lines up
-        // with the TOC entry order.
-        const text = line.querySelector('.line-content')?.textContent || '';
-        if (isTocHeadingLine(text)) {
-            const rect = line.getBoundingClientRect();
-            const editorRect = editorMain.getBoundingClientRect();
-            const relativeTop = rect.top - editorRect.top + scrollTop;
-
-            if (relativeTop <= scrollTop + offset) {
-                activeIndex = headingCount;
-            }
-            headingCount++;
-        }
-    });
-
-    // Update TOC active state and scroll active item into view
-    const tocLinks = document.querySelectorAll('.toc-link');
-    tocLinks.forEach((link: Element, i: number) => {
-        const isActive = i === activeIndex;
-        const wasActive = link.classList.contains('active');
-        link.classList.toggle('active', isActive);
-        
-        // Scroll TOC to keep active item visible (only when it changes)
-        if (isActive && !wasActive && tocSidebar) {
-            const linkEl = link as HTMLElement;
-            const sidebarRect = tocSidebar.getBoundingClientRect();
-            const linkRect = linkEl.getBoundingClientRect();
-            
-            // Check if the link is outside the visible area of the sidebar
-            const isAbove = linkRect.top < sidebarRect.top + 50; // 50px buffer for title
-            const isBelow = linkRect.bottom > sidebarRect.bottom - 20;
-            
-            if (isAbove || isBelow) {
-                linkEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
-    });
-}
+// The DOM half of this module -- scrollToHeading/setupScrollSpy/
+// updateActiveHeading and their ScrollToHeadingDeps -- was deleted with the
+// CM6 migration. It located lines with getBoundingClientRect() over `.line`
+// elements, which viewport virtualization makes invalid: only visible lines
+// exist in the DOM. The replacement lives in cm/ui/tocPanel.ts and works
+// against view.lineBlockAtHeight / EditorView.scrollIntoView instead.

@@ -1,0 +1,76 @@
+/**
+ * Fenced-code token colours — the CSS half of `webview/cm/codeHighlight.ts`,
+ * which emits these `tok-*` classes onto a nested language's tokens.
+ *
+ * Unlike every other colour in this project these cannot come from
+ * `--vscode-*`: VS Code publishes workbench colours to a webview, never the
+ * theme's *token* colours, so the palette is hand-picked (GitHub Primer's
+ * light/dark syntax sets) and exposed as `--mbe-tok-*` for overriding.
+ *
+ * Dark is the base and light is the override, keyed off the classes VS Code
+ * puts on the webview `<body>`. High-contrast-light carries both
+ * `vscode-high-contrast` and `vscode-high-contrast-light`, so matching the
+ * `-light` suffix is what keeps it on the light palette.
+ *
+ * These are mark decorations inside `.cm-line`, never line decorations, so
+ * they are not mirrored onto the line-number gutter (see
+ * `.claude/rules/editor-styles.md`) and carry colour only — no padding, no
+ * margin, nothing that could change a line's height.
+ */
+:root {
+    --mbe-tok-comment: #8b949e;
+    --mbe-tok-keyword: #ff7b72;
+    --mbe-tok-string: #a5d6ff;
+    --mbe-tok-constant: #79c0ff;
+    --mbe-tok-property: #79c0ff;
+    --mbe-tok-type: #7ee787;
+    --mbe-tok-function: #d2a8ff;
+    --mbe-tok-invalid: #f85149;
+}
+
+body.vscode-light,
+body.vscode-high-contrast-light {
+    --mbe-tok-comment: #6e7781;
+    --mbe-tok-keyword: #cf222e;
+    --mbe-tok-string: #0a3069;
+    --mbe-tok-constant: #0550ae;
+    --mbe-tok-property: #0550ae;
+    --mbe-tok-type: #116329;
+    --mbe-tok-function: #8250df;
+    --mbe-tok-invalid: #82071e;
+}
+
+.cm-line .tok-comment {
+    color: var(--mbe-tok-comment);
+    font-style: italic;
+}
+
+.cm-line .tok-keyword,
+.cm-line .tok-operator {
+    color: var(--mbe-tok-keyword);
+}
+
+.cm-line .tok-string {
+    color: var(--mbe-tok-string);
+}
+
+.cm-line .tok-constant {
+    color: var(--mbe-tok-constant);
+}
+
+.cm-line .tok-property {
+    color: var(--mbe-tok-property);
+}
+
+.cm-line .tok-type {
+    color: var(--mbe-tok-type);
+}
+
+.cm-line .tok-function {
+    color: var(--mbe-tok-function);
+}
+
+.cm-line .tok-invalid {
+    color: var(--mbe-tok-invalid);
+    text-decoration: underline wavy;
+}

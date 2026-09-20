@@ -1,0 +1,169 @@
+/**
+ * Block/line-decoration `md-*` classes — `Decoration.line()` classes applied
+ * directly to a `.cm-line` (a line can carry several at once, e.g.
+ * `md-blockquote md-quote-2`, all on the SAME element — CM6 line
+ * decorations don't nest a wrapper, unlike mark decorations). `md-heading`
+ * immediately below is WP-1-owned (the four-class pipeline proof; see
+ * src/webview/cm/decorations.ts and src/shared/nodeClassMap.ts).
+ *
+ * Everything after the `--- WP-H below ---` marker was originally relocated
+ * verbatim from the pre-CM6 stylesheet as a starting point; it has since
+ * been rewritten to match: the old rules assumed a DOM this project no
+ * longer has — either a direct-child line `<div>` under `#editor` (`#editor
+ * > .foo`), or a nested inner wrapper span (`.blockquote-line
+ * .md-blockquote`, `.code-fence .code-inner`) for a background/border that
+ * a CM6 line decoration puts directly on the `.cm-line` itself instead.
+ * Selectors below are flat (`.blockquote-first.md-blockquote`, multiple
+ * classes on one element), not descendant combinators.
+ *
+ * `md-heading` activates per-level sizing deliberately (WP-H) — see
+ * `src/shared/nodeClassMap.ts`'s ATXHeading1..6 entries (`'md-heading
+ * md-h1'` etc.) and its own `.md-h1`..`.md-h6` rules below. This reactivates
+ * margin rules that were inert while `.md-heading` was `display: inline`
+ * (pre-CM6); every document's heading spacing now visibly reflects level,
+ * which is intended, not a side effect.
+ */
+
+/* NOTE: these rules are scoped to `.cm-line` deliberately. The line-number
+   gutter mirrors these same class names onto its `.cm-gutterElement`s (see
+   lineNumberGutter.ts) so the two share font metrics — an unscoped `.md-*`
+   rule therefore also paints the line NUMBER, which made heading numbers bold
+   and coloured and drew the code block's background and padding around them.
+   Only cm-shell.css may style the gutter, and only font-size/padding.
+
+   NOTE: never use `margin` on a `.cm-line` class. Margin sits OUTSIDE the
+   border box, but CM6 sizes each `.cm-gutterElement` from the line's block
+   height and maps click coordinates to line blocks -- so a margin pushes the
+   line's text down while the gutter number stays put (numbers read high on
+   headings), and leaves vertical gaps belonging to no line, where a click
+   resolves to a neighbouring line. Use padding, which CM6 measures, and
+   mirror any vertical padding onto the gutter element in cm-shell.css. */
+.cm-line.md-heading {
+    font-weight: 700;
+}
+
+.cm-line.md-h1 {
+    font-size: 2em;
+    font-weight: 700;
+    color: var(--vscode-editor-foreground);
+    padding: 0.5em 0 0.3em 0;
+}
+
+.cm-line.md-h2 {
+    font-size: 1.6em;
+    font-weight: 600;
+    color: var(--vscode-editor-foreground);
+    padding: 0.4em 0 0.2em 0;
+}
+
+.cm-line.md-h3 {
+    font-size: 1.35em;
+    font-weight: 600;
+    color: var(--vscode-editor-foreground);
+    padding: 0.3em 0 0.15em 0;
+}
+
+.cm-line.md-h4 {
+    font-size: 1.2em;
+    font-weight: 600;
+    color: var(--vscode-editor-foreground);
+    padding: 0.2em 0 0.1em 0;
+}
+
+.cm-line.md-h5 {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: var(--vscode-editor-foreground);
+    padding: 0.15em 0 0.08em 0;
+}
+
+.cm-line.md-h6 {
+    font-size: 1em;
+    font-weight: 600;
+    color: var(--vscode-descriptionForeground, #8b949e);
+    padding: 0.1em 0 0.05em 0;
+}
+
+/* Setext headings (`Title` over `===`/`---`). `decorations.ts` keeps the
+   `md-hN` class on the title line(s) only and marks the two roles: the
+   underline is the heading's syntax, so it stays at normal metrics (its
+   characters are already muted by `md-syntax`) and the pair sits tight,
+   the way `#` sits on the title line itself for an ATX heading. The
+   block's trailing space moves from the title to the underline, which is
+   now the heading's last line. Padding-bottom needs no gutter mirror --
+   CM6 forces the gutter row's height, so only padding-TOP moves a number
+   off its baseline. */
+.cm-line.md-setext-title {
+    padding-bottom: 0;
+}
+
+.cm-line.md-setext-underline {
+    padding-bottom: 0.3em;
+}
+
+/* --- WP-H below --- */
+
+/* `md-bold-italic` has no CM6 equivalent and needs none: `***x***` is
+   `Emphasis` nested in `StrongEmphasis`, and `.md-bold`+`.md-italic` (both
+   applied, nested by construction) composes the same visual result. */
+
+/* GitHub Alerts live in ./md-alerts.css (WP-A) instead — they read off the
+   same `Blockquote` node these rules do, see decorations/alerts.ts. */
+
+.cm-line.md-blockquote {
+    background: rgba(128, 128, 128, 0.08);
+    padding: 4px 12px;
+    border-left: 4px solid var(--vscode-textBlockQuote-border, #848d97);
+    color: var(--vscode-textBlockQuote-foreground, var(--vscode-editor-foreground));
+}
+
+/* `blockquote-first`/`blockquote-last` mark the top/bottom line of the
+   OUTERMOST blockquote in a (possibly nested) run — see
+   decorations.ts's handleBlockquoteExtras. */
+.cm-line.blockquote-first.md-blockquote {
+    border-top-right-radius: 6px;
+    padding-top: 8px;
+}
+
+.cm-line.blockquote-last.md-blockquote {
+    border-bottom-right-radius: 6px;
+    padding-bottom: 8px;
+}
+
+.cm-line.md-quote-1 {
+    /* Base level */
+}
+
+.cm-line.md-quote-2 {
+    padding-left: 1.5em;
+}
+
+.cm-line.md-quote-3 {
+    padding-left: 3em;
+}
+
+/* Fenced code — background/monospace on every line the fence spans
+   (marker lines and content lines alike; CodeText's own nested-language
+   tokens are never given an md-* class, see decorations.ts). Marker lines
+   (the ``` lines) are additionally muted and get the rounded corners. */
+.cm-line.md-code-block {
+    background: rgba(110, 118, 129, 0.15);
+    padding: 2px 16px;
+    font-size: 0.95em;
+    font-family: var(--mbe-font-mono);
+    color: var(--vscode-editor-foreground);
+}
+
+.cm-line.md-code-block-first {
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    padding-top: 12px;
+    color: var(--vscode-editorLineNumber-foreground, #6e7681);
+}
+
+.cm-line.md-code-block-last {
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    padding-bottom: 12px;
+    color: var(--vscode-editorLineNumber-foreground, #6e7681);
+}

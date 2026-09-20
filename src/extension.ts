@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { MarkdownEditorProvider } from './editor/customEditorProvider';
+import { registerDiffPanelSerializer } from './editor/diffPanel';
+import { openDiffCommandId, openDiffForTarget } from './editor/openDiffCommand';
 
 export function activate(context: vscode.ExtensionContext): void {
     const provider = new MarkdownEditorProvider(context);
@@ -17,6 +19,8 @@ export function activate(context: vscode.ExtensionContext): void {
         )
     );
 
+    context.subscriptions.push(registerDiffPanelSerializer(context));
+
     // Register command to open the current markdown file in the Beautiful Editor
     context.subscriptions.push(
         vscode.commands.registerCommand('markdown.beautifulEditor.open', async (uri?: vscode.Uri) => {
@@ -33,6 +37,15 @@ export function activate(context: vscode.ExtensionContext): void {
                 'markdown.beautifulEditor'
             );
         })
+    );
+
+    // Diff panel. One command for every entry point -- Source Control menu,
+    // diff-editor title bar, command palette, the read-only banner -- because
+    // the pairing is read off the clicked resource, not off the menu.
+    context.subscriptions.push(
+        vscode.commands.registerCommand(openDiffCommandId, (target: unknown) =>
+            openDiffForTarget({ context, target })
+        )
     );
 
     // Register toggle diff mode command
@@ -58,8 +71,11 @@ export function activate(context: vscode.ExtensionContext): void {
                 return;
             }
 
-            if (!uri.fsPath.endsWith('.md')) {
-                vscode.window.showErrorMessage('Active file is not a markdown file');
+            // `fsPath` ends in `.md` for a `git:` URI too, so the scheme check
+            // is what actually rules out a diff pane -- which has no working
+            // tree to compare against. Its banner offers the diff panel.
+            if (uri.scheme !== 'file' || !uri.fsPath.toLowerCase().endsWith('.md')) {
+                vscode.window.showErrorMessage('Active file is not a markdown file on disk');
                 return;
             }
 

@@ -1,0 +1,261 @@
+/**
+ * CM6 editor shell — WP-1 owned: base reset/fonts, the `.editor-container`/
+ * `.editor-main` layout, and the `.cm-editor`/`.cm-content`/`.cm-line`/
+ * `.cm-gutters` shell + gutter/selection/caret theming. Also carries the
+ * four `md-*` proof classes' *home files* are `md-inline.css` (md-bold/
+ * md-italic/md-code/md-syntax) and `md-block.css` (md-heading) — not here;
+ * this file is shell-only.
+ *
+ * `#editor` (from src/editor/webviewContent.ts, untouched by this
+ * migration) is where CM6 mounts (`new EditorView({ parent })`); it carries
+ * no box model of its own any more, `.cm-editor` does.
+ */
+
+* {
+    box-sizing: border-box;
+}
+
+:root {
+    --mbe-font-mono: var(--vscode-editor-font-family, 'SF Mono', Monaco, 'Cascadia Code', Consolas, monospace);
+    --mbe-font-ui: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+    /* Content font; switched by the `font-mono` body class (setting + toolbar toggle) */
+    --mbe-font-content: var(--mbe-font-ui);
+}
+
+body.font-mono {
+    --mbe-font-content: var(--mbe-font-mono);
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    background: var(--vscode-editor-background);
+    color: var(--vscode-editor-foreground);
+    font-family: var(--mbe-font-content);
+    font-size: var(--vscode-editor-font-size, 14px);
+    line-height: 1.7;
+}
+
+/* Main layout */
+.editor-container {
+    display: flex;
+    height: calc(100vh - 36px);
+    margin-top: 36px;
+    overflow: hidden;
+}
+
+/* No inset: the gutter sits flush at the left edge like a normal editor, and
+ * CM6's own scroller owns the scrolling. Any padding here also pushes the
+ * gutter away from the edge and reads as a gap around the content. */
+/* `overflow: hidden`, not `auto`: CM6's own `.cm-scroller` scrolls the
+ * document. Letting this element scroll too produced two nested scrollbars,
+ * in the normal editor as well as the merge view. */
+.editor-main {
+    flex: 1;
+    overflow: hidden;
+    padding: 0;
+}
+
+#editor {
+    height: 100%;
+}
+
+.cm-editor {
+    height: 100%;
+    outline: none;
+    font-family: var(--mbe-font-content);
+    background: transparent;
+}
+
+/* CM6's baseTheme draws a dotted focus outline via `&.cm-focused`, which
+ * outranks the plain `.cm-editor` rule above. The panel is already visually
+ * distinct inside VS Code, so drop it. */
+.cm-editor.cm-focused {
+    outline: none;
+}
+
+.cm-editor .cm-content {
+    /* CM6's baseTheme sets `padding: 4px 0`; only the scroll-past-end bottom
+     * padding is wanted. */
+    padding-top: 0;
+    padding-bottom: 50vh;
+    font-family: inherit;
+    caret-color: var(--vscode-editorCursor-foreground, #007acc);
+}
+
+/* No vertical padding here: CM6 already aligns the gutter to the content
+ * (it builds gutters with `-documentPadding.top`, so the first element's
+ * margin-top matches `.cm-content`'s padding), and any padding added here
+ * has to be mirrored onto `.cm-gutterElement` or the number drifts off the
+ * text baseline on every line. Line spacing comes from `line-height`. */
+.cm-editor .cm-line {
+    padding: 0 0 0 2px;
+}
+
+.cm-editor .cm-scroller {
+    font-family: inherit;
+    line-height: inherit;
+}
+
+/* `margin-right` puts the gap between the change bar (painted on the gutter
+ * element's right edge) and the text. It belongs here rather than on
+ * `.cm-line`, because blockquote and code-block lines override `.cm-line`'s
+ * padding with their own, so a content-side gap would not apply to them --
+ * their left border would still sit flush against the bar. Margin is fine on
+ * this element: the "never use margin" rule is about `.cm-line` boxes, whose
+ * height CM6 measures. */
+.cm-editor .cm-gutters {
+    background: transparent;
+    border-right: none;
+    margin-right: 10px;
+    color: var(--vscode-editorLineNumber-foreground, #6e7681);
+}
+
+/*
+ * Line-number baseline alignment. See `src/webview/cm/lineNumberGutter.ts`
+ * for the full mechanism and why it exists (`.cm-gutterElement` lives in a
+ * DOM subtree separate from `.cm-line`, CM6 forces its HEIGHT to match the
+ * content line but not where the text baseline sits inside that box).
+ *
+ * `.cm-gutterElement` (the outer box) is deliberately left to inherit
+ * `.cm-editor`'s own font-family/font-size — the SAME ones `.cm-line` uses
+ * by default — so the two share an identical line-box "strut" and their
+ * baselines land at the same offset from the row's top. The
+ * per-class rules further down additionally mirror `.md-h1`..`.md-h6` and
+ * `.md-code-block`'s font-size/font-family from `src/styles/md-block.css`
+ * for lines whose content changes those metrics — `lineNumberGutter.ts`
+ * puts the matching class on the gutter row via a custom `GutterMarker`.
+ * Keep these in sync with `md-block.css` if those values ever change; they
+ * are intentionally duplicated (this file owns the gutter, not that one).
+ */
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement {
+    /* No padding-top: `.cm-line` has no base vertical padding either, and
+     * CM6 handles the content-padding offset itself. Only the per-class
+     * mirrors further down add padding, matching real `.cm-line` padding. */
+    padding-right: 6px;
+    padding-left: 8px;
+}
+
+/* The visible digits: a nested inline box with its OWN fixed small mono
+ * size, decoupled from the (possibly much larger) strut font-size above via
+ * `rem` rather than `em` — `em` would inherit the parent's per-line
+ * font-size and scale the digits up on headings, which is exactly the old
+ * bug this fix removes. `rem` is stable because `html`/`body` set a fixed
+ * `font-size` (`--vscode-editor-font-size`) that nothing here changes.
+ * Default (initial) `vertical-align: baseline` on this span is what aligns
+ * its baseline to the strut's, regardless of its own smaller size — no
+ * pixel offset is computed or guessed. */
+.cm-editor .cm-gutter.cm-lineNumbers .cm-lineNumberDigits {
+    font-family: var(--mbe-font-mono);
+    font-size: 0.85rem;
+}
+
+/* Per-line strut mirrors — keep in sync with the corresponding rule in
+ * `src/styles/md-block.css`. Only font-size/font-family are mirrored
+ * (never color/background/border/margin): those are the only properties
+ * that change a line's own box metrics, and copying the rest would leak
+ * block styling (borders, backgrounds) into the gutter. */
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h1 {
+    font-size: 2em;
+}
+
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h2 {
+    font-size: 1.6em;
+}
+
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h3 {
+    font-size: 1.35em;
+}
+
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h4 {
+    font-size: 1.2em;
+}
+
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h5 {
+    font-size: 1.1em;
+}
+
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h6 {
+    font-size: 1em;
+}
+
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-code-block {
+    font-family: var(--mbe-font-mono);
+    font-size: 0.95em;
+}
+
+/* Vertical-padding mirrors. Every `.cm-line` class that adds vertical
+ * padding must repeat it here, or the gutter number sits at a different
+ * offset from its line's text. (Margin is never used on `.cm-line` -- see the
+ * note in md-block.css for why.) `lineStrutClass` in `lineNumberGutter.ts`
+ * mirrors the line decorations `decorations.ts` actually builds, so the
+ * synthesized boundary classes below do reach the gutter element.
+ * Values here must stay equal to md-block.css / md-alerts.css. */
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h1 { padding-top: 0.5em; }
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h2 { padding-top: 0.4em; }
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h3 { padding-top: 0.3em; }
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h4 { padding-top: 0.2em; }
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h5 { padding-top: 0.15em; }
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h6 { padding-top: 0.1em; }
+
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.blockquote-first {
+    padding-top: 8px;
+}
+
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.alert-first {
+    padding-top: 16px;
+}
+
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-code-block-first {
+    padding-top: 12px;
+}
+
+/* Mirrors `.cm-line.md-hr`'s `padding: 0.5em 0` (md-inline.css). Only the
+ * padding: the hr line's `display: flex` and its `::before`/`::after` rule
+ * segments belong to the content line alone -- that rule pair is scoped to
+ * `.cm-line` there precisely so it never reaches this element. */
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-hr {
+    padding-top: 0.5em;
+}
+
+/*
+ * Always-on added/modified/deleted gutter indicator (VS Code parity).
+ * `cm-changed-added`/`cm-changed-modified`/`cm-changed-removed` are set by
+ * `LineNumberMarker.elementClass` in `lineNumberGutter.ts` alongside the
+ * `md-*` strut classes above -- see that file for how the change kind is
+ * computed (`computeLineChangeMarkers`, `../webview/editor/diff.ts`) and
+ * dispatched.
+ *
+ * `box-shadow: inset` rather than a border or padding: it paints inside the
+ * existing border-box without adding to it, so it cannot touch the
+ * line-height/baseline math the rest of this file goes to such lengths to
+ * keep exact (see the file header and `lineNumberGutter.ts`'s own header for
+ * why an unmirrored size change there is a real, twice-shipped bug).
+ * `removed` has no line of its own -- it lands on the line adjacent to the
+ * deletion (`computeLineChangeMarkers`), styled the same narrow bar so it
+ * reads as "something changed here" without claiming a whole line was added.
+ */
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.cm-changed-added {
+    box-shadow: inset -2px 0 0 0 var(--vscode-editorGutter-addedBackground, #487e02);
+}
+
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.cm-changed-modified {
+    box-shadow: inset -2px 0 0 0 var(--vscode-editorGutter-modifiedBackground, #1b81a8);
+}
+
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.cm-changed-removed {
+    box-shadow: inset -2px 0 0 0 var(--vscode-editorGutter-deletedBackground, #f14c4c);
+}
+
+.cm-editor .cm-activeLineGutter {
+    background: transparent;
+    color: var(--vscode-editorLineNumber-activeForeground, #c6c6c6);
+}
+
+.cm-editor .cm-selectionBackground,
+.cm-editor.cm-focused .cm-selectionBackground,
+.cm-editor ::selection {
+    background: var(--vscode-editor-selectionBackground, rgba(0, 122, 204, 0.3)) !important;
+}

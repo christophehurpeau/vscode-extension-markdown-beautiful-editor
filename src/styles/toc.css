@@ -1,0 +1,82 @@
+/**
+ * TOC sidebar styling — WP-U3 owned (see src/webview/cm/ui/tocPanel.ts).
+ * Relocated verbatim from the pre-CM6 stylesheet; unlike the `md-*`/diff
+ * files, this one is not dead — `src/webview/toc.ts`'s `updateToc` still
+ * renders the same `.toc-list`/`.toc-item`/`.toc-link` markup unchanged
+ * (pure heading extraction + DOM list rendering, no dependency on the
+ * editor's own DOM model). Click-to-scroll and scroll-spy (`.toc-link.active`)
+ * are wired against the CM6 view in tocPanel.ts.
+ */
+
+.toc-sidebar {
+    width: 200px;
+    min-width: 200px;
+    padding: 24px 12px;
+    border-right: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+    overflow-y: auto;
+    background: var(--vscode-sideBar-background, var(--vscode-editor-background));
+    font-family: var(--mbe-font-ui);
+}
+
+.toc-title {
+    font-size: 0.7em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--vscode-sideBarSectionHeader-foreground, var(--vscode-descriptionForeground));
+    margin: 0 0 12px 8px;
+}
+
+.toc-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.toc-item {
+    margin: 2px 0;
+}
+
+.toc-link {
+    display: block;
+    padding: 4px 8px;
+    color: var(--vscode-foreground, inherit);
+    text-decoration: none;
+    font-size: 0.85em;
+    border-radius: 4px;
+    transition: background 0.15s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.toc-link:hover {
+    background: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.1));
+}
+
+.toc-link.active {
+    background: var(--vscode-list-activeSelectionBackground, rgba(0, 122, 204, 0.3));
+    color: var(--vscode-list-activeSelectionForeground, inherit);
+}
+
+/* TOC indentation levels */
+.toc-level-1 .toc-link { padding-left: 8px; font-weight: 600; }
+.toc-level-2 .toc-link { padding-left: 16px; }
+.toc-level-3 .toc-link { padding-left: 24px; font-size: 0.8em; }
+.toc-level-4 .toc-link { padding-left: 32px; font-size: 0.8em; }
+.toc-level-5 .toc-link { padding-left: 40px; font-size: 0.75em; }
+.toc-level-6 .toc-link { padding-left: 48px; font-size: 0.75em; }
+
+/* Empty TOC state */
+.toc-empty {
+    padding: 8px;
+    color: var(--vscode-descriptionForeground, #6a737d);
+    font-size: 0.8em;
+    font-style: italic;
+}
+
+/* Hidden by the toolbar toggle, and by default on narrow viewports
+   (TOC_AUTO_HIDE_MAX_WIDTH in src/shared/tocVisibility.ts) */
+body.toc-hidden .toc-sidebar {
+    display: none;
+}

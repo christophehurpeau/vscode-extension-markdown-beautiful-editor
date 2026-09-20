@@ -1,0 +1,256 @@
+/**
+ * Inline `md-*` decoration classes — `Decoration.mark()` spans inside a
+ * `.cm-line`. `md-bold`/`md-italic`/`md-code`/`md-syntax` immediately below
+ * are WP-1-owned (the four-class pipeline proof; see
+ * src/webview/cm/decorations.ts and src/shared/nodeClassMap.ts). Everything
+ * after the `--- WP-H ---` marker belongs to WP-H (plus the grammar
+ * packages that feed it — WP-G1/G2/G3 for math/footnotes/definition lists).
+ * Most of it started as a verbatim relocation from the pre-CM6 stylesheet
+ * and has since been rewritten where the old DOM assumptions didn't hold
+ * (see individual rule comments, e.g. `.md-strike`/`.md-strike-text` and
+ * `.md-hr`). `.md-footnote`/`.md-footnote-def`/`.md-definition` remain
+ * untouched placeholders: WP-G2/WP-G3's grammars don't exist yet, so those
+ * classes are never emitted today.
+ *
+ * CM6 decorations are flat marks (`<span class="md-bold">**text**</span>`),
+ * unlike the old parser's nested `<span class="md-bold"><span
+ * class="md-syntax">**</span><strong>text</strong>...`. Precedence-based DOM
+ * nesting still applies: `md-syntax` (Prec.highest) renders *inside*
+ * `md-bold`/`md-italic`/`md-code` (Prec.default), so `.md-bold .md-syntax`
+ * keeps working even with no `<strong>`/`<em>`/`<code>` element to select.
+ */
+
+.md-syntax {
+    color: var(--vscode-editorLineNumber-foreground, #6e7681);
+    font-weight: normal;
+    font-style: normal;
+}
+
+.md-bold {
+    font-weight: 700;
+}
+
+.md-italic {
+    font-style: italic;
+}
+
+.md-code {
+    background: rgba(110, 118, 129, 0.2);
+    padding: 3px 2px;
+    border-radius: 5px;
+    font-family: var(--mbe-font-mono);
+    font-size: 0.95em;
+}
+
+.md-code .md-syntax {
+    font-family: inherit;
+}
+
+/* --- WP-H (grammar/decoration packages) below --- */
+
+/* Fenced code's info string (the language tag after the opening ```, e.g.
+   `ts` in ` ```ts `). Muted like the fence marks (`.md-syntax`) it sits
+   beside; the fence's background/monospace chrome itself is a line
+   decoration, see md-block.css's `.md-code-block`. */
+.md-code-info {
+    color: var(--vscode-editorLineNumber-foreground, #6e7681);
+    font-family: var(--mbe-font-mono);
+}
+
+/* `text-decoration` propagates to descendants and can't be undone on a
+   child, so it cannot live on `.md-strike` itself — that would also strike
+   the `~~` delimiters. `md-strike-text` is a synthesized mark (no Lezer
+   node of its own) over just the range between the two `StrikethroughMark`s
+   — see decorations.ts's handleStrikethroughExtras. */
+.md-strike {
+    opacity: 0.7;
+}
+
+.md-strike-text {
+    text-decoration: line-through;
+}
+
+.md-escaped {
+    color: var(--vscode-editor-foreground);
+}
+
+.md-math {
+    font-family: 'Times New Roman', serif;
+}
+
+.md-math-content {
+    color: var(--vscode-textPreformat-foreground, #c9510c);
+    font-style: italic;
+}
+
+.md-footnote {
+    color: var(--vscode-textLink-foreground, #58a6ff);
+    font-size: 0.85em;
+    vertical-align: super;
+}
+
+.md-footnote-def {
+    color: var(--vscode-descriptionForeground, #8b949e);
+    font-size: 0.9em;
+}
+
+.md-task {
+    display: inline;
+}
+
+.md-task-checked {
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+/* md-task-unchecked (emitted for symmetry, and as a hook for future/custom
+   styling) is deliberately left unstyled — matching the old regex parser,
+   which had no rule for it either: only a *checked* task got the
+   done/struck-through treatment. */
+
+/* Tables — kept monospace so the `ch`-based column widths keep aligning */
+.md-table {
+    font-family: var(--mbe-font-mono);
+}
+
+.md-table-cell {
+    display: inline-block;
+    box-sizing: content-box;
+    white-space: nowrap;
+    padding: 0 6px;
+    vertical-align: top;
+}
+
+.md-table-cell .md-code {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.md-col-center { text-align: center; }
+.md-col-right { text-align: right; }
+.md-col-left,
+.md-col-none { text-align: left; }
+
+.md-table-sep {
+    color: var(--vscode-editorLineNumber-foreground, #6e7681);
+}
+
+.md-definition {
+    padding-left: 2em;
+    color: var(--vscode-editor-foreground);
+}
+
+.md-link .md-text {
+    color: var(--vscode-textLink-foreground, #58a6ff);
+    text-decoration: underline;
+}
+
+.md-link .md-url {
+    color: var(--vscode-descriptionForeground, #8b949e);
+    font-size: 0.9em;
+}
+
+/* Autolinks: <http://example.com> — the URL itself is the link text */
+.md-autolink .md-url {
+    color: var(--vscode-textLink-foreground, #58a6ff);
+    text-decoration: underline;
+    font-size: inherit;
+}
+
+/* Reference-style links: [text][label] */
+.md-ref-link .md-ref {
+    color: var(--vscode-descriptionForeground, #8b949e);
+    font-size: 0.9em;
+}
+
+/* Link reference definitions: [label]: url "title" */
+.md-link-def .md-ref {
+    color: var(--vscode-textLink-foreground, #58a6ff);
+}
+
+.md-link-def .md-url {
+    color: var(--vscode-descriptionForeground, #8b949e);
+}
+
+.md-link-def-title,
+.md-link-title {
+    color: var(--vscode-descriptionForeground, #8b949e);
+    font-style: italic;
+}
+
+/* Cmd/Ctrl+Click to open links — toggled by src/webview/cm/ui/chrome.ts
+   adding/removing `.cmd-held` on `view.contentDOM` (`.cm-content`), not
+   `#editor` — `#editor` is only CM6's mount point and carries no box model
+   of its own any more (see src/styles/cm-shell.css's header). */
+.cm-content.cmd-held .md-link,
+.cm-content.cmd-held .md-image,
+.cm-content.cmd-held .md-footnote,
+.cm-content.cmd-held .md-footnote-def {
+    cursor: pointer;
+}
+
+.cm-content.cmd-held .md-link:hover,
+.cm-content.cmd-held .md-image:hover,
+.cm-content.cmd-held .md-footnote:hover,
+.cm-content.cmd-held .md-footnote-def:hover {
+    background: rgba(88, 166, 255, 0.15);
+    border-radius: 3px;
+}
+
+.md-image .md-alt {
+    color: var(--vscode-textLink-foreground, #58a6ff);
+}
+
+.md-image .md-url {
+    color: var(--vscode-descriptionForeground, #8b949e);
+    font-size: 0.9em;
+}
+
+.md-list {
+    display: inline;
+}
+
+/* Horizontal rule. `md-hr` is a LINE decoration (see nodeClassMap.ts) — it
+   lands directly on the `.cm-line`, which is what lets it be a flex
+   container centering the `::before`/`::after` rule segments around the
+   `md-hr-text` mark (the literal `---`/`***`/`___`, synthesized as its own
+   mark over the same range — see decorations.ts).
+
+   Scoped to `.cm-line`, pseudo-elements included: unscoped, these rules also
+   hit the `.cm-gutterElement` mirroring the same class, turning the line
+   number's row into a flex container whose `flex: 1` rule segments push the
+   digits out of the right-aligned column. Vertical space is padding, not
+   margin — CM6 measures line blocks with `getBoundingClientRect()`, so
+   margin is invisible to its height map (see the notes in md-block.css and
+   .claude/rules/editor-styles.md); the matching gutter mirror lives in
+   cm-shell.css. */
+.cm-line.md-hr {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    color: var(--vscode-editorLineNumber-foreground, #6e7681);
+    padding: 0.5em 0;
+}
+
+.cm-line.md-hr::before {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--vscode-editorLineNumber-foreground, #6e7681);
+    opacity: 0.4;
+    margin-right: 1em;
+}
+
+.cm-line.md-hr::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--vscode-editorLineNumber-foreground, #6e7681);
+    opacity: 0.4;
+    margin-left: 1em;
+}
+
+.md-hr-text {
+    letter-spacing: 0.2em;
+    flex-shrink: 0;
+}

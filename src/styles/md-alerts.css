@@ -1,0 +1,110 @@
+/**
+ * GitHub alert (`> [!NOTE]` etc.) styling — WP-A owned (see
+ * src/webview/cm/decorations/alerts.ts). The pre-CM6 stylesheet needed an
+ * inner `.alert-inner` wrapper element to carry the background/border-left
+ * because `#editor > *` used to be a flex row with the line number as its
+ * first child (a background on the line div itself would paint behind the
+ * number). CM6's gutter lives outside `.cm-content`, so that constraint is
+ * gone and the wrapper with it: `alertLineClassesForBlockquote` puts
+ * `md-alert` / `md-alert-<type>` / `alert-first` / `alert-last` /
+ * `alert-single` straight on the line via `Decoration.line()` (see
+ * decorations.ts's `handleBlockquoteExtras`), so every rule below targets
+ * `.cm-line` directly.
+ *
+ * `md-alerts.css` `@import`s after `md-block.css` in `editor.css`, so these
+ * rules win the cascade tie against the plain blockquote rules an alert's
+ * lines also carry (`.md-blockquote`, `.blockquote-first.md-blockquote`)
+ * without needing `!important`.
+ *
+ * `.md-alert-type` (the uppercased `NOTE`/`TIP`/... label) is a *mark*-level
+ * class, not a line class — nothing currently emits it (WP-A's seam only
+ * returns line classes), but the selectors are kept: they nest correctly
+ * under the per-type line classes regardless of which decoration layer ends
+ * up producing the mark, so there is nothing to rewrite here.
+ */
+
+.cm-line.md-alert,
+.cm-line.md-alert-content {
+    background: rgba(128, 128, 128, 0.1);
+    border-left: 4px solid #848d97;
+    padding: 4px 12px;
+}
+
+.cm-line.md-alert {
+    font-weight: 600;
+}
+
+.cm-line.md-alert-content {
+    font-weight: normal;
+}
+
+/* First alert line - rounded top corner */
+/* Margin would sit outside the border box CM6 measures -- see the note in
+   md-block.css. The old 8px margin + 8px padding is folded into padding. */
+.cm-line.alert-first {
+    border-top-right-radius: 6px;
+    padding-top: 16px;
+}
+
+/* Last alert line - rounded bottom corner */
+.cm-line.alert-last {
+    border-bottom-right-radius: 6px;
+    padding-bottom: 16px;
+}
+
+/* Single-line alert - rounded on both ends */
+.cm-line.alert-single {
+    border-radius: 0 6px 6px 0;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.md-alert-type {
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+/* Note - Blue */
+.cm-line.md-alert-note {
+    border-left-color: #58a6ff;
+    background: rgba(88, 166, 255, 0.1);
+}
+.md-alert-note .md-alert-type {
+    color: #58a6ff;
+}
+
+/* Tip - Green */
+.cm-line.md-alert-tip {
+    border-left-color: #3fb950;
+    background: rgba(63, 185, 80, 0.1);
+}
+.md-alert-tip .md-alert-type {
+    color: #3fb950;
+}
+
+/* Important - Purple */
+.cm-line.md-alert-important {
+    border-left-color: #a371f7;
+    background: rgba(163, 113, 247, 0.1);
+}
+.md-alert-important .md-alert-type {
+    color: #a371f7;
+}
+
+/* Warning - Yellow/Orange */
+.cm-line.md-alert-warning {
+    border-left-color: #d29922;
+    background: rgba(210, 153, 34, 0.1);
+}
+.md-alert-warning .md-alert-type {
+    color: #d29922;
+}
+
+/* Caution - Red */
+.cm-line.md-alert-caution {
+    border-left-color: #f85149;
+    background: rgba(248, 81, 73, 0.1);
+}
+.md-alert-caution .md-alert-type {
+    color: #f85149;
+}

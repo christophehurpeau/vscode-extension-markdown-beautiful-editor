@@ -1,0 +1,239 @@
+/**
+ * Top toolbar, floating formatting toolbar, and line-type toolbar button
+ * styling — WP-U1 (floating toolbar) / WP-U2 (line-type toolbar) owned (see
+ * src/webview/cm/ui/floatingToolbar.ts, src/webview/cm/ui/lineTypeToolbar.ts).
+ * Relocated verbatim from the pre-CM6 stylesheet. Unlike the `md-*`/diff
+ * files, none of this references the deleted `.line`/`#editor > *` DOM —
+ * the toolbar markup itself (src/editor/webviewContent.ts) is untouched by
+ * this migration, only the JS that drives `.active` states and button
+ * generation moved out of main.ts into the two files above (currently
+ * no-op stubs, so buttons render but do nothing yet).
+ */
+
+.toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    /* Left padding clears the pinned TOC toggle; see .toc-toggle-btn below */
+    padding: 0 12px 0 36px;
+    background: var(--vscode-editor-background);
+    border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.2));
+    z-index: 100;
+    transition: padding-left 0.2s ease;
+}
+
+.toolbar-section {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+/* Still clickable, and still says what it would do — it just has nothing to
+   act on right now (the diff toggle when the file matches git HEAD). Dimmed
+   rather than hidden: a control that disappears is indistinguishable from one
+   that is broken. */
+.toolbar-btn-inactive {
+    opacity: 0.45;
+}
+
+.toolbar-spacer {
+    flex: 1;
+}
+
+/* Divider marking a section as unrelated to the editing buttons. The rule sits
+   on the left of the section so it never dangles when the diff buttons that
+   follow are hidden. */
+.toolbar-section-separated {
+    margin-left: 6px;
+    padding-left: 10px;
+    border-left: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+}
+
+/* The toggle renders its own label in the font currently applied to content */
+body.font-mono #font-toggle-btn .toolbar-btn-icon {
+    font-family: var(--mbe-font-mono);
+}
+
+/* Align the toolbar contents with the editor column when the TOC is shown */
+body:not(.toc-hidden) .toolbar {
+    padding-left: 200px;
+}
+
+/* Pinned to the top-left corner, so the toggle keeps the same position whether
+   the sidebar is shown or hidden — only the toolbar contents shift. */
+.toc-toggle-btn {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 0;
+    z-index: 101;
+}
+
+/* Diff mode hides the editing chrome, the TOC toggle included */
+body.diff-mode .toc-toggle-btn {
+    display: none;
+}
+
+body.diff-mode.toc-hidden .toolbar {
+    padding-left: 12px;
+}
+
+.toolbar-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--vscode-foreground, #cccccc);
+    font-size: 13px;
+    font-family: var(--mbe-font-ui);
+    cursor: pointer;
+    transition: background 0.1s ease;
+}
+
+.toolbar-btn:hover {
+    background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.3));
+}
+
+.toolbar-btn:active {
+    background: var(--vscode-toolbar-activeBackground, rgba(90, 93, 94, 0.5));
+}
+
+.toolbar-btn.active {
+    background: var(--vscode-button-secondaryBackground, rgba(90, 93, 94, 0.5));
+    color: var(--vscode-button-secondaryForeground, #ffffff);
+}
+
+.toolbar-btn-icon {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.toolbar-btn-label {
+    font-weight: 500;
+}
+
+/* ============================================
+   Floating Formatting Toolbar
+   ============================================ */
+.formatting-toolbar {
+    position: fixed;
+    z-index: 1000;
+    display: flex;
+    gap: 2px;
+    padding: 4px;
+    background: var(--vscode-editorWidget-background, #252526);
+    border: 1px solid var(--vscode-editorWidget-border, #454545);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    animation: toolbar-fade-in 0.15s ease-out;
+}
+
+@keyframes toolbar-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.formatting-toolbar button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--vscode-foreground, #cccccc);
+    font-size: 13px;
+    font-family: var(--mbe-font-ui);
+    cursor: pointer;
+    transition: background 0.1s ease;
+}
+
+.formatting-toolbar button:hover {
+    background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.5));
+}
+
+.formatting-toolbar button:active {
+    background: var(--vscode-toolbar-activeBackground, rgba(99, 102, 103, 0.5));
+}
+
+.formatting-toolbar button.active {
+    background: var(--vscode-textLink-foreground, #3794ff);
+    color: var(--vscode-editor-background, #1e1e1e);
+}
+
+.formatting-toolbar button.active:hover {
+    background: var(--vscode-textLink-activeForeground, #3794ff);
+}
+
+/* Actions (open link/image) read as a group apart from the format toggles. */
+.formatting-toolbar button[data-action] {
+    margin-left: 4px;
+    border-left: 1px solid var(--vscode-editorWidget-border, #454545);
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    padding-left: 4px;
+    width: 32px;
+}
+
+.formatting-toolbar button strong {
+    font-weight: 700;
+}
+
+.formatting-toolbar button em {
+    font-style: italic;
+}
+
+.formatting-toolbar button code {
+    font-family: var(--mbe-font-mono);
+    font-size: 10px;
+}
+
+.formatting-toolbar button s {
+    text-decoration: line-through;
+}
+
+/* ============================================
+   Line Type Toolbar Buttons
+   ============================================ */
+.line-type-btn {
+    min-width: 28px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    justify-content: center;
+}
+
+.line-type-btn .toolbar-btn-icon {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.line-type-btn.active {
+    background: var(--vscode-button-background, #0e639c);
+    color: var(--vscode-button-foreground, #ffffff);
+}
+
+.line-type-btn.active:hover {
+    background: var(--vscode-button-hoverBackground, #1177bb);
+}

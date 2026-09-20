@@ -64,6 +64,7 @@ Here is an image with title: ![Logo](../images/springbok-logo.png 'Springbok Log
 
 ## Links
 
+An [example](http://example.com).
 [Link to full](./full.md)
 [Link to full, on links header](./full.md#links)
 

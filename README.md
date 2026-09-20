@@ -48,6 +48,20 @@ Full support for GitHub's alert syntax:
 - **Temporary toggle**: The `Aa` button on the right of the toolbar switches the font for the current panel only, without changing the setting
 - **Code stays monospace**: Inline code, fenced code blocks and tables always use the editor font
 
+### 🔀 Diffs
+- **From an open diff**: The ✨ button in a text diff's title bar switches that comparison into the Beautiful Diff view, on exactly the versions that diff was showing
+- **From Source Control**: Right-click a `.md` row in the Source Control panel (under **Changes**, **Staged Changes** or **Untracked**) → **Open Beautiful Markdown Diff**, in the same section as *Open File* and *Open Changes*
+- **Correct pairing**: **Changes** compares the index against your working tree, **Staged Changes** compares HEAD against the index, and staged adds, deletes and renames each get the pair VS Code itself would show
+- **Labelled**: The tab reads `NOTES.md (Staged)` or `(Unstaged)`, and the panel header shows that scope alongside the exact refs — so two diffs of the same file are never confusable
+- **Editable where it can be**: In an **Unstaged** or **Untracked** view the right pane is the file on disk — type in it, or use the `→` button beside a changed block to revert it. A **Staged** view is read-only: that side is the git index, which can't be written directly
+- **Staging stays in git**: Stage, unstage and discard from the Source Control panel as usual
+
+### ⇄ Diff Mode (in the editor)
+
+- **Toggle**: The ⇄ button in the editor toolbar — or the compare button in the tab's title bar — compares the open file against git HEAD, side by side, with markdown styling on both sides
+- **Editable**: The right-hand pane is the live document — type in it and the file is updated, same as editing normally
+- **Revert a chunk**: Each changed block gets a `⇝` button in the narrow column between the two panes — click it to restore that block from HEAD
+
 ### 🎯 Editor Features
 - **Line Numbers**: Always visible line numbers for easy reference
 - **Syntax Visible**: Markdown syntax stays visible and editable
@@ -76,6 +90,30 @@ Full support for GitHub's alert syntax:
 ### Opening Files
 - **Right-click** any `.md` file → **Open With...** → **Markdown WYSIWYG**
 - Or set as default: **Open With...** → Select editor → **Configure Default Editor...**
+
+### Diffs
+
+Two ways in:
+
+- The **✨ button** in an open text diff's title bar.
+- **Right-click a file row in the Source Control panel** → **Open Beautiful Markdown Diff**
+  (top section, with *Open File* and *Open Changes*). This entry shows for every file, not
+  just markdown: VS Code gives an `scm/resourceState/context` menu no information about the
+  file it was opened on, so a `when` clause cannot filter it by extension.
+
+It opens as its own tab, so it does **not** appear in a diff's editor picker (the dropdown at
+the top-right of a diff tab, or **Open With...**).
+
+Do **not** pick **Markdown Beautiful Editor** from that picker: VS Code's custom editor API
+gives an extension one document per pane with no way to know the two belong together
+([microsoft/vscode#138525](https://github.com/microsoft/vscode/issues/138525)), so you get two
+unrelated editors side by side rather than a comparison.
+
+For the same reason, the multi-diff editor, **Compare with…** and gutter diffs always use
+VS Code's built-in text diff. Pointing either `workbench.editorAssociations` or
+`workbench.diffEditorAssociations` (which the picker's **Set Default (Diff Only)** submenu
+writes) at `markdown.beautifulEditor` makes this editor the default for diffs and is not
+recommended.
 
 ### Keyboard Shortcuts
 | Shortcut | Action |

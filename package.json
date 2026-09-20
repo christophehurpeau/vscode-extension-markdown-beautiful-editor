@@ -39,7 +39,9 @@
   ],
   "main": "./dist/extension.js",
   "packageManager": "pnpm@11.17.0",
-  "activationEvents": [],
+  "activationEvents": [
+    "onWebviewPanel:markdown.beautifulEditor.diffPanel"
+  ],
   "contributes": {
     "customEditors": [
       {
@@ -63,7 +65,14 @@
       {
         "command": "markdown.beautifulEditor.toggleDiffMode",
         "title": "Toggle Diff Mode",
-        "category": "Markdown Beautiful Editor"
+        "category": "Markdown Beautiful Editor",
+        "icon": "$(git-compare)"
+      },
+      {
+        "command": "markdown.beautifulEditor.openDiff",
+        "title": "Open Beautiful Markdown Diff",
+        "category": "Markdown Beautiful Editor",
+        "icon": "$(sparkle-filled)"
       }
     ],
     "configuration": {
@@ -88,8 +97,25 @@
       "editor/title": [
         {
           "command": "markdown.beautifulEditor.open",
-          "when": "editorLangId == markdown && !notebookEditorFocused",
+          "when": "editorLangId == markdown && !notebookEditorFocused && !isInDiffEditor",
           "group": "navigation"
+        },
+        {
+          "command": "markdown.beautifulEditor.openDiff",
+          "when": "isInDiffEditor && resourceExtname == .md",
+          "group": "navigation"
+        },
+        {
+          "command": "markdown.beautifulEditor.toggleDiffMode",
+          "when": "activeCustomEditorId == markdown.beautifulEditor",
+          "group": "navigation"
+        }
+      ],
+      "scm/resourceState/context": [
+        {
+          "command": "markdown.beautifulEditor.openDiff",
+          "when": "scmProvider == git",
+          "group": "navigation@10"
         }
       ]
     }
@@ -105,7 +131,9 @@
     "compile-tests": "tsc -p tsconfig.test.json",
     "watch-tests": "tsc -p tsconfig.test.json -w",
     "check-types": "tsc -b && tsc -p tsconfig.test.json --noEmit",
-    "lint": "eslint src",
+    "lint": "eslint src screenshots",
+    "playwright:prepare": "playwright install chromium",
+    "screenshots": "node esbuild.js && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON screenshots/capture.ts",
     "test": "pnpm run compile-tests && pnpm run compile && pnpm run lint && pnpm run test:unit && pnpm run test:integration",
     "test:unit": "mocha out/test/unit/**/*.test.js",
     "test:integration": "vscode-test"
@@ -115,16 +143,30 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
     "@types/vscode": "^1.105.1",
-    "@vscode/test-cli": "^0.0.12",
-    "@vscode/test-electron": "^2.5.2",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
     "esbuild": "^0.28.1",
     "eslint": "^9.39.1",
     "mocha": "^10.2.0",
+    "playwright": "^1.63.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.48.1",
     "vsce": "2.15.0"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-css": "^6.3.1",
+    "@codemirror/lang-html": "^6.4.12",
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/merge": "^6.12.2",
+    "@codemirror/state": "^6.7.5",
+    "@codemirror/view": "^6.43.12",
+    "@lezer/common": "^1.5.2",
+    "@lezer/highlight": "^1.2.3",
+    "@lezer/markdown": "^1.7.2",
     "diff": "^8.0.3"
   }
 }

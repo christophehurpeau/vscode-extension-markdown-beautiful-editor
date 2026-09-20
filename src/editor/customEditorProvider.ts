@@ -1,26 +1,29 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { getWebviewContent } from './webviewContent';
+import { createImagePathProcessor, webviewAssetUris, webviewLocalResourceRoots } from './webviewResources';
+import { getGitApi, isInRepository, showAtRef, type GitRepositoryLike } from './gitContent';
+import { fontFamilySettingSection, getConfiguredFontFamily } from './settings';
 import type { HostToWebviewMessage, WebviewToHostMessage } from '../shared/messages';
 import { parseLinkTarget } from '../shared/links';
-import { parseEditorFontFamily, type EditorFontFamily } from '../shared/fontFamily';
-
-const fontFamilySettingSection = 'markdown.beautifulEditor.fontFamily';
-
-function getConfiguredFontFamily(resource: vscode.Uri): EditorFontFamily {
-    return parseEditorFontFamily(vscode.workspace.getConfiguration(undefined, resource).get(fontFamilySettingSection));
-}
-
-/** Minimal shape of a git Repository from the built-in `vscode.git` API. */
-interface GitRepositoryLike {
-    rootUri: vscode.Uri;
-    state: { onDidChange: vscode.Event<void> };
-}
 
 export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
     private activeWebviewPanels = new Map<string, vscode.WebviewPanel>();
     /** Heading slug to scroll to once a freshly-opened editor signals `ready`, keyed by document URI string. */
     private pendingAnchors = new Map<string, string>();
+    /**
+     * Cached git HEAD content per open document (keyed by URI string), the
+     * single source both `sendDocument`/the change gutter and `toggleDiffMode`
+     * read from. Refreshed only on an actual git state change (see the
+     * listeners `setupGitListeners` installs below) or lazily on first use --
+     * never on every keystroke.
+     *
+     * This also fixes docs/TRIAGE.md #5 (`isDiffAvailable` re-ran the whole
+     * git-extension lookup on every document change, and `getOriginalContent`
+     * duplicated it again): the per-edit path (`changeHandler` below) now
+     * only does a string compare against this cache, no git spawn.
+     */
+    private headContentCache = new Map<string, string | null>();
     /** View type id registered for this custom editor (see extension.ts). */
     private static readonly VIEW_TYPE = 'markdown.beautifulEditor';
 
@@ -32,101 +35,37 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
     }
 
     /**
-     * Get the original version of a file from git for diff comparison
+     * Refresh {@link headContentCache} for `uri` from git (the one place
+     * that actually spawns git for this purpose) and return the new value.
      */
-    private async getOriginalContent(uri: vscode.Uri): Promise<string | null> {
-        try {
-            const gitExtension = vscode.extensions.getExtension('vscode.git');
-            if (!gitExtension) {
-                return null;
-            }
+    private async refreshHeadContent(uri: vscode.Uri): Promise<string | null> {
+        const content = await showAtRef(uri, 'HEAD');
+        this.headContentCache.set(uri.toString(), content);
+        return content;
+    }
 
-            const git = gitExtension.exports;
-            const api = git.getAPI(1);
-
-            if (!api || api.repositories.length === 0) {
-                return null;
-            }
-
-            // Find the repository containing this file
-            let repository = null;
-            for (const repo of api.repositories) {
-                if (uri.fsPath.startsWith(repo.rootUri.fsPath)) {
-                    repository = repo;
-                    break;
-                }
-            }
-
-            if (!repository) {
-                return null;
-            }
-
-            // Get the relative path from repo root
-            const relativePath = path.relative(repository.rootUri.fsPath, uri.fsPath);
-
-            // Get the HEAD version
-            const headCommit = await repository.getCommit('HEAD');
-            const content = await repository.show(headCommit.hash, relativePath);
-
-            return content;
-        } catch (error) {
-            console.log('Could not get original content:', error);
-            return null;
+    /** Populate the cache for `uri` if it hasn't been loaded yet. Does not
+     *  re-fetch once a value (including `null`) is cached -- only
+     *  {@link refreshHeadContent} (driven by a git state change) does that. */
+    private async ensureHeadContentLoaded(uri: vscode.Uri): Promise<string | null> {
+        const uriString = uri.toString();
+        if (this.headContentCache.has(uriString)) {
+            return this.headContentCache.get(uriString) ?? null;
         }
+        return this.refreshHeadContent(uri);
+    }
+
+    private getCachedHeadContent(uri: vscode.Uri): string | null {
+        return this.headContentCache.get(uri.toString()) ?? null;
     }
 
     /**
-     * Check if diff is available for this file (file is in git and has changes)
+     * Whether diff is available for this file, purely from the cached HEAD
+     * content and the content passed in -- no git call. See
+     * {@link headContentCache}'s doc comment (docs/TRIAGE.md #5).
      */
-    private async isDiffAvailable(uri: vscode.Uri): Promise<boolean> {
-        try {
-            const gitExtension = vscode.extensions.getExtension('vscode.git');
-            if (!gitExtension) {
-                console.log('Git extension not found');
-                return false;
-            }
-
-            const git = gitExtension.exports;
-            const api = git.getAPI(1);
-
-            if (!api || api.repositories.length === 0) {
-                console.log('No git repositories found');
-                return false;
-            }
-
-            // Find the repository containing this file
-            let repository = null;
-            for (const repo of api.repositories) {
-                if (uri.fsPath.startsWith(repo.rootUri.fsPath)) {
-                    repository = repo;
-                    break;
-                }
-            }
-
-            if (!repository) {
-                console.log('File not in any git repository');
-                return false;
-            }
-
-            // Get the original content from HEAD
-            const originalContent = await this.getOriginalContent(uri);
-            if (!originalContent) {
-                console.log('Could not get original content from HEAD - file might be new or untracked');
-                return false;
-            }
-
-            // Get current content
-            const document = await vscode.workspace.openTextDocument(uri);
-            const currentContent = document.getText();
-
-            // Check if there are differences
-            const hasDiff = originalContent !== currentContent;
-            console.log('Diff available:', hasDiff, 'for file:', uri.fsPath);
-            return hasDiff;
-        } catch (error) {
-            console.log('Could not check diff availability:', error);
-            return false;
-        }
+    private computeDiffAvailable(headContent: string | null, currentContent: string): boolean {
+        return headContent !== null && headContent !== currentContent;
     }
 
     public async toggleDiffMode(documentUri: vscode.Uri): Promise<void> {
@@ -138,11 +77,14 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
             return;
         }
 
-        // Get the original content from git
-        const originalContent = await this.getOriginalContent(documentUri);
+        // Reuse the cache rather than a fresh git call; it's kept fresh by
+        // the git state listeners set up in resolveCustomTextEditor.
+        const originalContent = await this.ensureHeadContentLoaded(documentUri);
 
-        if (!originalContent) {
-            vscode.window.showErrorMessage('Could not get git HEAD version of this file');
+        if (originalContent === null) {
+            vscode.window.showErrorMessage(
+                `Markdown Beautiful Editor: no git HEAD version of ${path.basename(documentUri.fsPath)} — it may be untracked, or not inside a repository.`
+            );
             return;
         }
 
@@ -244,98 +186,50 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
         const isDiffMode = false;
         const originalContent: string | null = null;
 
+        // Anything but a `file:` document is one this extension cannot write
+        // back to -- in practice a `git:` URI, which is what VS Code hands
+        // each pane when this editor is picked for a diff (docs/TRIAGE.md
+        // #12). Its `fsPath` is not a real path either, so the git lookup and
+        // the image roots below would both be built on nonsense. Render it,
+        // read-only, and point at the diff panel instead.
+        const isReadOnly = document.uri.scheme !== 'file';
+
         // Get the document's directory for resolving relative image paths
         const documentDirPath = path.dirname(document.uri.fsPath);
-        const documentDir = vscode.Uri.file(documentDirPath);
-        
-        // Get workspace folders for image resolution
-        const workspaceFolders = vscode.workspace.workspaceFolders || [];
-        
-        // Build list of allowed resource roots
-        const localResourceRoots: vscode.Uri[] = [
-            vscode.Uri.joinPath(this.context.extensionUri, 'dist')
-        ];
-
-        // Add document directory
-        localResourceRoots.push(documentDir);
-
-        // Add parent directory (for ../images/ type paths)
-        const parentDir = vscode.Uri.file(path.dirname(documentDirPath));
-        localResourceRoots.push(parentDir);
-        
-        // Add grandparent directory (for ../../ type paths)
-        const grandparentDir = vscode.Uri.file(path.dirname(path.dirname(documentDirPath)));
-        localResourceRoots.push(grandparentDir);
-
-        // Add all workspace folders
-        for (const folder of workspaceFolders) {
-            localResourceRoots.push(folder.uri);
-        }
 
         webviewPanel.webview.options = {
             enableScripts: true,
-            localResourceRoots
+            localResourceRoots: webviewLocalResourceRoots({
+                extensionUri: this.context.extensionUri,
+                documentDirPath,
+            }),
         };
 
-        const webviewUri = webviewPanel.webview.asWebviewUri(
-            vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview.js')
-        );
-        const styleUri = webviewPanel.webview.asWebviewUri(
-            vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'editor.css')
-        );
+        const { scriptUri, styleUri } = webviewAssetUris({
+            context: this.context,
+            webview: webviewPanel.webview,
+        });
 
-        webviewPanel.webview.html = getWebviewContent(webviewPanel.webview, webviewUri, styleUri);
+        webviewPanel.webview.html = getWebviewContent(webviewPanel.webview, scriptUri, styleUri);
 
         // Track the last content we sent to the webview or received from it
         // to avoid ping-pong updates
         let lastKnownContent = document.getText();
         let isApplyingEdit = false;
 
-        // Convert local image paths to webview URIs
-        const processImagePaths = (markdown: string): string => {
-            // Match markdown image syntax: ![alt](path) or ![alt](path "title") or ![alt](path 'title')
-            return markdown.replace(
-                /!\[([^\]]*)\]\(([^)\s'"]+)(\s+['"][^'"]*['"])?\)/g,
-                (match, alt, imagePath, title = '') => {
-                    // Skip URLs (http, https, data URIs)
-                    if (/^(https?:|data:)/i.test(imagePath)) {
-                        return match;
-                    }
-                    
-                    // Skip already-converted webview URIs
-                    if (imagePath.startsWith('vscode-webview://')) {
-                        return match;
-                    }
-                    
-                    try {
-                        // Resolve the path relative to the document directory
-                        let imageUri: vscode.Uri;
-                        if (path.isAbsolute(imagePath)) {
-                            imageUri = vscode.Uri.file(imagePath);
-                        } else {
-                            // Use path.resolve to handle ../ and ./ correctly
-                            const resolvedPath = path.resolve(documentDirPath, imagePath);
-                            imageUri = vscode.Uri.file(resolvedPath);
-                        }
-                        
-                        // Convert to webview URI
-                        const webviewImageUri = webviewPanel.webview.asWebviewUri(imageUri);
-                        return `![${alt}](${webviewImageUri.toString()}${title})`;
-                    } catch (e) {
-                        console.error('Markdown WYSIWYG: Failed to process image path:', imagePath, e);
-                        return match;
-                    }
-                }
-            );
-        };
+        const processImagePaths = createImagePathProcessor({ webview: webviewPanel.webview, documentDirPath });
 
         // Send initial document content
         const sendDocument = async () => {
             lastKnownContent = document.getText();
             const processedContent = processImagePaths(lastKnownContent);
 
-            // Check if diff is available (file in git with changes)
-            const diffAvailable = await this.isDiffAvailable(document.uri);
+            // Loads the cache on first use; a git state change later keeps it
+            // fresh via setupGitListeners below (docs/TRIAGE.md #5). Skipped
+            // for a read-only document: its `fsPath` names no working-tree
+            // file, so the lookup can only fail.
+            const headContent = isReadOnly ? null : await this.ensureHeadContentLoaded(document.uri);
+            const diffAvailable = this.computeDiffAvailable(headContent, lastKnownContent);
 
             const fontFamily = getConfiguredFontFamily(document.uri);
 
@@ -348,7 +242,9 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                     diffMode: true,
                     originalVersionContent: processImagePaths(originalContent),
                     diffAvailable,
-                    fontFamily
+                    fontFamily,
+                    readOnly: isReadOnly,
+                    headContent
                 });
             } else {
                 // Normal editor mode
@@ -358,23 +254,36 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                     originalContent: lastKnownContent,
                     diffMode: false,
                     diffAvailable,
-                    fontFamily
+                    fontFamily,
+                    readOnly: isReadOnly,
+                    headContent
                 });
             }
         };
 
-        // Function to update diff availability in the webview
-        const updateDiffAvailability = async () => {
-            const diffAvailable = await this.isDiffAvailable(document.uri);
+        // Pushes an `update` off the CACHED head content -- no git call, just
+        // a string compare. Used for ordinary document edits, where the git
+        // HEAD hasn't changed at all (docs/TRIAGE.md #5).
+        const pushUpdate = () => {
             const currentContent = document.getText();
             const processedContent = processImagePaths(currentContent);
+            const headContent = this.getCachedHeadContent(document.uri);
+            const diffAvailable = this.computeDiffAvailable(headContent, currentContent);
 
             this.post(webviewPanel, {
                 type: 'update',
                 content: processedContent,
                 originalContent: currentContent,
-                diffAvailable
+                diffAvailable,
+                headContent
             });
+        };
+
+        // Re-fetches HEAD content from git (an actual git state change --
+        // commit, checkout, stage, branch switch) then pushes the result.
+        const refreshHeadContentAndPushUpdate = async () => {
+            await this.refreshHeadContent(document.uri);
+            pushUpdate();
         };
 
         // Handle messages from webview
@@ -397,12 +306,28 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                     // Handle diff toggle request from webview button
                     await this.toggleDiffMode(document.uri);
                     break;
+                case 'diffSkipped':
+                    vscode.window.showInformationMessage(
+                        `Markdown Beautiful Editor: ${path.basename(document.uri.fsPath)} has no changes since git HEAD.`
+                    );
+                    break;
+                case 'openBeautifulDiff':
+                    await vscode.commands.executeCommand('markdown.beautifulEditor.openDiff', document.uri);
+                    break;
                 case 'edit':
+                    // A read-only document would take a WorkspaceEdit that
+                    // silently fails; the webview is non-editable so this
+                    // shouldn't arrive, but the guard is what makes that a
+                    // fact rather than a hope.
+                    if (isReadOnly) {
+                        return;
+                    }
+
                     // Skip if content hasn't actually changed
                     if (message.content === document.getText()) {
                         return;
                     }
-                    
+
                     // Track that we're applying an edit from the webview
                     isApplyingEdit = true;
                     lastKnownContent = message.content;
@@ -448,64 +373,55 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 
         // Set up git repository event listeners
         const setupGitListeners = async () => {
-            try {
-                const gitExtension = vscode.extensions.getExtension('vscode.git');
-                if (!gitExtension) {
-                    return;
-                }
-
-                // Activate the git extension if not already activated
-                const git = gitExtension.isActive ? gitExtension.exports : await gitExtension.activate();
-                const api = git.getAPI(1);
-
-                if (!api) {
-                    return;
-                }
-
-                // Listen for git state changes (when git extension initializes)
-                const gitStateHandler = api.onDidChangeState(async () => {
-                    await updateDiffAvailability();
-                });
-
-                // Listen for repository changes (commits, checkouts, etc.)
-                const gitRepoHandlers: vscode.Disposable[] = [];
-                for (const repo of api.repositories) {
-                    if (document.uri.fsPath.startsWith(repo.rootUri.fsPath)) {
-                        // Listen to repository state changes
-                        const stateHandler = repo.state.onDidChange(async () => {
-                            await updateDiffAvailability();
-                        });
-                        gitRepoHandlers.push(stateHandler);
-                    }
-                }
-
-                // Listen for new repositories being opened
-                const openRepoHandler = api.onDidOpenRepository(async (repo: GitRepositoryLike) => {
-                    if (document.uri.fsPath.startsWith(repo.rootUri.fsPath)) {
-                        await updateDiffAvailability();
-
-                        // Also listen to this new repository's state changes
-                        const stateHandler = repo.state.onDidChange(async () => {
-                            await updateDiffAvailability();
-                        });
-                        gitRepoHandlers.push(stateHandler);
-                    }
-                });
-
-                // Clean up git handlers on dispose
-                webviewPanel.onDidDispose(() => {
-                    gitStateHandler.dispose();
-                    openRepoHandler.dispose();
-                    gitRepoHandlers.forEach(h => h.dispose());
-                });
-            } catch (error) {
-                // Git extension not available or failed to activate - silently continue
-                console.log('Could not set up git listeners:', error);
+            const api = await getGitApi();
+            if (!api) {
+                return;
             }
+
+            // Listen for git state changes (when git extension initializes)
+            const gitStateHandler = api.onDidChangeState(async () => {
+                await refreshHeadContentAndPushUpdate();
+            });
+
+            // Listen for repository changes (commits, checkouts, etc.)
+            const gitRepoHandlers: vscode.Disposable[] = [];
+            for (const repo of api.repositories) {
+                if (isInRepository(repo, document.uri)) {
+                    // Listen to repository state changes
+                    const stateHandler = repo.state.onDidChange(async () => {
+                        await refreshHeadContentAndPushUpdate();
+                    });
+                    gitRepoHandlers.push(stateHandler);
+                }
+            }
+
+            // Listen for new repositories being opened
+            const openRepoHandler = api.onDidOpenRepository(async (repo: GitRepositoryLike) => {
+                if (isInRepository(repo, document.uri)) {
+                    await refreshHeadContentAndPushUpdate();
+
+                    // Also listen to this new repository's state changes
+                    const stateHandler = repo.state.onDidChange(async () => {
+                        await refreshHeadContentAndPushUpdate();
+                    });
+                    gitRepoHandlers.push(stateHandler);
+                }
+            });
+
+            // Clean up git handlers on dispose
+            webviewPanel.onDidDispose(() => {
+                gitStateHandler.dispose();
+                openRepoHandler.dispose();
+                gitRepoHandlers.forEach(h => h.dispose());
+            });
         };
 
-        // Set up git listeners asynchronously (don't block webview setup)
-        setupGitListeners();
+        // Set up git listeners asynchronously (don't block webview setup).
+        // Pointless for a read-only document, whose `fsPath` is in no
+        // repository this could match.
+        if (!isReadOnly) {
+            setupGitListeners();
+        }
 
         // Watch for external document changes (e.g., from other editors, source control)
         const changeHandler = vscode.workspace.onDidChangeTextDocument(async (e) => {
@@ -524,19 +440,11 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                 return;
             }
 
-            // External change detected - update the webview
+            // External change detected - update the webview. The document's
+            // text changed, not git's HEAD, so this reuses the cache
+            // (docs/TRIAGE.md #5) rather than re-running the git lookup.
             lastKnownContent = currentContent;
-            const processedContent = processImagePaths(currentContent);
-
-            // Check if diff is available with the new content
-            const diffAvailable = await this.isDiffAvailable(document.uri);
-
-            this.post(webviewPanel, {
-                type: 'update',
-                content: processedContent,
-                originalContent: currentContent,
-                diffAvailable
-            });
+            pushUpdate();
         });
 
         const configHandler = vscode.workspace.onDidChangeConfiguration((e) => {
@@ -567,6 +475,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
             viewStateHandler.dispose();
             // Remove from active panels map
             this.activeWebviewPanels.delete(uriString);
+            this.headContentCache.delete(uriString);
         });
     }
 }

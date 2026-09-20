@@ -4,8 +4,9 @@ import {
     DEFAULT_LINE_TYPE,
     MENU_LINE_TYPES,
     getLineType,
-} from '../../webview/markdown/parser';
-import { stripLinePrefix, applyLinePrefix } from '../../webview/editor/operations';
+    stripLinePrefix,
+    applyLinePrefix,
+} from '../../shared/lineTypes';
 
 /**
  * Unit tests for line type detection, icons, and transformations.

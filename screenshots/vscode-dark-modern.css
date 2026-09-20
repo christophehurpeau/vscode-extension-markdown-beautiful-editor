@@ -1,0 +1,66 @@
+/**
+ * The `--vscode-*` custom properties VS Code injects into every webview, with
+ * the values of the default Dark Modern theme. Hand-maintained — see
+ * `screenshots/README.md` for where these came from and how they go stale.
+ *
+ * Variables whose registry default is `null` (`diffEditorGutter.*`,
+ * `textBlockQuote.foreground`) are deliberately absent: VS Code does not emit
+ * one either, so leaving them out exercises the same CSS fallbacks.
+ */
+:root {
+    --vscode-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Ubuntu, "Droid Sans", sans-serif;
+    --vscode-editor-font-family: Menlo, Monaco, "DejaVu Sans Mono", "Courier New", monospace;
+    --vscode-editor-font-size: 13px;
+
+    --vscode-foreground: #cccccc;
+    --vscode-descriptionForeground: #9d9d9d;
+    --vscode-panel-border: #2b2b2b;
+
+    --vscode-editor-background: #1f1f1f;
+    --vscode-editor-foreground: #cccccc;
+    --vscode-editor-selectionBackground: #264f78;
+    --vscode-editorCursor-foreground: #aeafad;
+    --vscode-editorLineNumber-foreground: #6e7681;
+    --vscode-editorLineNumber-activeForeground: #cccccc;
+    --vscode-editorWidget-background: #202020;
+    --vscode-editorWidget-border: #454545;
+
+    --vscode-sideBar-background: #181818;
+    --vscode-sideBarSectionHeader-foreground: #cccccc;
+
+    --vscode-list-activeSelectionBackground: #04395e;
+    --vscode-list-activeSelectionForeground: #ffffff;
+    --vscode-list-hoverBackground: #2a2d2e;
+
+    --vscode-badge-background: #616161;
+    --vscode-badge-foreground: #f8f8f8;
+
+    --vscode-button-background: #0078d4;
+    --vscode-button-foreground: #ffffff;
+    --vscode-button-border: #ffffff1a;
+    --vscode-button-hoverBackground: #026ec1;
+    --vscode-button-secondaryBackground: #00000000;
+    --vscode-button-secondaryForeground: #cccccc;
+    --vscode-button-secondaryHoverBackground: #2b2b2b;
+
+    --vscode-toolbar-hoverBackground: #5a5d5e50;
+    --vscode-toolbar-activeBackground: #63666750;
+
+    --vscode-textLink-foreground: #4daafc;
+    --vscode-textLink-activeForeground: #4daafc;
+    --vscode-textPreformat-foreground: #d0d0d0;
+    --vscode-textBlockQuote-border: #616161;
+
+    --vscode-inputValidation-warningBackground: #352a05;
+    --vscode-inputValidation-warningBorder: #b89500;
+
+    --vscode-editorGutter-addedBackground: #2ea043;
+    --vscode-editorGutter-modifiedBackground: #0078d4;
+    --vscode-editorGutter-deletedBackground: #f85149;
+
+    --vscode-diffEditor-insertedTextBackground: #9ccc2c33;
+    --vscode-diffEditor-removedTextBackground: #ff000033;
+    --vscode-diffEditor-insertedLineBackground: #9bb95533;
+    --vscode-diffEditor-removedLineBackground: #ff000033;
+    --vscode-diffEditor-diagonalFill: #cccccc33;
+}

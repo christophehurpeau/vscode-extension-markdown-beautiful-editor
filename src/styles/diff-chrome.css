@@ -1,0 +1,104 @@
+/**
+ * Chrome around a diff, as opposed to `diff.css`, which styles the
+ * `@codemirror/merge` panes themselves:
+ *
+ * - `.diff-panel-header`, the standalone diff tab's header naming the two
+ *   versions being compared (src/editor/diffPanel.ts).
+ * - `.readonly-banner`, shown in the custom editor when it was opened on a
+ *   document it cannot write to — one side of a VS Code diff (docs/TRIAGE.md
+ *   #12).
+ *
+ * Both are 36px fixed bars so they compose with `cm-shell.css`'s
+ * `.editor-container` offset, which that file pins to the toolbar height.
+ * The banner stacks below the toolbar, so the container moves down by both.
+ */
+
+.diff-panel-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 0 12px;
+    background: var(--vscode-editor-background);
+    border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.2));
+    font-size: 0.85em;
+    z-index: 100;
+}
+
+/* What the comparison means -- Staged / Unstaged / Untracked / Deleted -- as
+ * opposed to the refs beside it. A badge rather than more running text,
+ * because it is the part that tells two diffs of the same file apart. */
+.diff-panel-scope {
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: var(--vscode-badge-background);
+    color: var(--vscode-badge-foreground);
+    font-size: 0.9em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* Each label names one pane. The two sit either side of the arrow in the same
+ * left-to-right order as the panes below them. */
+.diff-panel-side {
+    color: var(--vscode-foreground);
+    font-weight: 600;
+}
+
+.diff-panel-arrow {
+    color: var(--vscode-descriptionForeground, #999999);
+}
+
+/* The diff panel has no TOC, so nothing should reserve room for one — the
+ * `.toc-sidebar` element is absent from its markup entirely. */
+body.diff-panel .editor-main {
+    padding: 0;
+}
+
+.readonly-banner {
+    position: fixed;
+    top: 36px;
+    left: 0;
+    right: 0;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 12px;
+    background: var(--vscode-inputValidation-warningBackground, var(--vscode-editorWidget-background));
+    border-bottom: 1px solid var(--vscode-inputValidation-warningBorder, var(--vscode-editorWidget-border, #454545));
+    color: var(--vscode-foreground);
+    font-size: 0.85em;
+    z-index: 99;
+}
+
+.readonly-banner-text {
+    flex: 1;
+}
+
+.readonly-banner-btn {
+    border: 1px solid var(--vscode-button-border, transparent);
+    border-radius: 2px;
+    padding: 2px 10px;
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    font-family: inherit;
+    font-size: inherit;
+    cursor: pointer;
+}
+
+.readonly-banner-btn:hover {
+    background: var(--vscode-button-hoverBackground, var(--vscode-button-background));
+}
+
+/* Make room for the banner on top of the toolbar's own 36px. */
+body.read-only .editor-container {
+    height: calc(100vh - 68px);
+    margin-top: 68px;
+}

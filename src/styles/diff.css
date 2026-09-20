@@ -1,0 +1,229 @@
+/**
+ * Diff-mode styling for `@codemirror/merge`'s `MergeView` (WP-D owned; see
+ * src/webview/cm/diff/mergeView.ts). Replaces the pre-CM6 rules that
+ * targeted the deleted custom side-by-side DOM (`.diff-container`/
+ * `.diff-panel`, `.line.diff-line-added`/`.diff-line-removed`).
+ *
+ * Class names below are read from the installed package itself
+ * (node_modules/@codemirror/merge/dist/index.js's `externalTheme`/
+ * `baseTheme`/`buildChunkDeco`/gutter marker code), not guessed, and are
+ * limited to what the two-pane `MergeView` actually emits — `.cm-deletedChunk`/
+ * `.cm-deletedLineGutter`/widget-based deleted-line rendering belong to the
+ * *unified* single-pane merge view (`unifiedMergeView`), which this project
+ * does not use, so those classes never appear here and aren't styled.
+ *
+ * Colors prefer VS Code's dedicated `--vscode-diffEditor-*`/
+ * `--vscode-diffEditorGutter-*` theme variables (present in every VS Code
+ * theme, light and dark) over the library's own hardcoded rgba defaults,
+ * which are tuned for a generic page rather than the user's actual color
+ * theme. `--vscode-editor-background`/`--vscode-editor-foreground` are the
+ * fallback wherever no dedicated diff token applies (the collapsed-region
+ * placeholder has none).
+ *
+ * `!important` throughout: `@codemirror/merge`'s own `baseTheme` targets
+ * these same classes through `EditorView.baseTheme()`, which CM6 compiles
+ * to selectors like `.<generated-light-or-dark-class>.cm-merge-a
+ * .cm-changedLine` — two or three real class selectors on a single
+ * generated ID we have no way to reference from outside the library, so a
+ * plain-class rule here (e.g. `.cm-merge-a .cm-changedLine`) can lose the
+ * specificity fight regardless of stylesheet order. `!important` sidesteps
+ * needing to reverse-engineer those generated class names, and is scoped to
+ * exactly the properties the library also sets (verified against the
+ * `baseTheme` object at the paths above), not used as a blanket hammer.
+ * Several of these rules also use the `background` shorthand rather than
+ * `background-color`: the library's own default for `.cm-changedText` is a
+ * `linear-gradient(...) bottom/100% 2px no-repeat` *underline*, set via the
+ * `background` shorthand — overriding only `background-color` would leave
+ * that gradient painted on top of our solid fill.
+ */
+
+/* `main.ts` mounts `createMergeView`'s result into a container it creates
+ * and inserts next to `#editor`, hidden for the duration. `.cm-mergeView`
+ * is `MergeView`'s own root element class; per its own docs it is not
+ * scrollable until given a bounded height, which this supplies so it -- not
+ * the outer `.editor-main` -- ends up owning the one scrollbar. */
+.cm-merge-container {
+    height: 100%;
+}
+
+.cm-mergeView {
+    height: 100%;
+}
+
+/* Each pane is a normal `.cm-editor` (see `../webview/cm/lineNumberGutter.ts`
+ * and `./cm-shell.css` for how the main editor gets its background); this
+ * pins it explicitly rather than relying on that generic rule reaching in
+ * here too, so the diff panes' background is correct-by-construction even
+ * if `cm-shell.css`'s rule ever changes independently. */
+.cm-mergeView .cm-editor {
+    background: var(--vscode-editor-background);
+    color: var(--vscode-editor-foreground);
+}
+
+/* `.cm-mergeViewEditors` is already `display: flex` (library default); the
+ * 1px gap plus this background reproduces the old `.diff-container`'s
+ * border-colored divider between the two panes. Note that anything else the
+ * library adds as a flex child here shows through as divider-coloured unless
+ * it paints its own background -- see `.cm-merge-revert` below. */
+.cm-mergeViewEditors {
+    gap: 1px;
+    background-color: var(--vscode-editorWidget-border, #454545);
+}
+
+/* The revert column, inserted between the two panes when `createMergeView`
+ * passes `revertControls` (the in-editor diff toggle, where the modified pane
+ * is the live document -- see `../webview/cm/diff/mergeView.ts`). The library
+ * gives it `width: 1.6em` and nothing else, so against the divider background
+ * above it rendered as a wide grey bar: the "Revert this chunk" buttons were
+ * present and clickable the whole time, just camouflaged as a border. */
+.cm-merge-revert {
+    background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+    /* The library's own `width: 1.6em` leaves a cramped target for a control
+     * that is the only way to revert a chunk. */
+    width: 2.2em !important;
+}
+
+/* `.cm-merge-revert-btn` is ours (`createRevertControl` in
+ * ../webview/cm/diff/mergeView.ts), but the library's plain `StyleModule`
+ * still matches it as `.cm-merge-revert button` -- and stylesheet order
+ * between that module and this file is not guaranteed. So the properties it
+ * sets there (`background`, `border`) carry `!important`, the same scoped
+ * convention the rest of this file uses. It never sets `color`, so that one
+ * does not need it.
+ *
+ * Visible at rest, not only on hover: a control nobody can see is a feature
+ * nobody has. */
+.cm-merge-revert-btn {
+    color: var(--vscode-foreground);
+    background: var(--vscode-button-secondaryBackground, rgba(128, 128, 128, 0.22)) !important;
+    border: 1px solid var(--vscode-editorWidget-border, rgba(128, 128, 128, 0.35)) !important;
+    border-radius: 3px;
+    width: auto !important;
+    left: 2px;
+    right: 2px;
+    padding: 0;
+    line-height: 1.4;
+    opacity: 0.85;
+}
+
+.cm-merge-revert-btn:hover {
+    opacity: 1;
+    background: var(--vscode-button-secondaryHoverBackground, var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.4))) !important;
+}
+
+/* Whole-line background for a changed line. `.cm-merge-a` is the
+ * original/HEAD pane (left), `.cm-merge-b` the live/modified pane (right)
+ * -- assigned by `MergeView` itself via `EditorView.editorAttributes`. */
+/* `background-color`, not the `background` shorthand: the shorthand would
+ * also clear `background-image`, which is what lets a code-block line keep
+ * its own tint on top of the diff colour (see the md-code-block rule below).
+ * The library sets `backgroundColor` here too, so this still overrides it. */
+.cm-merge-a .cm-changedLine {
+    background-color: var(--vscode-diffEditor-removedLineBackground, rgba(255, 0, 0, 0.15)) !important;
+}
+
+.cm-merge-b .cm-changedLine {
+    background-color: var(--vscode-diffEditor-insertedLineBackground, rgba(0, 255, 0, 0.15)) !important;
+}
+
+/* `<del>`/`<ins>` wrapping the changed span of a chunk on each side. */
+.cm-deletedLine {
+    text-decoration: none;
+    background: var(--vscode-diffEditor-removedTextBackground, rgba(255, 0, 0, 0.15)) !important;
+}
+
+.cm-insertedLine {
+    text-decoration: none;
+    background: var(--vscode-diffEditor-insertedTextBackground, rgba(0, 255, 0, 0.15)) !important;
+}
+
+/* Word-level highlight (`highlightChanges: true`) for the exact edited
+ * substring inside a changed line -- finer-grained than the old diff view,
+ * which only ever highlighted whole lines. */
+.cm-merge-a .cm-changedText {
+    background: var(--vscode-diffEditor-removedTextBackground, rgba(255, 0, 0, 0.35)) !important;
+}
+
+.cm-merge-b .cm-changedText {
+    background: var(--vscode-diffEditor-insertedTextBackground, rgba(0, 255, 0, 0.35)) !important;
+}
+
+/* Per-line change gutter marker -- new: the old diff view had no gutter,
+ * only a 3px left border on `.diff-line-added`/`.diff-line-removed`. */
+.cm-changeGutter {
+    width: 3px;
+}
+
+.cm-merge-a .cm-changedLineGutter {
+    background: var(--vscode-diffEditorGutter-removedLineBackground, #e43) !important;
+}
+
+.cm-merge-b .cm-changedLineGutter {
+    background: var(--vscode-diffEditorGutter-insertedLineBackground, #2b2) !important;
+}
+
+/* The alignment gap. `updateSpacers` in @codemirror/merge inserts a block
+ * widget `div.cm-mergeSpacer` on the shorter side of a chunk so the two panes
+ * stay row-aligned; the library styles it not at all, so a pure insertion on
+ * the right left an unmarked void on the left that reads as "end of file" or
+ * as a rendering gap rather than as "N lines exist here on the other side".
+ *
+ * The diagonal hatch is what VS Code's own diff editor paints in the same
+ * place (Monaco's `.diagonal-fill`), down to the theme token: `diffEditor.
+ * diagonalFill` is a real VS Code color, deliberately neutral rather than
+ * red/green -- the add/remove colour is already carried by the real lines
+ * opposite, and tinting the void would claim those lines were removed from
+ * this side, which for a pure insertion they never were.
+ *
+ * No `!important` here, unlike the rest of this file: `baseTheme` has no
+ * `.cm-mergeSpacer` entry, so there is no library rule to outrank. */
+.cm-mergeSpacer {
+    background-image: linear-gradient(
+        -45deg,
+        var(--vscode-diffEditor-diagonalFill, rgba(128, 128, 128, 0.2)) 12.5%,
+        transparent 12.5%,
+        transparent 50%,
+        var(--vscode-diffEditor-diagonalFill, rgba(128, 128, 128, 0.2)) 50%,
+        var(--vscode-diffEditor-diagonalFill, rgba(128, 128, 128, 0.2)) 62.5%,
+        transparent 62.5%,
+        transparent 100%
+    );
+    background-size: 8px 8px;
+}
+
+/* "$N unchanged lines" fold widget (`collapseUnchanged`, enabled in
+ * createMergeView) -- another new capability the old diff view, which
+ * always rendered every line, did not have. No `--vscode-diffEditor-*`
+ * token fits a folded-region placeholder, so this falls back to the plain
+ * editor background/foreground pair rather than a diff-specific color.
+ * The library's own default background here is a light-gray gradient
+ * (`&light .cm-collapsedLines`) applied unconditionally -- CM6's light/dark
+ * base theme is a separate facet from VS Code's actual active color theme,
+ * and nothing in this codebase sets `EditorView.darkTheme.of(true)` -- so
+ * without this override the bar renders light-on-light-gray even in a dark
+ * VS Code theme, independent of anything below. */
+/* Reads as a control, not as body text: its own surface, italic, and a
+ * rule above/below so it separates the two unchanged stretches. */
+.cm-collapsedLines {
+    color: var(--vscode-descriptionForeground, #999999) !important;
+    background: var(--vscode-editorWidget-background, var(--vscode-editor-background, #252526)) !important;
+    border-top: 1px solid var(--vscode-editorWidget-border, #454545);
+    border-bottom: 1px solid var(--vscode-editorWidget-border, #454545);
+    font-style: italic;
+    font-size: 0.9em;
+    text-align: center;
+    cursor: pointer;
+}
+
+.cm-collapsedLines:hover {
+    background: var(--vscode-list-hoverBackground, #2a2d2e) !important;
+    color: var(--vscode-editor-foreground, #d4d4d4) !important;
+}
+
+/* A fenced code block inside a changed chunk keeps its own tint: the diff
+ * colour is painted as `background-color` and this as a `background-image`
+ * layer on top, so neither hides the other. Both are semi-transparent. */
+.cm-mergeView .cm-line.md-code-block {
+    background-color: transparent;
+    background-image: linear-gradient(rgba(110, 118, 129, 0.15), rgba(110, 118, 129, 0.15));
+}

@@ -7,6 +7,9 @@
 src/**
 out/**
 
+# Screenshot harness (regenerates images/, not shipped)
+screenshots/**
+
 # Dependencies (not needed, bundled)
 node_modules/**
 

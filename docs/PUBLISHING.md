@@ -58,12 +58,14 @@ convert images/icon.svg -resize 128x128 images/icon.png
 
 Or create a PNG icon manually and save to `images/icon.png`.
 
-### 3. Add Screenshots
-Take screenshots of the extension in action and save to `images/`:
-- `images/screenshot.png` - Main editor view
-- `images/formatting.png` - Text formatting examples
-- `images/alerts.png` - GitHub alerts
-- `images/code.png` - Code blocks
+### 3. Regenerate Screenshots
+```bash
+pnpm exec playwright install chromium   # once per machine
+pnpm run screenshots
+```
+
+Rewrites `images/screenshot.png`, `formatting.png`, `alerts.png` and `code.png`.
+See [screenshots/README.md](../screenshots/README.md) to change what they show.
 
 ### 4. Run Tests
 ```bash

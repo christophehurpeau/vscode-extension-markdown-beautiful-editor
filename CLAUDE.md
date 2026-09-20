@@ -25,11 +25,23 @@ Two separate bundles compiled by esbuild:
 
 Entry points: `src/extension.ts` (host), `src/webview/main.ts` (webview)
 
+The editing surface is CodeMirror 6. `EditorState` is the document model — there is no
+DOM-to-markdown readback. `src/webview/main.ts` is a thin bootstrap; everything else lives under
+`src/webview/cm/` (grammar extensions, decorations, commands, host sync, UI) with pure logic in
+`src/shared/`. See `.claude/rules/` for the invariants that hold it together.
+
 ## Testing
 
-Unit tests in `src/test/unit/` cover parser, serializer, cursor, diff, and toolbar logic — no VS Code needed.
+Unit tests in `src/test/unit/` — no VS Code and no DOM needed; `@lezer/markdown` and
+`@codemirror/state` are DOM-free, so grammar and decoration logic is tested by asserting parse
+trees and `{from, to, class}` decoration tuples against a real `EditorState`.
 Integration test in `src/test/integration/` requires a VS Code instance via `vscode-test`.
 Compiled test output goes to `out/`.
+
+**The suite cannot see rendering.** Every assertion is over document positions and class names, so
+gutter alignment, click-to-cursor mapping, spacing and theming are invisible to it — a fully green
+suite has shipped a visibly broken editor more than once here. Changes to layout or CSS need a
+manual pass in the Extension Development Host.
 
 Always add unit tests for new or changed logic. Keep logic that can be tested without the DOM in pure functions (e.g. `src/shared/`) so it stays unit-testable; have the thin DOM/webview layer delegate to it.
 
@@ -39,4 +51,4 @@ There are two separate build paths: `compile-tests`/unit tests use tsc → `out/
 
 ## Publishing
 
-See [PUBLISHING.md](PUBLISHING.md). Uses `vsce` (pinned to 2.15.0 in devDeps).
+See [docs/PUBLISHING.md](docs/PUBLISHING.md). Uses `vsce` (pinned to 2.15.0 in devDeps).

@@ -1,206 +1,93 @@
 import * as assert from 'assert';
-import * as path from 'path';
+import { rewriteImagePaths } from '../../shared/imagePaths';
 
 /**
- * Unit tests for image path processing logic.
- * These tests verify that image paths are correctly identified and processed.
+ * Unit tests for `rewriteImagePaths`, the pure part of `processImagePaths`
+ * (src/editor/customEditorProvider.ts) extracted to src/shared/imagePaths.ts.
+ * These exercise the real production regex/skip logic — the resolver callback
+ * stands in for the `vscode.Uri`/`asWebviewUri` resolution the host injects.
+ *
+ * Replaces the previous version of this file, which asserted against a
+ * hand-copied regex living only in the test and would pass regardless of
+ * what the production code did (see docs/TRIAGE.md #1, the title-loss bug a
+ * test like that could never have caught).
  */
 
-// Simulate the regex used in customEditorProvider.ts for image path detection
-const IMAGE_PATH_REGEX = /!\[([^\]]*)\]\(([^)\s]+)(?:\s+['"]([^'"]*)['"])?\)/g;
+const toWebviewUri = (imagePath: string): string => `vscode-webview://converted/${imagePath}`;
 
-describe('Image Path Processing', () => {
-    
-    describe('Image Path Detection', () => {
-        it('should detect simple image', () => {
-            const markdown = '![alt text](./image.png)';
-            const matches = [...markdown.matchAll(IMAGE_PATH_REGEX)];
-            assert.strictEqual(matches.length, 1);
-            assert.strictEqual(matches[0][1], 'alt text');
-            assert.strictEqual(matches[0][2], './image.png');
-        });
-
-        it('should detect image with empty alt', () => {
-            const markdown = '![](./image.png)';
-            const matches = [...markdown.matchAll(IMAGE_PATH_REGEX)];
-            assert.strictEqual(matches.length, 1);
-            assert.strictEqual(matches[0][1], '');
-            assert.strictEqual(matches[0][2], './image.png');
-        });
-
-        it('should detect image with relative path using ../', () => {
-            const markdown = '![logo](../images/logo.png)';
-            const matches = [...markdown.matchAll(IMAGE_PATH_REGEX)];
-            assert.strictEqual(matches.length, 1);
-            assert.strictEqual(matches[0][2], '../images/logo.png');
-        });
-
-        it('should detect image with double-quoted title', () => {
-            const markdown = '![alt](./image.png "Image Title")';
-            const matches = [...markdown.matchAll(IMAGE_PATH_REGEX)];
-            assert.strictEqual(matches.length, 1);
-            assert.strictEqual(matches[0][2], './image.png');
-            assert.strictEqual(matches[0][3], 'Image Title');
-        });
-
-        it('should detect image with single-quoted title', () => {
-            const markdown = "![alt](./image.png 'Image Title')";
-            const matches = [...markdown.matchAll(IMAGE_PATH_REGEX)];
-            assert.strictEqual(matches.length, 1);
-            assert.strictEqual(matches[0][2], './image.png');
-            assert.strictEqual(matches[0][3], 'Image Title');
-        });
-
-        it('should detect multiple images', () => {
-            const markdown = '![first](./a.png) and ![second](./b.png)';
-            const matches = [...markdown.matchAll(IMAGE_PATH_REGEX)];
-            assert.strictEqual(matches.length, 2);
-            assert.strictEqual(matches[0][1], 'first');
-            assert.strictEqual(matches[1][1], 'second');
-        });
-
-        it('should detect https URL images', () => {
-            const markdown = '![remote](https://example.com/image.png)';
-            const matches = [...markdown.matchAll(IMAGE_PATH_REGEX)];
-            assert.strictEqual(matches.length, 1);
-            assert.strictEqual(matches[0][2], 'https://example.com/image.png');
-        });
-
-        it('should detect data URI images', () => {
-            const markdown = '![data](data:image/png;base64,ABC123)';
-            const matches = [...markdown.matchAll(IMAGE_PATH_REGEX)];
-            assert.strictEqual(matches.length, 1);
-            assert.strictEqual(matches[0][2], 'data:image/png;base64,ABC123');
-        });
+describe('rewriteImagePaths', () => {
+    it('rewrites a simple local image path', () => {
+        const result = rewriteImagePaths('![alt text](./image.png)', toWebviewUri);
+        assert.strictEqual(result, '![alt text](vscode-webview://converted/./image.png)');
     });
 
-    describe('Path Type Detection', () => {
-        it('should identify https URL', () => {
-            const imagePath = 'https://example.com/image.png';
-            const isRemote = /^(https?:|data:)/i.test(imagePath);
-            assert.ok(isRemote, 'Should identify https as remote');
-        });
-
-        it('should identify http URL', () => {
-            const imagePath = 'http://example.com/image.png';
-            const isRemote = /^(https?:|data:)/i.test(imagePath);
-            assert.ok(isRemote, 'Should identify http as remote');
-        });
-
-        it('should identify data URI', () => {
-            const imagePath = 'data:image/png;base64,ABC123';
-            const isRemote = /^(https?:|data:)/i.test(imagePath);
-            assert.ok(isRemote, 'Should identify data URI as remote');
-        });
-
-        it('should identify relative path as local', () => {
-            const imagePath = './images/photo.png';
-            const isRemote = /^(https?:|data:)/i.test(imagePath);
-            assert.ok(!isRemote, 'Should identify relative path as local');
-        });
-
-        it('should identify parent path as local', () => {
-            const imagePath = '../images/photo.png';
-            const isRemote = /^(https?:|data:)/i.test(imagePath);
-            assert.ok(!isRemote, 'Should identify parent path as local');
-        });
-
-        it('should identify absolute path as local', () => {
-            const imagePath = '/Users/test/image.png';
-            const isRemote = /^(https?:|data:)/i.test(imagePath);
-            assert.ok(!isRemote, 'Should identify absolute path as local');
-        });
+    it('preserves an empty alt', () => {
+        const result = rewriteImagePaths('![](./image.png)', toWebviewUri);
+        assert.strictEqual(result, '![](vscode-webview://converted/./image.png)');
     });
 
-    describe('Path Resolution', () => {
-        it('should resolve relative path correctly', () => {
-            const documentDir = '/Users/test/docs';
-            const imagePath = './images/photo.png';
-            const resolved = path.resolve(documentDir, imagePath);
-            assert.strictEqual(resolved, '/Users/test/docs/images/photo.png');
-        });
-
-        it('should resolve parent path correctly', () => {
-            const documentDir = '/Users/test/docs/subfolder';
-            const imagePath = '../images/photo.png';
-            const resolved = path.resolve(documentDir, imagePath);
-            assert.strictEqual(resolved, '/Users/test/docs/images/photo.png');
-        });
-
-        it('should resolve double parent path correctly', () => {
-            const documentDir = '/Users/test/docs/sub1/sub2';
-            const imagePath = '../../images/photo.png';
-            const resolved = path.resolve(documentDir, imagePath);
-            assert.strictEqual(resolved, '/Users/test/docs/images/photo.png');
-        });
-
-        it('should handle absolute path', () => {
-            const documentDir = '/Users/test/docs';
-            const imagePath = '/Users/other/image.png';
-            const isAbsolute = path.isAbsolute(imagePath);
-            assert.ok(isAbsolute, 'Should detect absolute path');
-        });
+    it('rewrites a relative parent path', () => {
+        const result = rewriteImagePaths('![logo](../images/logo.png)', toWebviewUri);
+        assert.strictEqual(result, '![logo](vscode-webview://converted/../images/logo.png)');
     });
 
-    describe('Image Path Restoration', () => {
-        // Simulates the regex for restoring original paths
-        const RESTORE_REGEX = /!\[([^\]]*)\]\((vscode-webview:\/\/[^)\s]+)(?:\s+['"]([^'"]*)['"])?\)/g;
-
-        it('should match webview URI format', () => {
-            const processed = '![alt](vscode-webview://abc123/image.png)';
-            const matches = [...processed.matchAll(RESTORE_REGEX)];
-            assert.strictEqual(matches.length, 1);
-            assert.strictEqual(matches[0][1], 'alt');
-            assert.ok(matches[0][2].startsWith('vscode-webview://'));
-        });
-
-        it('should handle webview URI with title', () => {
-            const processed = '![alt](vscode-webview://abc123/image.png "title")';
-            const matches = [...processed.matchAll(RESTORE_REGEX)];
-            assert.strictEqual(matches.length, 1);
-            assert.strictEqual(matches[0][3], 'title');
-        });
+    // docs/TRIAGE.md #1: the title (with its quotes) was previously dropped by
+    // the replacement, silently losing data on save.
+    it('preserves a double-quoted title', () => {
+        const result = rewriteImagePaths('![a](img.png "Image Title")', toWebviewUri);
+        assert.strictEqual(result, '![a](vscode-webview://converted/img.png "Image Title")');
     });
 
-    describe('Image Path Output', () => {
-        // Mirrors the production regex + replacement in customEditorProvider.ts:
-        // the optional title group is captured (with its leading whitespace) and
-        // re-appended so editing/saving a titled image does not drop the title.
-        const PROCESS_REGEX = /!\[([^\]]*)\]\(([^)\s'"]+)(\s+['"][^'"]*['"])?\)/g;
-        const process = (markdown: string): string =>
-            markdown.replace(PROCESS_REGEX, (match, alt, imagePath, title = '') => {
-                if (/^(https?:|data:)/i.test(imagePath)) {
-                    return match;
-                }
-                // Stand-in for asWebviewUri — only the title round-trip matters here.
-                return `![${alt}](converted://${imagePath}${title})`;
-            });
+    it('preserves a single-quoted title', () => {
+        const result = rewriteImagePaths("![a](img.png 'Image Title')", toWebviewUri);
+        assert.strictEqual(result, "![a](vscode-webview://converted/img.png 'Image Title')");
+    });
 
-        it('should preserve a double-quoted title on the local-path branch', () => {
-            assert.strictEqual(
-                process('![a](img.png "Title")'),
-                '![a](converted://img.png "Title")'
-            );
-        });
+    it('leaves a title-less image unchanged in shape', () => {
+        const result = rewriteImagePaths('![a](img.png)', toWebviewUri);
+        assert.strictEqual(result, '![a](vscode-webview://converted/img.png)');
+    });
 
-        it('should preserve a single-quoted title', () => {
-            assert.strictEqual(
-                process("![a](img.png 'Title')"),
-                "![a](converted://img.png 'Title')"
-            );
-        });
+    it('rewrites multiple images independently', () => {
+        const result = rewriteImagePaths('![first](./a.png) and ![second](./b.png)', toWebviewUri);
+        assert.strictEqual(
+            result,
+            '![first](vscode-webview://converted/./a.png) and ![second](vscode-webview://converted/./b.png)'
+        );
+    });
 
-        it('should leave a title-less image unchanged in shape', () => {
-            assert.strictEqual(
-                process('![a](img.png)'),
-                '![a](converted://img.png)'
-            );
-        });
+    it('does not touch https URLs', () => {
+        const markdown = '![remote](https://example.com/image.png)';
+        assert.strictEqual(rewriteImagePaths(markdown, toWebviewUri), markdown);
+    });
 
-        it('should not alter remote images with titles', () => {
-            const markdown = '![a](https://example.com/i.png "Title")';
-            assert.strictEqual(process(markdown), markdown);
-        });
+    it('does not touch https URLs even when titled', () => {
+        const markdown = '![a](https://example.com/i.png "Title")';
+        assert.strictEqual(rewriteImagePaths(markdown, toWebviewUri), markdown);
+    });
+
+    it('does not touch data URIs', () => {
+        const markdown = '![data](data:image/png;base64,ABC123)';
+        assert.strictEqual(rewriteImagePaths(markdown, toWebviewUri), markdown);
+    });
+
+    it('does not touch already-converted vscode-webview:// URIs', () => {
+        const markdown = '![alt](vscode-webview://abc123/image.png)';
+        assert.strictEqual(rewriteImagePaths(markdown, toWebviewUri), markdown);
+    });
+
+    it('does not touch an already-converted URI even when titled', () => {
+        const markdown = '![alt](vscode-webview://abc123/image.png "title")';
+        assert.strictEqual(rewriteImagePaths(markdown, toWebviewUri), markdown);
+    });
+
+    it('leaves the match unchanged when the resolver returns null (resolution failure)', () => {
+        const markdown = '![a](./broken.png)';
+        assert.strictEqual(rewriteImagePaths(markdown, () => null), markdown);
+    });
+
+    it('resolves an absolute path via the injected resolver', () => {
+        const result = rewriteImagePaths('![a](/Users/test/image.png)', (p) => `vscode-webview://converted${p}`);
+        assert.strictEqual(result, '![a](vscode-webview://converted/Users/test/image.png)');
     });
 });
-

@@ -2,13 +2,12 @@ import * as assert from 'assert';
 import {
     extractHeadingsFromMarkdown,
     findHeadingLineIndex,
-    scrollToHeading,
     slugify,
     stripInlineMarkdown,
     computeHeadingSlugs,
     findHeadingIndexBySlug,
 } from '../../webview/toc';
-import { escapeHtml } from '../../webview/markdown/parser';
+import { escapeHtml } from '../../shared/escapeHtml';
 
 /**
  * Unit tests for Table of Contents functionality.
@@ -135,34 +134,6 @@ No headings at all.`;
             const lineTexts = ['#NoSpace', '####### Nope', '# Valid'];
             assert.strictEqual(findHeadingLineIndex(lineTexts, 0), 2);
             assert.strictEqual(findHeadingLineIndex(lineTexts, 1), null);
-        });
-    });
-
-    describe('Clicking a TOC entry', () => {
-        // Minimal editor stub: .line elements whose .line-content holds the text.
-        function makeEditorStub(lineTexts: string[], scrolled: boolean[]): HTMLElement {
-            const lines = lineTexts.map((text, i) => ({
-                querySelector: (sel: string) => (sel === '.line-content' ? { textContent: text } : null),
-                scrollIntoView: () => { scrolled[i] = true; },
-            }));
-            return {
-                querySelectorAll: (sel: string) => (sel === '.line' ? lines : []),
-            } as unknown as HTMLElement;
-        }
-
-        it('moves focus and cursor to the clicked heading line', () => {
-            const lineTexts = ['# A', 'paragraph', '## B'];
-            const scrolled = lineTexts.map(() => false);
-            const editor = makeEditorStub(lineTexts, scrolled);
-
-            let focusedLineIndex = -1;
-            scrollToHeading(1, {
-                getEditor: () => editor,
-                focusLine: (_editor, lineIndex) => { focusedLineIndex = lineIndex; },
-            });
-
-            assert.strictEqual(scrolled[2], true, 'should scroll to the heading line');
-            assert.strictEqual(focusedLineIndex, 2, 'should move focus/cursor to the heading line');
         });
     });
 
