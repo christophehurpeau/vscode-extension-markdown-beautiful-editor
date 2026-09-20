@@ -112,6 +112,22 @@ function splitDelimiterRowCells(rowText: string): string[] {
     return rowText.split('|').slice(1, -1);
 }
 
+/**
+ * The only way a mark decoration is ever added. `Decoration.mark().range()`
+ * throws on a zero-length range, and a throw here is not a local defect: it
+ * escapes `MarkdownDecorationsPlugin.update`, CodeMirror deactivates the
+ * plugin, `view.plugin(...)` then returns `null` for the rest of the session
+ * and every `md-*` class on the document disappears at once. A construct with
+ * no content reaches here with `from === to` from ordinary text — `![](x)`,
+ * `[](x)`, `[][]` — so scrolling one into the viewport unstyled the whole
+ * editor. Empty marks paint nothing anyway; dropping them is not a compromise.
+ */
+function pushMark(target: Range<Decoration>[], cls: string, from: number, to: number): void {
+    if (to > from) {
+        target.push(Decoration.mark({ class: cls }).range(from, to));
+    }
+}
+
 export function buildMarkdownDecorations(
     state: EditorState,
     ranges: readonly { from: number; to: number }[],
@@ -160,7 +176,7 @@ export function buildMarkdownDecorations(
         // in md-alerts.css have nothing to match.
         for (const mark of alertHeaderMarks(state, node)) {
             const target = mark.class === 'md-syntax' ? syntaxRanges : markRanges;
-            target.push(Decoration.mark({ class: mark.class }).range(mark.from, mark.to));
+            pushMark(target, mark.class, mark.from, mark.to);
         }
     };
 
@@ -191,7 +207,7 @@ export function buildMarkdownDecorations(
     /** `Escape` has no child marks of its own (unlike e.g. `InlineCode`'s
      *  `CodeMark`) — synthesize `md-syntax` over just the backslash. */
     const handleEscapeExtras = (node: SyntaxNode): void => {
-        syntaxRanges.push(Decoration.mark({ class: 'md-syntax' }).range(node.from, node.from + 1));
+        pushMark(syntaxRanges, 'md-syntax', node.from, node.from + 1);
     };
 
     /** `text-decoration` propagates to descendants and cannot be undone on
@@ -201,7 +217,7 @@ export function buildMarkdownDecorations(
     const handleStrikethroughExtras = (node: SyntaxNode): void => {
         const marks = node.getChildren('StrikethroughMark');
         if (marks.length === 2) {
-            markRanges.push(Decoration.mark({ class: 'md-strike-text' }).range(marks[0].to, marks[1].from));
+            pushMark(markRanges, 'md-strike-text', marks[0].to, marks[1].from);
         }
     };
 
@@ -215,10 +231,10 @@ export function buildMarkdownDecorations(
     const handleLinkExtras = (node: SyntaxNode): void => {
         const marks = node.getChildren('LinkMark');
         if (marks.length >= 2) {
-            markRanges.push(Decoration.mark({ class: 'md-text' }).range(marks[0].to, marks[1].from));
+            pushMark(markRanges, 'md-text', marks[0].to, marks[1].from);
         }
         if (node.getChild('LinkLabel')) {
-            markRanges.push(Decoration.mark({ class: 'md-ref-link' }).range(node.from, node.to));
+            pushMark(markRanges, 'md-ref-link', node.from, node.to);
         }
     };
 
@@ -228,7 +244,7 @@ export function buildMarkdownDecorations(
     const handleImageExtras = (node: SyntaxNode): void => {
         const marks = node.getChildren('LinkMark');
         if (marks.length >= 2) {
-            syntaxRanges.push(Decoration.mark({ class: 'md-alt' }).range(marks[0].to, marks[1].from));
+            pushMark(syntaxRanges, 'md-alt', marks[0].to, marks[1].from);
         }
     };
 
@@ -238,10 +254,10 @@ export function buildMarkdownDecorations(
      *  inner text. Used identically for a reference link's `[label]` and a
      *  link reference definition's `[label]:`. */
     const handleLinkLabel = (node: SyntaxNodeRef): void => {
-        syntaxRanges.push(Decoration.mark({ class: 'md-syntax' }).range(node.from, node.from + 1));
-        syntaxRanges.push(Decoration.mark({ class: 'md-syntax' }).range(node.to - 1, node.to));
+        pushMark(syntaxRanges, 'md-syntax', node.from, node.from + 1);
+        pushMark(syntaxRanges, 'md-syntax', node.to - 1, node.to);
         if (node.to - 1 > node.from + 1) {
-            markRanges.push(Decoration.mark({ class: 'md-ref' }).range(node.from + 1, node.to - 1));
+            pushMark(markRanges, 'md-ref', node.from + 1, node.to - 1);
         }
     };
 
@@ -250,7 +266,7 @@ export function buildMarkdownDecorations(
      *  definition, `[label]: url "title"`). */
     const handleLinkTitle = (node: SyntaxNode): void => {
         const cls = node.parent?.name === 'LinkReference' ? 'md-link-def-title' : 'md-link-title';
-        markRanges.push(Decoration.mark({ class: cls }).range(node.from, node.to));
+        pushMark(markRanges, cls, node.from, node.to);
     };
 
     /** `Task`'s class is conditional on its `TaskMarker`'s text (`[x]`/`[X]`
@@ -260,7 +276,7 @@ export function buildMarkdownDecorations(
         const marker = node.getChild('TaskMarker');
         const checked = marker ? /[xX]/.test(state.doc.sliceString(marker.from, marker.to)) : false;
         const cls = checked ? 'md-task md-task-checked' : 'md-task md-task-unchecked';
-        markRanges.push(Decoration.mark({ class: cls }).range(node.from, node.to));
+        pushMark(markRanges, cls, node.from, node.to);
     };
 
     /** `Table`'s per-cell alignment. `TableCell`/`TableDelimiter` are
@@ -287,12 +303,10 @@ export function buildMarkdownDecorations(
             let colIndex = 0;
             for (let child = row.firstChild; child; child = child.nextSibling) {
                 if (child.name === 'TableDelimiter') {
-                    syntaxRanges.push(Decoration.mark({ class: 'md-syntax' }).range(child.from, child.to));
+                    pushMark(syntaxRanges, 'md-syntax', child.from, child.to);
                 } else if (child.name === 'TableCell') {
                     const align = columns[colIndex]?.align ?? 'none';
-                    markRanges.push(
-                        Decoration.mark({ class: `md-table-cell md-col-${align}` }).range(child.from, child.to),
-                    );
+                    pushMark(markRanges, `md-table-cell md-col-${align}`, child.from, child.to);
                     colIndex++;
                 }
             }
@@ -316,16 +330,14 @@ export function buildMarkdownDecorations(
                 if (text[i] !== '|') {
                     continue;
                 }
-                syntaxRanges.push(
-                    Decoration.mark({ class: 'md-syntax' }).range(delimiterRow.from + i, delimiterRow.from + i + 1),
-                );
+                pushMark(syntaxRanges, 'md-syntax', delimiterRow.from + i, delimiterRow.from + i + 1);
                 if (cellStart >= 0) {
                     const align = columns[colIndex]?.align ?? 'none';
-                    markRanges.push(
-                        Decoration.mark({ class: `md-table-cell md-table-sep md-col-${align}` }).range(
-                            delimiterRow.from + cellStart,
-                            delimiterRow.from + i,
-                        ),
+                    pushMark(
+                        markRanges,
+                        `md-table-cell md-table-sep md-col-${align}`,
+                        delimiterRow.from + cellStart,
+                        delimiterRow.from + i,
                     );
                     colIndex++;
                 }
@@ -349,10 +361,10 @@ export function buildMarkdownDecorations(
                 if (entry) {
                     switch (entry.layer) {
                         case 'mark':
-                            markRanges.push(Decoration.mark({ class: entry.class }).range(node.from, node.to));
+                            pushMark(markRanges, entry.class, node.from, node.to);
                             break;
                         case 'syntax':
-                            syntaxRanges.push(Decoration.mark({ class: entry.class }).range(node.from, node.to));
+                            pushMark(syntaxRanges, entry.class, node.from, node.to);
                             break;
                         case 'line': {
                             const lineTo = isSetextHeading(node.name)
@@ -379,7 +391,7 @@ export function buildMarkdownDecorations(
                         break;
                     }
                     case 'HorizontalRule':
-                        markRanges.push(Decoration.mark({ class: 'md-hr-text' }).range(node.from, node.to));
+                        pushMark(markRanges, 'md-hr-text', node.from, node.to);
                         break;
                     case 'Escape':
                         handleEscapeExtras(node.node);
@@ -421,13 +433,39 @@ export function buildMarkdownDecorations(
     };
 }
 
+const emptyDecorationSets: MarkdownDecorationSets = {
+    lineDecorations: Decoration.none,
+    markDecorations: Decoration.none,
+    syntaxDecorations: Decoration.none,
+};
+
+/** CodeMirror deactivates a `ViewPlugin` whose `update` throws, and this one
+ *  owns every `md-*` class in the document — one bad range on one construct
+ *  scrolled into view and the whole editor goes unstyled until reload, with
+ *  nothing but a console entry to say why. Falling back to the previous sets
+ *  degrades to stale styling for one update and recovers on the next; the
+ *  caller passes empty sets instead whenever the document changed, since
+ *  ranges built against the old document can point past the new one's end. */
+function buildOrKeep(
+    state: EditorState,
+    visibleRanges: readonly { from: number; to: number }[],
+    previous: MarkdownDecorationSets,
+): MarkdownDecorationSets {
+    try {
+        return buildMarkdownDecorations(state, visibleRanges);
+    } catch (error) {
+        console.error('markdown decorations build failed', error);
+        return previous;
+    }
+}
+
 class MarkdownDecorationsPlugin implements PluginValue, MarkdownDecorationSets {
     lineDecorations: DecorationSet;
     markDecorations: DecorationSet;
     syntaxDecorations: DecorationSet;
 
     constructor(view: EditorView) {
-        const built = buildMarkdownDecorations(view.state, view.visibleRanges);
+        const built = buildOrKeep(view.state, view.visibleRanges, emptyDecorationSets);
         this.lineDecorations = built.lineDecorations;
         this.markDecorations = built.markDecorations;
         this.syntaxDecorations = built.syntaxDecorations;
@@ -437,7 +475,11 @@ class MarkdownDecorationsPlugin implements PluginValue, MarkdownDecorationSets {
         if (!update.docChanged && !update.viewportChanged) {
             return;
         }
-        const built = buildMarkdownDecorations(update.state, update.view.visibleRanges);
+        const built = buildOrKeep(
+            update.state,
+            update.view.visibleRanges,
+            update.docChanged ? emptyDecorationSets : this,
+        );
         this.lineDecorations = built.lineDecorations;
         this.markDecorations = built.markDecorations;
         this.syntaxDecorations = built.syntaxDecorations;

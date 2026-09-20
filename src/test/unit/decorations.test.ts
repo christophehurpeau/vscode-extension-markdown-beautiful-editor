@@ -432,6 +432,33 @@ describe('cm/decorations: buildMarkdownDecorations (WP-H)', () => {
         assert.ok(tuples(built.lineDecorations).some((t) => t.class.includes('md-hr')));
     });
 
+    // A zero-length `Decoration.mark` throws, and the throw escapes the
+    // ViewPlugin: CodeMirror deactivates it and every `md-*` class in the
+    // document disappears until reload. `![](x)` is ordinary markdown, so
+    // scrolling one into the viewport unstyled the whole editor.
+    it('emits no mark for an image with empty alt text instead of throwing', () => {
+        const state = stateFor('![](img.png)');
+        const built = buildMarkdownDecorations(state, [{ from: 0, to: state.doc.length }]);
+
+        assert.ok(!tuples(built.syntaxDecorations).some((t) => t.class === 'md-alt'));
+        assert.ok(tuples(built.markDecorations).some((t) => t.class === 'md-image'));
+    });
+
+    it('emits no mark for a link with empty text instead of throwing', () => {
+        const state = stateFor('[](https://example.com)');
+        const built = buildMarkdownDecorations(state, [{ from: 0, to: state.doc.length }]);
+
+        assert.ok(!tuples(built.markDecorations).some((t) => t.class === 'md-text'));
+        assert.ok(tuples(built.markDecorations).some((t) => t.class === 'md-link'));
+    });
+
+    it('survives an empty reference link and an empty inline link', () => {
+        for (const doc of ['[][]', '[]()']) {
+            const state = stateFor(doc);
+            assert.doesNotThrow(() => buildMarkdownDecorations(state, [{ from: 0, to: state.doc.length }]));
+        }
+    });
+
     it('maps InlineMath/MathContent/MathMark (WP-G1 grammar) to md-math/md-math-content/md-syntax', () => {
         const state = stateForMath('$x$');
         const built = buildMarkdownDecorations(state, [{ from: 0, to: state.doc.length }]);
