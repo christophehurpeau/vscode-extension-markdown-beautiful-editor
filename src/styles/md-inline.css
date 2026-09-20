@@ -34,10 +34,18 @@
     font-style: italic;
 }
 
+/* `box-decoration-break` so a code span that wraps across a line break keeps
+   a rounded chip on each fragment instead of one box sliced square at the
+   wrap. The `box-shadow` is a layout-free hairline: `contrastBorder` is only
+   defined by high-contrast themes, where `--mbe-code-bg` is typically
+   transparent and the chip would otherwise vanish. */
 .md-code {
-    background: rgba(110, 118, 129, 0.2);
-    padding: 3px 2px;
+    background: var(--mbe-code-bg);
+    padding: 3px 0.25em;
     border-radius: 5px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    box-shadow: 0 0 0 1px var(--vscode-contrastBorder, transparent);
     font-family: var(--mbe-font-mono);
     font-size: 0.95em;
 }
@@ -193,7 +201,7 @@
 .cm-content.cmd-held .md-image:hover,
 .cm-content.cmd-held .md-footnote:hover,
 .cm-content.cmd-held .md-footnote-def:hover {
-    background: rgba(88, 166, 255, 0.15);
+    background: var(--vscode-editor-hoverHighlightBackground, rgba(88, 166, 255, 0.15));
     border-radius: 3px;
 }
 

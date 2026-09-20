@@ -111,7 +111,7 @@
    same `Blockquote` node these rules do, see decorations/alerts.ts. */
 
 .cm-line.md-blockquote {
-    background: rgba(128, 128, 128, 0.08);
+    background: var(--mbe-quote-bg);
     padding: 4px 12px;
     border-left: 4px solid var(--vscode-textBlockQuote-border, #848d97);
     color: var(--vscode-textBlockQuote-foreground, var(--vscode-editor-foreground));
@@ -147,7 +147,7 @@
    tokens are never given an md-* class, see decorations.ts). Marker lines
    (the ``` lines) are additionally muted and get the rounded corners. */
 .cm-line.md-code-block {
-    background: rgba(110, 118, 129, 0.15);
+    background: var(--mbe-code-block-bg);
     padding: 2px 16px;
     font-size: 0.95em;
     font-family: var(--mbe-font-mono);

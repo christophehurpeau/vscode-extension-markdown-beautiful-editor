@@ -23,10 +23,19 @@
  * up producing the mark, so there is nothing to rewrite here.
  */
 
+/* Each alert type sets only `--mbe-alert-accent`; the bar, the wash and the
+   `NOTE`/`TIP`/... label all derive from it. The accents are the workbench's
+   own severity and chart colours, which every theme supplies and tunes —
+   GitHub's Primer hexes survive as fallbacks, so a theme missing a key looks
+   exactly like it did before. `.md-alert-<type>` and the base rule below have
+   equal specificity, and the per-type rules come later in this file, so they
+   win the tie without `!important`; the custom property then inherits down to
+   the `.md-alert-type` mark inside the line. */
 .cm-line.md-alert,
 .cm-line.md-alert-content {
-    background: rgba(128, 128, 128, 0.1);
-    border-left: 4px solid #848d97;
+    --mbe-alert-accent: var(--vscode-textBlockQuote-border, #848d97);
+    background: color-mix(in srgb, var(--mbe-alert-accent) 12%, transparent);
+    border-left: 4px solid var(--mbe-alert-accent);
     padding: 4px 12px;
 }
 
@@ -62,49 +71,31 @@
 .md-alert-type {
     text-transform: uppercase;
     letter-spacing: 0.02em;
+    color: var(--mbe-alert-accent);
 }
 
-/* Note - Blue */
+/* Blue. `charts.blue` is an alias of `editorInfo.foreground` in the colour
+   registry, so the semantic key is used directly. */
 .cm-line.md-alert-note {
-    border-left-color: #58a6ff;
-    background: rgba(88, 166, 255, 0.1);
-}
-.md-alert-note .md-alert-type {
-    color: #58a6ff;
+    --mbe-alert-accent: var(--vscode-editorInfo-foreground, #58a6ff);
 }
 
-/* Tip - Green */
+/* Green. No severity key is green, so the chart palette supplies the hue. */
 .cm-line.md-alert-tip {
-    border-left-color: #3fb950;
-    background: rgba(63, 185, 80, 0.1);
-}
-.md-alert-tip .md-alert-type {
-    color: #3fb950;
+    --mbe-alert-accent: var(--vscode-charts-green, #3fb950);
 }
 
-/* Important - Purple */
+/* Purple — likewise chart-only. */
 .cm-line.md-alert-important {
-    border-left-color: #a371f7;
-    background: rgba(163, 113, 247, 0.1);
-}
-.md-alert-important .md-alert-type {
-    color: #a371f7;
+    --mbe-alert-accent: var(--vscode-charts-purple, #a371f7);
 }
 
-/* Warning - Yellow/Orange */
+/* Yellow/orange — `charts.yellow` aliases this same key. */
 .cm-line.md-alert-warning {
-    border-left-color: #d29922;
-    background: rgba(210, 153, 34, 0.1);
-}
-.md-alert-warning .md-alert-type {
-    color: #d29922;
+    --mbe-alert-accent: var(--vscode-editorWarning-foreground, #d29922);
 }
 
-/* Caution - Red */
+/* Red — `charts.red` aliases this same key. */
 .cm-line.md-alert-caution {
-    border-left-color: #f85149;
-    background: rgba(248, 81, 73, 0.1);
-}
-.md-alert-caution .md-alert-type {
-    color: #f85149;
+    --mbe-alert-accent: var(--vscode-editorError-foreground, #f85149);
 }

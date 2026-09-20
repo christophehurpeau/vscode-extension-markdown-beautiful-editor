@@ -20,6 +20,29 @@
     --mbe-font-ui: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
     /* Content font; switched by the `font-mono` body class (setting + toolbar toggle) */
     --mbe-font-content: var(--mbe-font-ui);
+    /* Markdown surfaces, each from the workbench colour VS Code paints behind
+       the same construct in rendered markdown (preview, hovers, READMEs), so
+       a theme that styles markdown styles this editor too. The literals are
+       the pre-theme values, kept only for a theme that resolves the key to
+       nothing. Whether these read as grey is the theme's call, not ours:
+       Dark Modern and Light Modern deliberately render code and quotes
+       monochrome. */
+    --mbe-code-bg: var(--vscode-textPreformat-background, rgba(110, 118, 129, 0.2));
+    --mbe-quote-bg: var(--vscode-textBlockQuote-background, rgba(128, 128, 128, 0.08));
+    /* Fenced blocks share the inline chip's key rather than using the
+       on-label `textCodeBlock.background`. Few themes set either, and the two
+       registry defaults fall opposite ways: `textPreformat.background` is a
+       white wash (#FFFFFF1A on dark) that stays visible, while
+       `textCodeBlock.background` is a near-black one (#0a0a0a66) with nothing
+       left to darken toward on a dark editor background — it renders as no
+       background at all. Sharing the key also keeps inline and fenced code
+       from drifting apart across themes. */
+    --mbe-code-block-bg: color-mix(in srgb, var(--mbe-code-bg) 80%, transparent);
+    /* Several themes resolve `textCodeBlock.background` to an OPAQUE colour
+       (Dark Modern: #2B2B2B). Anything that has to layer a code block over
+       another fill — the diff view's changed-chunk tint — needs this instead,
+       which is translucent whatever the theme supplies. */
+    --mbe-code-block-bg-translucent: color-mix(in srgb, var(--mbe-code-block-bg) 45%, transparent);
 }
 
 body.font-mono {

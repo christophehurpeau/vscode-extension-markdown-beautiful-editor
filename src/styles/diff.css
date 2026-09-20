@@ -222,8 +222,11 @@
 
 /* A fenced code block inside a changed chunk keeps its own tint: the diff
  * colour is painted as `background-color` and this as a `background-image`
- * layer on top, so neither hides the other. Both are semi-transparent. */
+ * layer on top, so neither hides the other. Both must stay semi-transparent,
+ * which is why this uses the `-translucent` token rather than
+ * `--mbe-code-block-bg` — several themes resolve that one to an opaque colour
+ * and the diff tint underneath would disappear. */
 .cm-mergeView .cm-line.md-code-block {
     background-color: transparent;
-    background-image: linear-gradient(rgba(110, 118, 129, 0.15), rgba(110, 118, 129, 0.15));
+    background-image: linear-gradient(var(--mbe-code-block-bg-translucent), var(--mbe-code-block-bg-translucent));
 }

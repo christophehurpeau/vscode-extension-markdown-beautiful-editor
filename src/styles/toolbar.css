@@ -137,7 +137,7 @@ body.diff-mode.toc-hidden .toolbar {
     background: var(--vscode-editorWidget-background, #252526);
     border: 1px solid var(--vscode-editorWidget-border, #454545);
     border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 12px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.3));
     animation: toolbar-fade-in 0.15s ease-out;
 }
 
