@@ -23,8 +23,14 @@
  *   keeps the selection covering the same logical text after the toggle
  *   (e.g. selecting "text" and toggling bold leaves "text" selected inside
  *   the new `**text**`) — a deliberate improvement, not a preserved quirk.
+ *
+ * Every range of a multi-cursor selection (`../multipleSelections.ts`) is
+ * toggled, through `state.changeByRange`: it calls back once per range
+ * against the ORIGINAL state and maps the results onto each other, so each
+ * range's positions stay the plain original-document offsets the logic below
+ * computes.
  */
-import { EditorSelection, type StateCommand } from '@codemirror/state';
+import { EditorSelection, type EditorState, type SelectionRange, type StateCommand } from '@codemirror/state';
 import { inlineFormatChange, type InlineFormat, type InlineFormatChange } from '../../../shared/inlineFormat';
 import { enclosingFormatRange } from './formattingAt';
 
@@ -43,65 +49,92 @@ function selectionCoveringSameText(
     originalTo: number,
     selectedText: string,
     change: InlineFormatChange,
-): EditorSelection {
+): SelectionRange {
     const insertFromAbs = lineFrom + change.from;
     const grew = change.insert.length > originalTo - originalFrom;
     if (grew) {
         const idx = change.insert.indexOf(selectedText);
         if (idx !== -1) {
-            return EditorSelection.single(insertFromAbs + idx, insertFromAbs + idx + selectedText.length);
+            return EditorSelection.range(insertFromAbs + idx, insertFromAbs + idx + selectedText.length);
         }
     }
-    return EditorSelection.single(insertFromAbs, insertFromAbs + change.insert.length);
+    return EditorSelection.range(insertFromAbs, insertFromAbs + change.insert.length);
 }
 
-/** Toggle `format` over the current selection (or, for a collapsed cursor,
- *  over the enclosing construct). A `StateCommand`: returns `false` (nothing
- *  dispatched) when there is no selection and no enclosing construct, or the
- *  selection spans more than one line. */
+interface RangeToggle {
+    changes: { from: number; to: number; insert: string };
+    range: SelectionRange;
+}
+
+/** The toggle for one selection range, in original-document coordinates, or
+ *  `null` when this range has nothing to toggle (no selection and no
+ *  enclosing construct, or a selection spanning more than one line). */
+function rangeToggle(state: EditorState, range: SelectionRange, format: InlineFormat): RangeToggle | null {
+    const hadSelection = !range.empty;
+
+    let from = range.from;
+    let to = range.to;
+    if (!hadSelection) {
+        const enclosing = enclosingFormatRange(state, range.head, format);
+        if (!enclosing) {
+            return null;
+        }
+        from = enclosing.from;
+        to = enclosing.to;
+    }
+
+    const line = state.doc.lineAt(from);
+    if (state.doc.lineAt(to).number !== line.number) {
+        return null;
+    }
+
+    const selectedText = state.doc.sliceString(from, to);
+    const change = inlineFormatChange({
+        text: line.text,
+        from: from - line.from,
+        to: to - line.from,
+        format,
+    });
+    if (!change) {
+        return null;
+    }
+
+    return {
+        changes: { from: line.from + change.from, to: line.from + change.to, insert: change.insert },
+        range: hadSelection
+            ? selectionCoveringSameText(line.from, from, to, selectedText, change)
+            : EditorSelection.cursor(line.from + change.selection),
+    };
+}
+
+function overlaps(a: { from: number; to: number }, b: { from: number; to: number }): boolean {
+    return a.from < b.to && b.from < a.to;
+}
+
+/** Toggle `format` over every selection range (or, for a collapsed cursor,
+ *  over the construct enclosing it). A `StateCommand`: returns `false`
+ *  (nothing dispatched) when no range had anything to toggle. */
 export function toggleInlineFormat(format: InlineFormat): StateCommand {
     return ({ state, dispatch }) => {
-        const range = state.selection.main;
-        const hadSelection = !range.empty;
+        // Two cursors inside the SAME construct resolve to the same enclosing
+        // range and would each rewrite it — doubling the markers. The first
+        // one wins; the rest keep their (mapped) position.
+        const applied: { from: number; to: number }[] = [];
 
-        let from = range.from;
-        let to = range.to;
-        if (!hadSelection) {
-            const enclosing = enclosingFormatRange(state, range.head, format);
-            if (!enclosing) {
-                return false;
+        const transaction = state.changeByRange((range) => {
+            const toggle = rangeToggle(state, range, format);
+            if (!toggle || applied.some((span) => overlaps(span, toggle.changes))) {
+                return { range };
             }
-            from = enclosing.from;
-            to = enclosing.to;
-        }
-
-        const line = state.doc.lineAt(from);
-        if (state.doc.lineAt(to).number !== line.number) {
-            return false;
-        }
-
-        const selectedText = state.doc.sliceString(from, to);
-        const change = inlineFormatChange({
-            text: line.text,
-            from: from - line.from,
-            to: to - line.from,
-            format,
+            applied.push(toggle.changes);
+            return toggle;
         });
-        if (!change) {
+
+        if (applied.length === 0) {
             return false;
         }
 
-        const selection = hadSelection
-            ? selectionCoveringSameText(line.from, from, to, selectedText, change)
-            : EditorSelection.cursor(line.from + change.selection);
-
-        dispatch(
-            state.update({
-                changes: { from: line.from + change.from, to: line.from + change.to, insert: change.insert },
-                selection,
-                scrollIntoView: true,
-            }),
-        );
+        dispatch(state.update(transaction, { scrollIntoView: true }));
         return true;
     };
 }

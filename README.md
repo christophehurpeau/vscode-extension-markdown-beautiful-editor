@@ -36,6 +36,19 @@ Full support for GitHub's alert syntax:
 - **Smart detection**: Toolbar highlights active formatting at cursor position
 - **Keyboard shortcuts**: Cmd/Ctrl+B (bold), Cmd/Ctrl+I (italic), Cmd/Ctrl+E (code), Cmd/Ctrl+K (link)
 
+### 🔍 Find & Replace
+- **Cmd/Ctrl+F**: Opens a find panel over the document, including the parts scrolled out of view
+- **Match options**: Case sensitivity, whole word, and regular expressions
+- **Replace**: Available whenever the document is editable; a read-only side of a diff shows find only
+- **Occurrences**: Cmd/Ctrl+D selects the next occurrence of the selection
+
+### ↕️ Multiple Cursors
+- **Alt/Option+Click**: Adds a cursor where you click
+- **Alt/Option+Drag**: Selects a rectangle — one cursor per line
+- **Cmd/Ctrl+Alt+Up/Down**: Adds a cursor on the line above or below
+- **Escape**: Collapses back to a single cursor
+- **Formatting follows**: Bold/italic/code/link and the line type selector apply at every cursor
+
 ### 📋 Line Type Selector
 - **Quick line conversion**: Click the line type icon next to any line number
 - **Supported types**: Text, Headings (H1-H6), Bullet List, Numbered List, Task List, Quote, Code Block, Horizontal Rule
@@ -122,6 +135,15 @@ recommended.
 | `Cmd/Ctrl+I` | Toggle italic |
 | `Cmd/Ctrl+E` | Toggle inline code |
 | `Cmd/Ctrl+K` | Insert/edit link |
+| `Cmd/Ctrl+F` | Open find (and replace) |
+| `Cmd/Ctrl+G` / `F3` | Find next (add `Shift` for previous) |
+| `Escape` | Close the find panel, then collapse to a single cursor |
+| `Cmd/Ctrl+D` | Select next occurrence |
+| `Cmd/Ctrl+Shift+L` | Select all occurrences |
+| `Cmd/Ctrl+Alt+G` | Go to line |
+| `Cmd/Ctrl+Alt+Up/Down` | Add a cursor above / below |
+| `Alt+Click` | Add a cursor at the pointer |
+| `Alt+Drag` | Rectangular (column) selection |
 | `Cmd/Ctrl+A` | Select all content |
 | `Cmd/Ctrl+C` | Copy selection |
 | `Cmd/Ctrl+X` | Cut selection |
@@ -241,6 +263,13 @@ Contributions are welcome! Please:
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
+
+### Third-party assets
+
+The find panel's match-case, regular-expression and whole-word icons are
+`case-sensitive`, `regex` and `whole-word` from
+[microsoft/vscode-codicons](https://github.com/microsoft/vscode-codicons), used under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) and inlined in `src/styles/search.css`.
 
 ## Changelog
 

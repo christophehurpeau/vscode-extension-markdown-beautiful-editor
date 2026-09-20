@@ -41,6 +41,8 @@ import { GFM } from '@lezer/markdown';
 import { markdownExtensions as ourGrammarExtensions } from '../lang/registry';
 import { markdownDecorations } from '../decorations';
 import { markdownLineNumbers } from '../lineNumberGutter';
+import { markdownSearch } from '../search';
+import { multipleSelections } from '../multipleSelections';
 import { hasChanges } from '../../editor/diff';
 
 export interface CreateMergeViewOptions {
@@ -97,10 +99,17 @@ const diffPresentationExtensions: Extension[] = [
 
 // A git revision has nowhere to be written back to, so `a` always uses this;
 // `b` does too whenever its side is not the working tree.
+//
+// `markdownSearch` is on both pane kinds so a diff can be searched from
+// whichever side has focus (each pane opens its own panel). It is not an
+// editing concern on this side: with `EditorState.readOnly` set, the panel
+// drops its replace row and the replace commands are no-ops — see
+// `../search.ts`.
 const readOnlyPaneExtensions: Extension[] = [
     EditorState.readOnly.of(true),
     EditorView.editable.of(false),
     EditorView.lineWrapping,
+    markdownSearch,
     ...diffPresentationExtensions,
 ];
 
@@ -110,11 +119,18 @@ const readOnlyPaneExtensions: Extension[] = [
  * cursor motion behave identically across the toggle; `markdownExtensions`
  * itself still cannot be reused here, for the reason the header of
  * `diffPresentationExtensions` gives.
+ *
+ * `multipleSelections` is here and not on the read-only panes: it is what
+ * makes `searchKeymap`'s Mod-d ("select next occurrence", `../search.ts`)
+ * able to hold more than one range, and that only pays off on a surface where
+ * the cursors can then type.
  */
 const editablePaneExtensions: Extension[] = [
     history(),
     keymap.of([...defaultKeymap, ...historyKeymap]),
     EditorView.lineWrapping,
+    markdownSearch,
+    multipleSelections,
     ...diffPresentationExtensions,
 ];
 

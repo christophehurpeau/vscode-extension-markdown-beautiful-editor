@@ -17,7 +17,7 @@
  * coordinate system was the absolute start of the line's raw text, i.e.
  * `line.from` here.
  */
-import type { EditorState, StateCommand } from '@codemirror/state';
+import { EditorSelection, type EditorState, type StateCommand } from '@codemirror/state';
 import { applyLinePrefix, getLineType, stripLinePrefix, type LineTypeDefinition } from '../../../shared/lineTypes';
 
 /** "What line type is at the cursor?" query, for the line-type toolbar's
@@ -30,24 +30,40 @@ export function getLineTypeAtCursor(state: EditorState): LineTypeDefinition {
     return getLineType(state.doc.lineAt(state.selection.main.head).text);
 }
 
-/** Set the cursor's line to `type` (paragraph/h1-h6/hr/ul/ol/task/quote/code).
- *  A `StateCommand`: returns `false` (nothing dispatched) when the line is
- *  already that type (stripping and re-applying the prefix is a no-op). */
+/** Set each cursor's line to `type` (paragraph/h1-h6/hr/ul/ol/task/quote/code).
+ *  A `StateCommand`: returns `false` (nothing dispatched) when every targeted
+ *  line is already that type (stripping and re-applying the prefix is a no-op).
+ *
+ *  One line per selection range — the line the range's head is on — so a
+ *  multi-cursor selection (`../multipleSelections.ts`) rewrites one line per
+ *  cursor. A single range spanning several lines still only rewrites the one
+ *  its head is on, as before. Two cursors on the same line rewrite it once and
+ *  then collapse into one, since both land at `line.from`. */
 export function setLineType(type: string): StateCommand {
     return ({ state, dispatch }) => {
-        const line = state.doc.lineAt(state.selection.main.head);
-        const newText = applyLinePrefix(stripLinePrefix(line.text), type);
-        if (newText === line.text) {
+        const rewritten = new Set<number>();
+
+        const transaction = state.changeByRange((range) => {
+            const line = state.doc.lineAt(range.head);
+            if (rewritten.has(line.from)) {
+                return { range: EditorSelection.cursor(line.from) };
+            }
+            const newText = applyLinePrefix(stripLinePrefix(line.text), type);
+            if (newText === line.text) {
+                return { range };
+            }
+            rewritten.add(line.from);
+            return {
+                changes: { from: line.from, to: line.to, insert: newText },
+                range: EditorSelection.cursor(line.from),
+            };
+        });
+
+        if (rewritten.size === 0) {
             return false;
         }
 
-        dispatch(
-            state.update({
-                changes: { from: line.from, to: line.to, insert: newText },
-                selection: { anchor: line.from },
-                scrollIntoView: true,
-            }),
-        );
+        dispatch(state.update(transaction, { scrollIntoView: true }));
         return true;
     };
 }

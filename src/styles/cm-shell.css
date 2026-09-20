@@ -259,3 +259,12 @@ html, body {
 .cm-editor ::selection {
     background: var(--vscode-editor-selectionBackground, rgba(0, 122, 204, 0.3)) !important;
 }
+
+/* `drawSelection()` (cm/multipleSelections.ts) draws every cursor itself and
+ * forces the native caret transparent, so the `caret-color` above no longer
+ * reaches the main editor -- the color has to be set on the drawn element.
+ * Secondary cursors are styled identically, as in VS Code. */
+.cm-editor .cm-cursor,
+.cm-editor .cm-dropCursor {
+    border-left-color: var(--vscode-editorCursor-foreground, #007acc);
+}

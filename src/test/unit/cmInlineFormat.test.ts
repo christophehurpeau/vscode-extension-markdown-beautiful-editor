@@ -20,8 +20,18 @@ function stateFor(doc: string, selection: EditorSelection): EditorState {
     return EditorState.create({
         doc,
         selection,
-        extensions: [markdown({ base: commonmarkLanguage, extensions: [GFM], completeHTMLTags: false })],
+        extensions: [
+            markdown({ base: commonmarkLanguage, extensions: [GFM], completeHTMLTags: false }),
+            EditorState.allowMultipleSelections.of(true),
+        ],
     });
+}
+
+/** `allowMultipleSelections` is not on by default — without it CM6 silently
+ *  reduces the selection to its main range (`asSingle`), and every multi-range
+ *  assertion below would pass for a single one. */
+function multiRangeStateFor(doc: string, ranges: [number, number][]): EditorState {
+    return stateFor(doc, EditorSelection.create(ranges.map(([from, to]) => EditorSelection.range(from, to))));
 }
 
 function run(cmd: StateCommand, state: EditorState): { ran: boolean; state: EditorState } {
@@ -147,6 +157,48 @@ describe('cm/commands/inlineFormat: toggleInlineFormat', () => {
         it('does nothing when the selection spans more than one line', () => {
             const doc = 'first\nsecond';
             const { ran, state } = run(toggleInlineFormat('bold'), stateFor(doc, EditorSelection.single(2, 8)));
+            assert.strictEqual(ran, false);
+            assert.strictEqual(state.doc.toString(), doc);
+        });
+    });
+
+    describe('multiple selection ranges', () => {
+        it('wraps every selected range, on the same line and across lines', () => {
+            const doc = 'one two\nthree';
+            const state = multiRangeStateFor(doc, [[0, 3], [4, 7], [8, 13]]);
+            const { ran, state: result } = run(toggleInlineFormat('bold'), state);
+            assert.strictEqual(ran, true);
+            assert.strictEqual(result.doc.toString(), '**one** **two**\n**three**');
+        });
+
+        it('keeps each range covering the same text it started on', () => {
+            const doc = 'one two';
+            const { state } = run(toggleInlineFormat('italic'), multiRangeStateFor(doc, [[0, 3], [4, 7]]));
+            assert.deepStrictEqual(
+                state.selection.ranges.map((r) => state.sliceDoc(r.from, r.to)),
+                ['one', 'two'],
+            );
+        });
+
+        it('toggles a shared construct once when two cursors sit inside it', () => {
+            const doc = 'before **bold** after';
+            const first = doc.indexOf('bold');
+            const { ran, state } = run(toggleInlineFormat('bold'), multiRangeStateFor(doc, [[first + 1, first + 1], [first + 3, first + 3]]));
+            assert.strictEqual(ran, true);
+            assert.strictEqual(state.doc.toString(), 'before bold after');
+        });
+
+        it('applies to the ranges that can toggle and leaves the others alone', () => {
+            const doc = 'plain text\nsecond line';
+            const state = multiRangeStateFor(doc, [[3, 3], [11, 17]]);
+            const { ran, state: result } = run(toggleInlineFormat('bold'), state);
+            assert.strictEqual(ran, true);
+            assert.strictEqual(result.doc.toString(), 'plain text\n**second** line');
+        });
+
+        it('is a no-op when no range can toggle', () => {
+            const doc = 'plain text';
+            const { ran, state } = run(toggleInlineFormat('bold'), multiRangeStateFor(doc, [[3, 3], [7, 7]]));
             assert.strictEqual(ran, false);
             assert.strictEqual(state.doc.toString(), doc);
         });

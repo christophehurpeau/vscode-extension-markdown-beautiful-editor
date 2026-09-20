@@ -1,0 +1,264 @@
+/**
+ * Find/replace panel (`@codemirror/search`, wired in
+ * src/webview/cm/search.ts) and the match highlights that go with it.
+ *
+ * Every selector here is deliberately prefixed with `.cm-editor`, and the
+ * panel ones with `.cm-panel.cm-search`, to match or beat the specificity of
+ * CM6's base theme — which ships as `.ͼ2 .cm-panels { background: #f5f5f5 }`
+ * and friends. Those `ͼ` classes are its light/dark variants, chosen from the
+ * `EditorView.darkTheme` facet, which this editor never sets: without an
+ * override the panel renders in CM's LIGHT palette inside a dark VS Code
+ * theme. A bare `.cm-panels` rule loses to it and ships exactly that.
+ *
+ * CM6 injects its base theme at the top of `<head>`, so at equal specificity
+ * these rules win on document order.
+ *
+ * Buttons follow `.toolbar-btn` (toolbar.css) rather than VS Code's button
+ * tokens: `--vscode-button-secondaryBackground` is fully transparent in
+ * several shipped themes (Dark Modern emits `#00000000`), which would leave
+ * the panel's controls as floating text.
+ */
+
+.cm-editor .cm-panels {
+    background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+    color: var(--vscode-editorWidget-foreground, var(--vscode-editor-foreground, #cccccc));
+    font-family: var(--mbe-font-ui);
+    border: none;
+}
+
+.cm-editor .cm-panels.cm-panels-top {
+    border-bottom: 1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border, rgba(128, 128, 128, 0.2)));
+}
+
+.cm-editor .cm-panel.cm-search {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    /* Right padding clears the absolutely positioned close button */
+    padding: 6px 32px 6px 10px;
+}
+
+/* The base theme spaces the controls with per-item margins; `gap` above
+   replaces them, and leaving both in place doubles the spacing. */
+.cm-editor .cm-panel.cm-search input,
+.cm-editor .cm-panel.cm-search button,
+.cm-editor .cm-panel.cm-search label {
+    margin: 0;
+}
+
+/* The library appends the three option toggles after the next/previous/all
+   buttons; VS Code keeps them with the field they modify. Reordered here
+   rather than in a hand-built panel, so the library keeps ownership of the
+   DOM and its behaviour. Every control is numbered, `<br>` included, because
+   flex lays out and wraps in `order` sequence — an unnumbered item would fall
+   to the front of the row. */
+.cm-editor .cm-panel.cm-search input[name="search"] {
+    order: 1;
+}
+
+.cm-editor .cm-panel.cm-search label {
+    order: 2;
+}
+
+.cm-editor .cm-panel.cm-search button[name="next"] {
+    order: 3;
+}
+
+.cm-editor .cm-panel.cm-search button[name="prev"] {
+    order: 4;
+}
+
+.cm-editor .cm-panel.cm-search button[name="select"] {
+    order: 5;
+}
+
+.cm-editor .cm-panel.cm-search br {
+    order: 6;
+}
+
+.cm-editor .cm-panel.cm-search input[name="replace"] {
+    order: 7;
+}
+
+.cm-editor .cm-panel.cm-search button[name="replace"] {
+    order: 8;
+}
+
+.cm-editor .cm-panel.cm-search button[name="replaceAll"] {
+    order: 9;
+}
+
+/* The library separates the find row from the replace row with a `<br>`;
+   forcing a full-width break keeps that shape inside the flex row. */
+.cm-editor .cm-panel.cm-search br {
+    flex-basis: 100%;
+    height: 0;
+}
+
+.cm-editor .cm-panel.cm-search .cm-textfield {
+    flex: 0 1 240px;
+    min-width: 120px;
+    padding: 3px 6px;
+    font-family: var(--mbe-font-ui);
+    font-size: 12px;
+    color: var(--vscode-input-foreground, var(--vscode-editor-foreground, #cccccc));
+    /* The fallback is an overlay rather than the editor background: a theme
+       that emits no `input.background` would otherwise leave the field the
+       same colour as the panel it sits in. */
+    background: var(--vscode-input-background, rgba(128, 128, 128, 0.15));
+    border: 1px solid var(--vscode-input-border, transparent);
+    border-radius: 2px;
+}
+
+.cm-editor .cm-panel.cm-search .cm-textfield:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder, var(--vscode-editorCursor-foreground, #007acc));
+    outline-offset: -1px;
+}
+
+.cm-editor .cm-panel.cm-search .cm-textfield::placeholder {
+    color: var(--vscode-input-placeholderForeground, var(--vscode-descriptionForeground, #9d9d9d));
+}
+
+.cm-editor .cm-panel.cm-search .cm-button {
+    padding: 3px 8px;
+    font-family: var(--mbe-font-ui);
+    font-size: 12px;
+    color: var(--vscode-foreground, #cccccc);
+    background: transparent;
+    background-image: none;
+    border: 1px solid var(--vscode-editorWidget-border, rgba(128, 128, 128, 0.35));
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.cm-editor .cm-panel.cm-search .cm-button:hover {
+    background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.3));
+}
+
+.cm-editor .cm-panel.cm-search .cm-button:active {
+    background: var(--vscode-toolbar-activeBackground, rgba(90, 93, 94, 0.5));
+}
+
+/* --- Match-case / regexp / whole-word toggles ---
+   VS Code's find widget renders these three as icon toggles, and the icons
+   are recognized on sight where "match case" is a line of prose to read. The
+   library's DOM is a `<label>` wrapping a checkbox and a text node, so the
+   text is collapsed to `font-size: 0` — still there for a screen reader, and
+   `cm/search.ts` adds the `title` a sighted user needs in its place — and the
+   icon is painted as a mask, so `currentColor` carries the checked and
+   unchecked foregrounds.
+
+   The icons are `case-sensitive`, `regex` and `whole-word` from
+   microsoft/vscode-codicons (CC BY 4.0), inlined rather than loaded as a
+   font: the webview CSP declares no `font-src`, and a data: mask needs no
+   extra origin. */
+.cm-editor .cm-panel.cm-search label {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    /* Hides the label's text without removing it from the accessible name */
+    font-size: 0;
+    color: var(--vscode-input-foreground, var(--vscode-foreground, #cccccc));
+    border: 1px solid transparent;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.cm-editor .cm-panel.cm-search label::before {
+    content: "";
+    width: 16px;
+    height: 16px;
+    background-color: currentColor;
+    mask-position: center;
+    mask-repeat: no-repeat;
+    mask-size: 16px 16px;
+}
+
+.cm-editor .cm-panel.cm-search label:has(input[name="case"])::before {
+    mask-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M4.02602 3.34176C4.16218 2.93404 4.83818 2.93398 4.97426 3.34176L6.97426 9.34274C6.97526 9.34674 6.97817 9.35544 6.97817 9.35544L7.97426 12.3427C8.06126 12.6047 7.91984 12.8875 7.65786 12.9756C7.60486 12.9926 7.55165 13.0009 7.49965 13.0009C7.29082 13.0008 7.09602 12.868 7.02602 12.6591L6.14028 10.0009H2.86L1.97426 12.6591C1.88728 12.919 1.60634 13.0634 1.34243 12.9746C1.08043 12.8866 0.93902 12.6038 1.02602 12.3418L2.02211 9.35544C2.02311 9.35144 2.02602 9.34274 2.02602 9.34274L4.02602 3.34176ZM3.19399 8.99997H5.80629L4.49965 5.08102L3.19399 8.99997Z'/%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M11.8581 6.66794C13.165 6.73296 13.9427 7.48427 13.9967 8.69626L13.9997 8.83297V12.5078C13.9957 12.7568 13.809 12.9621 13.568 12.9951L13.4997 13C13.2469 12.9998 13.0376 12.8121 13.0045 12.5683L12.9997 12.5V12.4297C12.3407 12.8066 11.7316 13 11.1666 13C9.94081 12.9998 8.99965 12.1369 8.99965 10.833C8.99967 9.68299 9.79211 8.82889 11.1061 8.66989C11.7279 8.59493 12.3589 8.64164 12.9987 8.80954C12.9915 8.07194 12.6279 7.70704 11.8082 7.66598C11.1672 7.63398 10.7158 7.72415 10.4518 7.90915C10.2258 8.06799 9.91347 8.01301 9.75551 7.78708C9.59671 7.56115 9.65178 7.24878 9.87758 7.09079C10.3165 6.78283 10.9138 6.64715 11.6666 6.6611L11.8581 6.66794ZM12.7965 9.8154C12.2587 9.66749 11.7361 9.62551 11.2262 9.68747C10.4042 9.78747 9.99868 10.2244 9.99868 10.8574C9.99884 11.5881 10.474 12.0242 11.1657 12.0244C11.6196 12.0244 12.1777 11.8137 12.8336 11.3818L12.9987 11.2695V9.87594L12.7965 9.8154Z'/%3E%3C/svg%3E");
+}
+
+.cm-editor .cm-panel.cm-search label:has(input[name="re"])::before {
+    mask-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11.498 5H9.705L10.973 3.732C11.168 3.537 11.168 3.22 10.973 3.025C10.778 2.83 10.461 2.83 10.266 3.025L8.998 4.293V2.5C8.998 2.224 8.774 2 8.498 2C8.222 2 7.998 2.224 7.998 2.5V4.293L6.73 3.025C6.535 2.83 6.218 2.83 6.023 3.025C5.828 3.22 5.828 3.537 6.023 3.732L7.291 5H5.498C5.222 5 4.998 5.224 4.998 5.5C4.998 5.776 5.222 6 5.498 6H7.291L6.023 7.268C5.828 7.463 5.828 7.78 6.023 7.975C6.121 8.073 6.249 8.121 6.377 8.121C6.505 8.121 6.633 8.072 6.731 7.975L7.999 6.707V8.5C7.999 8.776 8.223 9 8.499 9C8.775 9 8.999 8.776 8.999 8.5V6.707L10.267 7.975C10.365 8.073 10.493 8.121 10.621 8.121C10.749 8.121 10.877 8.072 10.975 7.975C11.17 7.78 11.17 7.463 10.975 7.268L9.707 6H11.5C11.776 6 12 5.776 12 5.5C12 5.224 11.776 5 11.5 5H11.498ZM5 12C5 12.552 4.552 13 4 13C3.448 13 3 12.552 3 12C3 11.448 3.448 11 4 11C4.552 11 5 11.448 5 12Z'/%3E%3C/svg%3E");
+}
+
+.cm-editor .cm-panel.cm-search label:has(input[name="word"])::before {
+    mask-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M15.5 12.5C15.776 12.5 16 12.724 16 13V13.5C16 14.327 15.327 15 14.5 15H1.5C0.673 15 0 14.327 0 13.5V13C0 12.724 0.224 12.5 0.5 12.5C0.776 12.5 1 12.724 1 13V13.5C1 13.775 1.224 14 1.5 14H14.5C14.776 14 15 13.775 15 13.5V13C15 12.724 15.224 12.5 15.5 12.5Z'/%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M4.8584 5.6709C6.16516 5.73603 6.94308 6.48734 6.99707 7.69922L7 7.83594V11.5107C6.996 11.7596 6.80919 11.9649 6.56836 11.998L6.5 12.0029C6.24709 12.0029 6.038 11.8152 6.00488 11.5713L6 11.5029V11.4326C5.341 11.8096 4.73199 12.0029 4.16699 12.0029C2.941 12.0029 2 11.1399 2 9.83594C2.00003 8.68597 2.79247 7.83185 4.10645 7.67285C4.7283 7.59793 5.35918 7.64552 5.99902 7.81348C5.99202 7.07548 5.62762 6.70995 4.80762 6.66895C4.16686 6.637 3.7161 6.72717 3.45215 6.91211C3.22615 7.07111 2.91386 7.01604 2.75586 6.79004C2.5969 6.56404 2.65194 6.25174 2.87793 6.09375C3.31692 5.78579 3.91404 5.65006 4.66699 5.66406L4.8584 5.6709ZM5.79688 8.81836C5.25888 8.67037 4.73558 8.62843 4.22559 8.69043C3.40389 8.79054 2.99902 9.22747 2.99902 9.86035C2.99917 10.5911 3.47413 11.0273 4.16602 11.0273C4.62001 11.0273 5.17799 10.8168 5.83398 10.3848L5.99902 10.2725V8.87891L5.79688 8.81836Z'/%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M9.55078 2.00586C9.78578 2.02986 9.97307 2.21715 9.99707 2.45215C10 2.46907 10 2.48601 10 2.50293V6.60254C10.418 6.22566 10.9371 6.00293 11.5 6.00293C12.881 6.00293 14 7.34596 14 9.00293C14 10.6599 12.881 12.0029 11.5 12.0029C10.9371 12.0029 10.418 11.7802 10 11.4033V11.5029C10 11.7619 9.80278 11.974 9.55078 12C9.53385 12.003 9.51693 12.0029 9.5 12.0029C9.224 12.0029 9 11.7789 9 11.5029V2.50293C9 2.486 9.00095 2.46907 9.00293 2.45215C9.02793 2.20015 9.241 2.00293 9.5 2.00293C9.51692 2.00293 9.53386 2.00388 9.55078 2.00586ZM11.4355 7.00391C11.0307 7.03208 10.5769 7.31545 10.29 7.82227C10.1232 8.12611 10.018 8.49479 10.002 8.89453C9.99995 8.92952 10 8.96597 10 9.00195C10 9.03795 10.001 9.07438 10.002 9.10938C10.018 9.50814 10.1222 9.87582 10.2891 10.1797C10.576 10.6875 11.0307 10.9728 11.4355 11C11.4565 11.002 11.478 11.002 11.5 11.002C11.522 11.002 11.5435 11.001 11.5645 11C11.9693 10.9728 12.424 10.6875 12.7109 10.1797C12.8778 9.87582 12.982 9.50814 12.998 9.10938C13 9.07438 13 9.03795 13 9.00195C13 8.96597 12.999 8.92952 12.998 8.89453C12.982 8.49479 12.8768 8.12611 12.71 7.82227C12.4231 7.31545 11.9693 7.03109 11.5645 7.00391C11.5435 7.00191 11.522 7.00195 11.5 7.00195C11.478 7.00195 11.4565 7.00291 11.4355 7.00391Z'/%3E%3C/svg%3E");
+}
+
+/* Covers the whole toggle, so the click target is the box the user sees and
+   the native checkbox keeps its role, keyboard behaviour and checked state —
+   only its rendering is dropped. */
+.cm-editor .cm-panel.cm-search label input[type="checkbox"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.cm-editor .cm-panel.cm-search label:hover:not(:has(input:checked)) {
+    background: var(--vscode-inputOption-hoverBackground, var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.3)));
+}
+
+.cm-editor .cm-panel.cm-search label:has(input:checked) {
+    color: var(--vscode-inputOption-activeForeground, var(--vscode-foreground, #cccccc));
+    background: var(--vscode-inputOption-activeBackground, rgba(0, 120, 212, 0.35));
+    border-color: var(--vscode-inputOption-activeBorder, transparent);
+}
+
+/* The checkbox itself is invisible, so its focus ring has to be drawn on the
+   box that replaced it — without this the panel is keyboard-navigable with no
+   sign of where focus is. */
+.cm-editor .cm-panel.cm-search label:has(input:focus-visible) {
+    outline: 1px solid var(--vscode-focusBorder, var(--vscode-editorCursor-foreground, #007acc));
+    outline-offset: -1px;
+}
+
+.cm-editor .cm-panel.cm-search [name="close"] {
+    top: 4px;
+    right: 6px;
+    padding: 0 4px;
+    font-size: 15px;
+    line-height: 1;
+    color: var(--vscode-icon-foreground, var(--vscode-foreground, #cccccc));
+    background: none;
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+}
+
+.cm-editor .cm-panel.cm-search [name="close"]:hover {
+    background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.3));
+}
+
+/* Match highlighting. `findMatchBackground` is the current match and
+   `findMatchHighlightBackground` the rest — the same split VS Code's own
+   editor uses, so a search here looks like a search there. The borders carry
+   the distinction in high-contrast themes, where the backgrounds may be
+   transparent. */
+.cm-editor .cm-searchMatch {
+    background: var(--vscode-editor-findMatchHighlightBackground, rgba(234, 92, 0, 0.33));
+    outline: 1px solid var(--vscode-editor-findMatchHighlightBorder, transparent);
+}
+
+.cm-editor .cm-searchMatch.cm-searchMatch-selected {
+    background: var(--vscode-editor-findMatchBackground, rgba(234, 92, 0, 0.6));
+    outline: 1px solid var(--vscode-editor-findMatchBorder, transparent);
+}
+
+/* Other occurrences of the current selection, VS Code's `selectionHighlight`.
+   Deliberately fainter than a search match: it is passive feedback, not a
+   result set the user asked for. The base theme's
+   `.cm-searchMatch .cm-selectionMatch` override is more specific than this
+   and still wins inside a match, which is what should happen. */
+.cm-editor .cm-selectionMatch {
+    background: var(--vscode-editor-selectionHighlightBackground, rgba(128, 128, 128, 0.25));
+    outline: 1px solid var(--vscode-editor-selectionHighlightBorder, transparent);
+}

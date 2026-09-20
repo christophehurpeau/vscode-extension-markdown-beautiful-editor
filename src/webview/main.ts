@@ -15,6 +15,7 @@ import { initFloatingToolbar } from './cm/ui/floatingToolbar';
 import { initLineTypeToolbar } from './cm/ui/lineTypeToolbar';
 import { initTocPanel } from './cm/ui/tocPanel';
 import { initChrome } from './cm/ui/chrome';
+import { initGlobalFindShortcut } from './cm/search';
 import { updateToc, extractHeadingsFromMarkdown, findHeadingIndexBySlug, findHeadingLineIndex, setTocVisible } from './toc';
 import { resolveTocVisibility, toggledTocPreference, type TocVisibilityPreference } from '../shared/tocVisibility';
 import {
@@ -432,6 +433,11 @@ function init(): void {
     // (src/editor/webviewContent.ts); updateDiffToggleVisibility and
     // enter/exitDiffMode take it from there once `diffAvailable` and
     // `toggleDiff` messages start arriving.
+    // Cmd+F with focus outside the editor (TOC, a toolbar button). Registered
+    // once, resolving the surface per keystroke: in diff mode the document
+    // lives in the merge view's modified pane, and the main view is hidden.
+    initGlobalFindShortcut({ resolveView: () => mergeView?.b ?? view });
+
     document.getElementById('diff-toggle-btn')?.addEventListener('click', () => postToHost({ type: 'requestDiffToggle' }));
     document.getElementById('diff-close-btn')?.addEventListener('click', () => postToHost({ type: 'requestDiffToggle' }));
     document.getElementById('readonly-banner-btn')?.addEventListener('click', () => postToHost({ type: 'openBeautifulDiff' }));

@@ -11,6 +11,11 @@
  * `markdownLineNumbers()` (`./lineNumberGutter.ts`) to fix the gutter/text
  * baseline misalignment bug — see that file's header. This is gutter wiring
  * only; nothing else in this array changed for that fix.
+ *
+ * Exception: `multipleSelections` (`./multipleSelections.ts`) was added for
+ * multi-cursor support. It genuinely needs to be top-level — it turns on a
+ * state facet and replaces the native selection rendering for the whole
+ * view — and everything it configures lives in that one file.
  */
 import type { Extension } from '@codemirror/state';
 import { EditorView, highlightActiveLineGutter, keymap } from '@codemirror/view';
@@ -26,6 +31,8 @@ import { markdownExtensions as ourGrammarExtensions } from './lang/registry';
 import { codeHighlighting } from './codeHighlight';
 import { markdownDecorations } from './decorations';
 import { markdownLineNumbers } from './lineNumberGutter';
+import { multipleSelections } from './multipleSelections';
+import { markdownSearch } from './search';
 
 /**
  * Fenced-code languages, statically bundled (decided 2026-09-17/18, see
@@ -66,6 +73,11 @@ export const markdownExtensions: Extension[] = [
     highlightActiveLineGutter(),
     history(),
     keymap.of([...defaultKeymap, ...historyKeymap]),
+    multipleSelections,
+    // Find/replace panel + Cmd+F. Its keymap carries its own `Prec.high`, so
+    // it beats `defaultKeymap` above regardless of position here; see
+    // `./search.ts` for that and for the webview-find-widget decision.
+    markdownSearch,
     // Required: replaces the old `white-space: pre-wrap` — without this,
     // long lines run off the viewport instead of wrapping.
     EditorView.lineWrapping,
