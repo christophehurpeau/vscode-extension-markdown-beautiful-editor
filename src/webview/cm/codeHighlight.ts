@@ -30,6 +30,7 @@ import { cssLanguage } from '@codemirror/lang-css';
 import { htmlLanguage } from '@codemirror/lang-html';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { jsonLanguage } from '@codemirror/lang-json';
+import { yamlLanguage } from '@codemirror/lang-yaml';
 import { tags } from '@lezer/highlight';
 
 /**
@@ -75,7 +76,22 @@ export const codeTokenStyles: TagStyle[] = [
     { tag: tags.invalid, class: 'tok-invalid' },
 ];
 
-const scopedLanguages = [cssLanguage, htmlLanguage, javascriptLanguage, jsonLanguage];
+/**
+ * `yamlLanguage` is here for the frontmatter block, not for fenced code:
+ * `./lang/frontmatter.ts` mounts it over a `FrontmatterContent` range, and a
+ * mounted tree carries its own language's `data` facet on its top node, which
+ * is exactly what `HighlightStyle`'s `scope` matches on — so frontmatter is
+ * tokenized through the same path as a ` ```css ` fence. (It is deliberately
+ * NOT registered in `./extensions.ts`'s `codeLanguages`, so a ` ```yaml `
+ * fence stays plain text, as before.)
+ *
+ * YAML's unquoted scalars (`title: Hello`) are `tags.content`, which nothing
+ * below styles: they keep the block's own foreground, the same deliberate
+ * choice already made for plain identifiers. Keys (`tags.definition(
+ * tags.propertyName)`), quoted strings, comments, anchors and tags all
+ * inherit a parent tag that is styled.
+ */
+const scopedLanguages = [cssLanguage, htmlLanguage, javascriptLanguage, jsonLanguage, yamlLanguage];
 
 /** Exported for `src/test/unit/codeHighlight.test.ts`, which runs them through
  *  `highlightTree` directly — a `HighlightStyle` is itself a `Highlighter`, so

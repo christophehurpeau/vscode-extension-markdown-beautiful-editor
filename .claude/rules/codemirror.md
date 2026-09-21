@@ -44,11 +44,22 @@ On the raw grammar in tests the call is `parser.configure(GFM)`. `parser.configu
 is a **silent no-op** — `MarkdownConfig` has no `extensions` key — and yields a plausible-looking
 default tree. Only `markdown()` takes an `extensions` option.
 
-Math, footnotes and definition lists are hand-written `MarkdownExtension`s in `cm/lang/`; `math.ts`
-is the reference implementation to copy. Their ordering directives (`before: 'Link'`,
-`before: 'LinkReference'`, `endLeaf`) are load-bearing: get one wrong and the construct silently
-never fires. GitHub alerts are deliberately *not* a grammar extension — a `> [!NOTE]` block already
-parses as a `Blockquote`, read the type off that node in the decoration layer.
+Math, footnotes, definition lists and YAML frontmatter are hand-written `MarkdownExtension`s in
+`cm/lang/`; `math.ts` is the reference implementation to copy. Their ordering directives
+(`before: 'Link'`, `before: 'LinkReference'`, `before: 'HorizontalRule'`, `endLeaf`) are
+load-bearing: get one wrong and the construct silently never fires. GitHub alerts are deliberately
+*not* a grammar extension — a `> [!NOTE]` block already parses as a `Blockquote`, read the type off
+that node in the decoration layer.
+
+`MarkdownConfig.wrap`s compose (`configure` concatenates them), so an extension may mount another
+grammar with `parseMixed` alongside the `parseCode` wrapper `markdown()` installs — that is how
+`frontmatter.ts` parses its body as YAML. A mounted region is another language's tokens: give it no
+`md-*` class, `return false` on it in the decoration walk (as with `CodeText`), and colour it by
+adding its `Language` to `codeHighlight.ts`'s scoped list.
+
+A block parser has no lookahead past `cx.peekLine()` and cannot un-consume a line, so a block whose
+closing delimiter is missing runs to the end of the document. Decide before consuming, and keep the
+opening test strict.
 
 `NodeSpec.composite` is self-registering; `parser.configure()` wires continuation automatically.
 

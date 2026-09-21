@@ -25,6 +25,8 @@
  *   - `Blockquote`   ancestor-depth `md-quote-1/2/3` (capped) and
  *                    `blockquote-first`/`blockquote-last` boundary classes.
  *   - `FencedCode`   `md-code-block-first`/`md-code-block-last` boundaries.
+ *   - `Frontmatter`  the same boundary treatment,
+ *                    `md-frontmatter-first`/`md-frontmatter-last`.
  *   - `SetextHeading1/2` its mapped `md-heading md-hN` class stops at the
  *                    title line(s); the `===`/`---` line underneath gets
  *                    `md-setext-underline` instead (see
@@ -66,9 +68,11 @@
  * directly editable (see the non-negotiable rule in
  * `.claude/agents/cm6-migration.md`).
  *
- * Never descend into a fenced code block's own `CodeText` region: that is a
- * nested language's tokens (highlighted by `codeLanguages` in
- * `./extensions.ts`), not markdown, and must never receive an `md-*` class.
+ * Never descend into a region owned by a nested language — a fenced code
+ * block's `CodeText`, or a frontmatter block's `FrontmatterContent`, which
+ * carries a mounted `@lezer/yaml` tree (`./lang/frontmatter.ts`). Those are
+ * another grammar's tokens, highlighted by `./codeHighlight.ts`, not markdown,
+ * and must never receive an `md-*` class.
  * `buildMarkdownDecorations` is exported separately from the `ViewPlugin` so
  * it can be unit-tested directly against a plain `EditorState` — no `EditorView`
  * / DOM needed (CONVENTION (c), see `src/test/unit/decorations.test.ts`).
@@ -180,14 +184,14 @@ export function buildMarkdownDecorations(
         }
     };
 
-    /** `FencedCode`-only extra: boundary classes for corner rounding on the
-     *  fence's first/last line, matching the `md-code-block` background
-     *  line class from the flat map. */
-    const handleFencedCodeExtras = (node: SyntaxNode): void => {
+    /** Boundary classes for corner rounding on a block's first/last line,
+     *  matching the background line class the flat map gives every line the
+     *  block spans (`md-code-block`, `md-frontmatter`). */
+    const addBlockBoundaryClasses = (node: SyntaxNode, prefix: string): void => {
         const firstLine = state.doc.lineAt(node.from);
         const lastLine = state.doc.lineAt(Math.max(node.from, node.to - 1));
-        addLineClassAt(firstLine.from, 'md-code-block-first');
-        addLineClassAt(lastLine.from, 'md-code-block-last');
+        addLineClassAt(firstLine.from, `${prefix}-first`);
+        addLineClassAt(lastLine.from, `${prefix}-last`);
     };
 
     /** The `===`/`---` line of a setext heading. A `SetextHeading1/2` node
@@ -351,9 +355,11 @@ export function buildMarkdownDecorations(
             from,
             to,
             enter(node) {
-                // A nested language's own tokens (inside a fenced code
-                // block) are never markdown constructs — do not descend.
-                if (node.name === 'CodeText') {
+                // A nested language's own tokens — inside a fenced code
+                // block, or the `@lezer/yaml` tree mounted over a
+                // frontmatter body — are never markdown constructs, so do
+                // not descend. `codeHighlight.ts` colours them instead.
+                if (node.name === 'CodeText' || node.name === 'FrontmatterContent') {
                     return false;
                 }
 
@@ -381,7 +387,10 @@ export function buildMarkdownDecorations(
                         handleBlockquoteExtras(node.node);
                         break;
                     case 'FencedCode':
-                        handleFencedCodeExtras(node.node);
+                        addBlockBoundaryClasses(node.node, 'md-code-block');
+                        break;
+                    case 'Frontmatter':
+                        addBlockBoundaryClasses(node.node, 'md-frontmatter');
                         break;
                     case 'SetextHeading1':
                     case 'SetextHeading2': {

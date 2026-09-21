@@ -73,6 +73,36 @@ describe('cm/codeHighlight: fenced code tokens', () => {
     it('leaves a fence with no language tag unhighlighted', () => {
         assert.deepStrictEqual(tokensIn('```\nconst x = 1;\n```\n'), []);
     });
+
+    it('leaves a yaml fence unhighlighted (yamlLanguage is scoped, not in codeLanguages)', () => {
+        assert.deepStrictEqual(tokensIn('```yaml\ntitle: x\n```\n'), []);
+    });
+});
+
+/**
+ * Frontmatter reaches the highlighter the same way a fence does, but through
+ * the `parseMixed` wrap in `cm/lang/frontmatter.ts` rather than `markdown()`'s
+ * `codeLanguages`. This is the only test that can see that the mount actually
+ * happened — the decoration tests assert the *absence* of `md-*` classes over
+ * the same range, which an unmounted (unparsed) body would also satisfy.
+ */
+describe('cm/codeHighlight: YAML frontmatter tokens', () => {
+    it('highlights keys, quoted strings and comments in the frontmatter body', () => {
+        const tokens = tokensIn('---\n# note\ntitle: "Hello"\n---\n\nbody\n');
+        assert.strictEqual(classOf(tokens, '# note'), 'tok-comment');
+        assert.strictEqual(classOf(tokens, 'title'), 'tok-property');
+        assert.strictEqual(classOf(tokens, '"Hello"'), 'tok-string');
+    });
+
+    it('leaves unquoted scalars to inherit the block foreground', () => {
+        const tokens = tokensIn('---\ntitle: Hello\n---\n\nbody\n');
+        assert.strictEqual(classOf(tokens, 'Hello'), undefined);
+    });
+
+    it('emits nothing for the markdown below the closing fence', () => {
+        const tokens = tokensIn('---\ntitle: x\n---\n\n# Heading\n\n**bold**\n');
+        assert.deepStrictEqual(tokens.filter((token) => /Heading|bold/.test(token.text)), []);
+    });
 });
 
 describe('cm/codeHighlight: prose is never repainted', () => {

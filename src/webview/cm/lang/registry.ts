@@ -3,7 +3,8 @@
  * extensions (math, footnotes, definition lists — the three-construct parity
  * gap recorded in docs/plans/CODEMIRROR6_MIGRATION.md; link-reference
  * definitions and GitHub alerts need no grammar extension, see that doc's
- * "corrections" section).
+ * "corrections" section — plus YAML frontmatter, which is not a parity item:
+ * the pre-CM6 parser had no frontmatter support either).
  *
  * Authored once by WP-1, then FROZEN, same as `../extensions.ts`: WP-G1/G2/G3
  * fill in their own file under `./lang/` and must not need to touch this one.
@@ -20,9 +21,11 @@ import type { MarkdownExtension } from '@lezer/markdown';
 import { mathExtension } from './math';
 import { footnotesExtension } from './footnotes';
 import { definitionListExtension } from './definitionList';
+import { frontmatterExtension } from './frontmatter';
 
 export const markdownExtensions: MarkdownExtension[] = [
     mathExtension,
     footnotesExtension,
     definitionListExtension,
+    frontmatterExtension,
 ];

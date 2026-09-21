@@ -167,3 +167,41 @@
     padding-bottom: 12px;
     color: var(--vscode-editorLineNumber-foreground, #6e7681);
 }
+
+/* YAML frontmatter — the same shape as a fenced code block (background on
+   every line the block spans, rounded ends, mono) but quieter: it is the
+   document's metadata, not its content. The YAML tokens themselves are
+   coloured by the language-scoped highlighter in cm/codeHighlight.ts, not
+   from here; these rules only paint the surface the block sits on.
+   Keep the font-size/font-family and the first/last padding in sync with
+   the `.cm-gutterElement` mirrors in cm-shell.css. */
+.cm-line.md-frontmatter {
+    background: var(--mbe-frontmatter-bg);
+    padding: 1px 16px;
+    font-size: 0.9em;
+    font-family: var(--mbe-font-mono);
+}
+
+/* The gap above the block is a TRANSPARENT TOP BORDER, not a margin, and not
+   padding either. Frontmatter is always the document's first line, so with no
+   gap its background starts flush against the editor's top edge. Margin is
+   ruled out here (see the note at the top of this file: CM6 cannot measure
+   it). Padding would not work anyway — it is inside the background box, so it
+   would move the text down and leave the background where it was. A border is
+   inside the border box, so CM6 measures it and a click in the gap still
+   resolves to this line; `background-clip: padding-box` is what keeps the
+   background from painting underneath it. Mirrored onto the gutter element in
+   cm-shell.css, like any other per-line vertical space. */
+.cm-line.md-frontmatter-first {
+    border-top: 8px solid transparent;
+    background-clip: padding-box;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    padding-top: 10px;
+}
+
+.cm-line.md-frontmatter-last {
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    padding-bottom: 10px;
+}

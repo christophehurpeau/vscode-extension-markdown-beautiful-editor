@@ -126,6 +126,14 @@ const shots: Shot[] = [
     { surface: 'editor', output: 'structure.png', fixture: 'structure.md', toc: 'hidden', width: 620, height: 580 },
     {
         surface: 'editor',
+        output: 'frontmatter.png',
+        fixture: 'frontmatter.md',
+        toc: 'hidden',
+        width: 620,
+        height: 400,
+    },
+    {
+        surface: 'editor',
         output: 'formatting-toolbar.png',
         fixture: 'selection.md',
         toc: 'hidden',

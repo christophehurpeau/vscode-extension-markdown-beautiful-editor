@@ -1,3 +1,15 @@
+---
+title: "Sample Markdown Document"
+date: 2026-09-21
+draft: false
+# frontmatter only counts on the first line of the file
+tags:
+  - markdown
+  - codemirror
+nested:
+  key: value
+---
+
 # Sample Markdown Document
 
 This is a comprehensive sample to test all markdown features.

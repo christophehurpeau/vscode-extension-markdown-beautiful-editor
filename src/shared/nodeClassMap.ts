@@ -187,6 +187,16 @@ export const NODE_CLASS_MAP: Readonly<Record<string, NodeClassEntry>> = {
     // old parser emitted `<span class="md-definition">` (parser.ts line 487).
     Definition: { layer: 'mark', class: 'md-definition' },
     DefinitionMark: { layer: 'syntax', class: 'md-syntax' },
+
+    // YAML frontmatter (`lang/frontmatter.ts`). A line class, like
+    // FencedCode and for the same reason — the block needs a background —
+    // with `md-frontmatter-first`/`-last` boundary classes synthesized in
+    // decorations.ts for the corner rounding. `FrontmatterContent` is
+    // deliberately absent: it holds a mounted `@lezer/yaml` tree, so the
+    // walk stops there (as it does at `CodeText`) and `codeHighlight.ts`
+    // colours it instead.
+    Frontmatter: { layer: 'line', class: 'md-frontmatter' },
+    FrontmatterMark: { layer: 'syntax', class: 'md-syntax' },
 };
 
 /** Look up the decoration entry for a Lezer node name, if any. */

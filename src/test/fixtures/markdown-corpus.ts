@@ -260,4 +260,35 @@ export const markdownCorpus: MarkdownCorpusEntry[] = [
             '>>> ...or with spaces between arrows.',
         ].join('\n'),
     },
+
+    // --- YAML frontmatter ----------------------------------------------
+    // Not a parity case: the pre-CM6 regex parser had no frontmatter support
+    // either. Added with `src/webview/cm/lang/frontmatter.ts`.
+    {
+        name: 'frontmatter-basic',
+        markdown: [
+            '---',
+            'title: Hello',
+            'tags: [a, b]',
+            '---',
+            '',
+            '# Heading',
+            '',
+            'body',
+        ].join('\n'),
+    },
+    {
+        name: 'frontmatter-nested',
+        markdown: [
+            '---',
+            'nested:',
+            '  list:',
+            '    - a: 1',
+            'block: |',
+            '  raw',
+            '---',
+            '',
+            'body',
+        ].join('\n'),
+    },
 ];

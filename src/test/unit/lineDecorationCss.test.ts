@@ -36,6 +36,7 @@ const synthesizedLineClasses = [
     'md-quote-1', 'md-quote-2', 'md-quote-3',
     'blockquote-first', 'blockquote-last',
     'md-code-block-first', 'md-code-block-last',
+    'md-frontmatter-first', 'md-frontmatter-last',
     'md-setext-title', 'md-setext-underline',
     'md-alert', 'md-alert-content',
     'md-alert-note', 'md-alert-tip', 'md-alert-important', 'md-alert-warning', 'md-alert-caution',

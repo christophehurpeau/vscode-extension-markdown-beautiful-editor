@@ -43,6 +43,10 @@
        another fill — the diff view's changed-chunk tint — needs this instead,
        which is translucent whatever the theme supplies. */
     --mbe-code-block-bg-translucent: color-mix(in srgb, var(--mbe-code-block-bg) 45%, transparent);
+    /* Frontmatter is metadata, not content: it reads as a quieter surface than
+       a code block so a document still opens on its first heading. Derived
+       from the same key so it tracks the theme, at half the wash. */
+    --mbe-frontmatter-bg: color-mix(in srgb, var(--mbe-code-bg) 40%, transparent);
 }
 
 body.font-mono {
@@ -209,6 +213,11 @@ html, body {
     font-size: 0.95em;
 }
 
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-frontmatter {
+    font-family: var(--mbe-font-mono);
+    font-size: 0.9em;
+}
+
 /* Vertical-padding mirrors. Every `.cm-line` class that adds vertical
  * padding must repeat it here, or the gutter number sits at a different
  * offset from its line's text. (Margin is never used on `.cm-line` -- see the
@@ -233,6 +242,15 @@ html, body {
 
 .cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-code-block-first {
     padding-top: 12px;
+}
+
+/* Mirrors both halves of `.cm-line.md-frontmatter-first`'s top space
+ * (md-block.css): its 10px padding AND the 8px transparent border it uses
+ * instead of a margin to push the block off the editor's top edge. Only the
+ * space is copied, never the background or the corner radii. */
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-frontmatter-first {
+    border-top: 8px solid transparent;
+    padding-top: 10px;
 }
 
 /* Mirrors `.cm-line.md-hr`'s `padding: 0.5em 0` (md-inline.css). Only the

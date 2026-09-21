@@ -22,6 +22,14 @@ A beautiful WYSIWYG-style markdown editor for VS Code that renders markdown synt
 
 ![Lists and Tables](images/structure.png)
 
+### 🏷️ YAML Frontmatter
+A `---` block on the first line of the file renders as a metadata panel:
+- Parsed as YAML — not as a horizontal rule followed by a giant heading
+- Syntax-highlighted keys, strings and comments, including nested maps and lists
+- The markdown below the closing `---` is unaffected
+
+![YAML Frontmatter](images/frontmatter.png)
+
 ### 🎨 GitHub-Style Alerts
 Full support for GitHub's alert syntax:
 - `[!NOTE]` - Blue informational notes
@@ -176,6 +184,11 @@ recommended.
 ### Supported Markdown Syntax
 
 ```markdown
+---
+title: YAML frontmatter, on the first line
+tags: [markdown, codemirror]
+---
+
 # Heading 1
 ## Heading 2
 

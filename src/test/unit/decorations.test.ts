@@ -107,6 +107,56 @@ describe('cm/decorations: parity grammar constructs are styled', () => {
     it('styles a GitHub alert', () => {
         assert.ok(classesIn('> [!NOTE]\n> body').some((c) => c.includes('md-alert')));
     });
+
+    it('styles a frontmatter block', () => {
+        assert.ok(classesIn('---\ntitle: x\n---\n\nbody').some((c) => c.includes('md-frontmatter')));
+    });
+});
+
+describe('cm/decorations: YAML frontmatter', () => {
+    const doc = '---\ntitle: x\n---\n\nbody';
+
+    function builtFor(source: string): ReturnType<typeof buildMarkdownDecorations> {
+        const state = stateForAll(source);
+        return buildMarkdownDecorations(state, [{ from: 0, to: state.doc.length }]);
+    }
+
+    it('puts md-frontmatter on every line the block spans, and nothing below it', () => {
+        const lines = sortTuples(tuples(builtFor(doc).lineDecorations));
+
+        // Lines at 0 (`---`), 4 (`title: x`) and 13 (`---`); the blank line
+        // and the paragraph below the closing fence carry no line class.
+        assert.deepStrictEqual(lines.map((t) => t.from), [0, 4, 13]);
+        assert.deepStrictEqual(classSet(lines[0]), ['md-frontmatter', 'md-frontmatter-first']);
+        assert.deepStrictEqual(classSet(lines[1]), ['md-frontmatter']);
+        assert.deepStrictEqual(classSet(lines[2]), ['md-frontmatter', 'md-frontmatter-last']);
+    });
+
+    it('dims both fences as md-syntax', () => {
+        assertTuples(tuples(builtFor(doc).syntaxDecorations), [
+            { from: 0, to: 3, class: 'md-syntax' },
+            { from: 13, to: 16, class: 'md-syntax' },
+        ]);
+    });
+
+    // The body is a mounted `@lezer/yaml` tree, coloured by the
+    // language-scoped highlighter in `cm/codeHighlight.ts`. Two sources of
+    // colour on the same text is the bug the walk's early return prevents:
+    // `@lezer/yaml` has node names (`Document`, `Item`, `Tag`, ...) that would
+    // otherwise be looked up in `nodeClassMap.ts` alongside markdown's.
+    it('gives the YAML body no md-* mark of its own', () => {
+        const built = builtFor('---\nlist:\n  - "a"\n---');
+        const marks = [...tuples(built.markDecorations), ...tuples(built.syntaxDecorations)];
+
+        assert.deepStrictEqual(marks.filter((t) => t.from > 3 && t.to < 16), []);
+    });
+
+    it('still maps a standalone horizontal rule below frontmatter to md-hr', () => {
+        const classes = tuples(builtFor('---\na: 1\n---\n\npara\n\n---').lineDecorations)
+            .flatMap((t) => t.class.split(' '));
+
+        assert.ok(classes.includes('md-hr'));
+    });
 });
 
 describe('cm/decorations: buildMarkdownDecorations', () => {

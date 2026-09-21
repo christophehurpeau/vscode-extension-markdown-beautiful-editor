@@ -230,3 +230,13 @@
     background-color: transparent;
     background-image: linear-gradient(var(--mbe-code-block-bg-translucent), var(--mbe-code-block-bg-translucent));
 }
+
+/* Frontmatter, same mechanism — without this its `background` (set with the
+ * shorthand in md-block.css, and not `!important`) loses to the changed-line
+ * rule above and the block reads as ordinary text wherever a diff touches it.
+ * No `-translucent` twin is needed here: `--mbe-frontmatter-bg` is a
+ * `color-mix` with `transparent`, so it cannot resolve to an opaque colour. */
+.cm-mergeView .cm-line.md-frontmatter {
+    background-color: transparent;
+    background-image: linear-gradient(var(--mbe-frontmatter-bg), var(--mbe-frontmatter-bg));
+}
