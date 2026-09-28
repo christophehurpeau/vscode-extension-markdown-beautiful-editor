@@ -16,7 +16,7 @@
  * unlike the old parser's nested `<span class="md-bold"><span
  * class="md-syntax">**</span><strong>text</strong>...`. Precedence-based DOM
  * nesting still applies: `md-syntax` (Prec.highest) renders *inside*
- * `md-bold`/`md-italic`/`md-code` (Prec.default), so `.md-bold .md-syntax`
+ * `md-bold`/`md-italic`/`md-code` (Prec.lowest), so `.md-bold .md-syntax`
  * keeps working even with no `<strong>`/`<em>`/`<code>` element to select.
  */
 

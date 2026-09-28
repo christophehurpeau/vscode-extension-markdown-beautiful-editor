@@ -22,10 +22,15 @@ Decorations come from a `ViewPlugin` walking `syntaxTree(state)` over `view.visi
 `StateField`, which has no viewport and would reintroduce the full-document work per keystroke that
 the migration away from the old regex parser existed to remove.
 
-Three layers at explicit `Prec`: line decorations lowest, construct marks default, leaf marks
+Three layers at explicit `Prec`: line decorations and construct marks lowest, leaf marks
 (`md-syntax`, `md-url`, `md-alt`) highest. Higher precedence creates the inner DOM node, which is
 what makes `md-syntax` render *inside* `md-bold` rather than beside it. Decorations nest in the DOM,
 so descendant CSS selectors like `.md-link .md-url` work.
+
+Construct marks must stay below every other mark source. A lower-precedence mark that partially
+overlaps a higher one splits it: the library search highlighter is `Prec.low`, and while `md-code`
+sat at default a match inside inline code cut the chip into three padded, rounded boxes whose
+background hid the match. `search.test.ts` guards the ordering.
 
 A mark spanning several lines is split at line boundaries and cannot carry a block box. Anything
 with a background, left border or vertical padding must be a `Decoration.line`.

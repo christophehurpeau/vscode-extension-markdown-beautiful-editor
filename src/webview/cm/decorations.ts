@@ -7,8 +7,12 @@
  *     classes accumulated from every node touching that line. Used for
  *     anything needing a block box (background/border/padding); a mark
  *     cannot carry one, it is split at line boundaries.
- *   - construct marks    (Prec.default) — `Decoration.mark` over a whole
- *     construct's range (e.g. the entire `**bold**` span).
+ *   - construct marks    (Prec.lowest)  — `Decoration.mark` over a whole
+ *     construct's range (e.g. the entire `**bold**` span). Lowest so they
+ *     are the OUTER node of every overlay mark (search and selection
+ *     matches, diff changed-text): an overlay that only partially covers
+ *     `md-code` or `md-table-cell` would otherwise split the chip into
+ *     several padded, rounded boxes whose background hides the overlay.
  *   - leaf/syntax marks  (Prec.highest) — `Decoration.mark` over delimiter
  *     ranges only (e.g. the `**`/`*`/`` ` `` characters). Higher precedence
  *     creates the inner DOM node, which is what makes `md-syntax` render
@@ -497,12 +501,13 @@ class MarkdownDecorationsPlugin implements PluginValue, MarkdownDecorationSets {
 
 const markdownDecorationsPlugin = ViewPlugin.fromClass(MarkdownDecorationsPlugin);
 
-const markdownLineDecorations = Prec.lowest(
-    EditorView.decorations.of((view) => view.plugin(markdownDecorationsPlugin)?.lineDecorations ?? Decoration.none),
-);
-const markdownMarkDecorations = EditorView.decorations.of(
-    (view) => view.plugin(markdownDecorationsPlugin)?.markDecorations ?? Decoration.none,
-);
+export const lineDecorationSource = (view: EditorView): DecorationSet =>
+    view.plugin(markdownDecorationsPlugin)?.lineDecorations ?? Decoration.none;
+export const markDecorationSource = (view: EditorView): DecorationSet =>
+    view.plugin(markdownDecorationsPlugin)?.markDecorations ?? Decoration.none;
+
+const markdownLineDecorations = Prec.lowest(EditorView.decorations.of(lineDecorationSource));
+const markdownMarkDecorations = Prec.lowest(EditorView.decorations.of(markDecorationSource));
 const markdownSyntaxDecorations = Prec.highest(
     EditorView.decorations.of((view) => view.plugin(markdownDecorationsPlugin)?.syntaxDecorations ?? Decoration.none),
 );

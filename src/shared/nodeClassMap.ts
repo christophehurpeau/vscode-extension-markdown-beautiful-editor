@@ -11,7 +11,7 @@
  * it belongs to (see `decorations.ts`'s header for what the three layers are
  * and why the split exists):
  *
- *   - 'mark'   Decoration.mark over the node's whole range, default Prec.
+ *   - 'mark'   Decoration.mark over the node's whole range, Prec.lowest.
  *              Use for a construct's overall span (e.g. `StrongEmphasis` ->
  *              the entire `**bold**` range).
  *   - 'syntax' Decoration.mark over the node's whole range, Prec.highest,

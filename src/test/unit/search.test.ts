@@ -2,7 +2,8 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
 import { EditorState } from '@codemirror/state';
-import { keymap } from '@codemirror/view';
+import { EditorView, keymap } from '@codemirror/view';
+import { lineDecorationSource, markDecorationSource } from '../../webview/cm/decorations';
 import { markdownExtensions } from '../../webview/cm/extensions';
 import { isFindShortcut } from '../../webview/cm/search';
 
@@ -33,6 +34,20 @@ describe('cm/search: keymap wiring', () => {
 
     it('binds Cmd/Ctrl+D to select next occurrence', () => {
         assert.ok(keys.has('Mod-d'));
+    });
+});
+
+describe('cm/search: match highlights nest inside construct marks', () => {
+    // `EditorView.decorations` is read highest precedence first, and the
+    // lower-precedence source renders the outer DOM node. A search or
+    // selection match ranked below `md-code` would split the chip.
+    it('ranks construct marks below every other decoration source', () => {
+        const sources = EditorState.create({ doc: '', extensions: markdownExtensions }).facet(EditorView.decorations);
+        const markIndex = sources.indexOf(markDecorationSource);
+        assert.ok(markIndex >= 0);
+        const outranked = sources.filter((source, index) =>
+            index > markIndex && source !== lineDecorationSource);
+        assert.deepStrictEqual(outranked, []);
     });
 });
 
