@@ -60,6 +60,11 @@
  *   - `Task`         its class is conditional (`md-task-checked` vs.
  *                    `md-task-unchecked`, read off its `TaskMarker`'s text),
  *                    so it has no entry in the flat map at all.
+ *   - `Paragraph`    inside a checked task's `ListItem` (its plain sub-bullets,
+ *                    continuation paragraphs) gets `md-task-parent-checked`:
+ *                    the `Task` node stops at the item's first paragraph, so
+ *                    its own mark never reaches them. An unchecked sub-task
+ *                    and its children are left alone.
  *   - `LinkLabel`    always splits into `md-syntax` on its two bracket
  *                    characters plus `md-ref` on the inner text — its range
  *                    *includes* the brackets, unlike other bracketed nodes.
@@ -277,14 +282,36 @@ export function buildMarkdownDecorations(
         pushMark(markRanges, cls, node.from, node.to);
     };
 
+    const isCheckedTask = (task: SyntaxNode): boolean => {
+        const marker = task.getChild('TaskMarker');
+        return marker ? /[xX]/.test(state.doc.sliceString(marker.from, marker.to)) : false;
+    };
+
+    /** The nearest enclosing task item decides: a plain `ListItem` passes its
+     *  parent's state through, an unchecked sub-task stops it. */
+    const isInsideCheckedTask = (node: SyntaxNode): boolean => {
+        for (let n = node.parent; n; n = n.parent) {
+            const task = n.name === 'ListItem' ? n.getChild('Task') : null;
+            if (task) {
+                return isCheckedTask(task);
+            }
+        }
+        return false;
+    };
+
     /** `Task`'s class is conditional on its `TaskMarker`'s text (`[x]`/`[X]`
      *  vs. `[ ]`), so — unlike every other construct here — it has no entry
-     *  in the flat map at all; this function is its *entire* handling. */
+     *  in the flat map at all; this function is its *entire* handling. Its
+     *  own marker always wins over a checked parent's. */
     const handleTask = (node: SyntaxNode): void => {
-        const marker = node.getChild('TaskMarker');
-        const checked = marker ? /[xX]/.test(state.doc.sliceString(marker.from, marker.to)) : false;
-        const cls = checked ? 'md-task md-task-checked' : 'md-task md-task-unchecked';
+        const cls = isCheckedTask(node) ? 'md-task md-task-checked' : 'md-task md-task-unchecked';
         pushMark(markRanges, cls, node.from, node.to);
+    };
+
+    const handleParagraphInTask = (node: SyntaxNode): void => {
+        if (isInsideCheckedTask(node)) {
+            pushMark(markRanges, 'md-task-parent-checked', node.from, node.to);
+        }
     };
 
     /** `Table`'s per-cell alignment. `TableCell`/`TableDelimiter` are
@@ -426,6 +453,9 @@ export function buildMarkdownDecorations(
                         break;
                     case 'Task':
                         handleTask(node.node);
+                        break;
+                    case 'Paragraph':
+                        handleParagraphInTask(node.node);
                         break;
                     case 'Table':
                         handleTable(node.node);

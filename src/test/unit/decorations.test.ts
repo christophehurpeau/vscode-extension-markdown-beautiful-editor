@@ -263,6 +263,63 @@ describe('cm/decorations: buildMarkdownDecorations (WP-H)', () => {
         );
     });
 
+    describe('sub-bullets of a checked task', () => {
+        const doc = [
+            '- [x] parent',
+            '  - child',
+            '    - grandchild',
+            '  - [ ] open sub task',
+            '    - open child',
+            '    - [x] done in open',
+            '      - done in open child',
+            '',
+            '    open continuation',
+            '  - [x] done sub task',
+            '    - done child',
+            '',
+            '  parent continuation',
+            '- [ ] other',
+            '  - not done',
+        ].join('\n');
+        const rangeOf = (text: string): { from: number; to: number } => {
+            const from = doc.indexOf(text);
+            return { from, to: from + text.length };
+        };
+        const taskTuples = (): DecorationTuple[] => {
+            const state = stateFor(doc);
+            const built = buildMarkdownDecorations(state, [{ from: 0, to: state.doc.length }]);
+            return tuples(built.markDecorations).filter((t) => t.class.includes('md-task'));
+        };
+
+        it('marks plain sub-bullets and continuation paragraphs md-task-parent-checked', () => {
+            assertTuples(taskTuples(), [
+                { ...rangeOf('[x] parent'), class: 'md-task md-task-checked' },
+                { ...rangeOf('child'), class: 'md-task-parent-checked' },
+                { ...rangeOf('grandchild'), class: 'md-task-parent-checked' },
+                { ...rangeOf('[ ] open sub task'), class: 'md-task md-task-unchecked' },
+                { ...rangeOf('[x] done in open'), class: 'md-task md-task-checked' },
+                { ...rangeOf('done in open child'), class: 'md-task-parent-checked' },
+                { ...rangeOf('[x] done sub task'), class: 'md-task md-task-checked' },
+                { ...rangeOf('done child'), class: 'md-task-parent-checked' },
+                { ...rangeOf('parent continuation'), class: 'md-task-parent-checked' },
+                { ...rangeOf('[ ] other'), class: 'md-task md-task-unchecked' },
+            ]);
+        });
+
+        it('leaves an unchecked sub-task, its children and its continuation unmarked', () => {
+            const marked = taskTuples().filter((t) => t.class === 'md-task-parent-checked');
+            for (const text of ['open sub task', 'open child', 'open continuation']) {
+                const range = rangeOf(text);
+                assert.ok(!marked.some((t) => t.from === range.from), text);
+            }
+        });
+
+        it('leaves sub-bullets of an unchecked task unmarked', () => {
+            const notDone = rangeOf('not done');
+            assert.ok(!taskTuples().some((t) => t.from === notDone.from));
+        });
+    });
+
     it('marks a plain list item md-list with md-syntax on its marker', () => {
         const state = stateFor('- item');
         const built = buildMarkdownDecorations(state, [{ from: 0, to: state.doc.length }]);

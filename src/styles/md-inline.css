@@ -106,7 +106,8 @@
     display: inline;
 }
 
-.md-task-checked {
+.md-task-checked,
+.md-task-parent-checked {
     text-decoration: line-through;
     opacity: 0.7;
 }

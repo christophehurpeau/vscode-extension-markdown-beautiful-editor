@@ -73,6 +73,13 @@ Here is an image with title: ![Logo](../images/springbok-logo.png 'Springbok Log
 - [ ] Unchecked task
 - [x] Checked task
 - [ ] Another task
+- [x] Checked task with sub-bullets
+  - Sub-bullet
+    - Nested sub-bullet
+  - [ ] Unchecked sub-task
+    - Not done, like its parent sub-task
+- [ ] Unchecked task with sub-bullets
+  - Sub-bullet
 
 ## Links
 
