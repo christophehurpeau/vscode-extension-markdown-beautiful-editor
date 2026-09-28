@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { MarkdownEditorProvider } from './editor/customEditorProvider';
 import { registerDiffPanelSerializer } from './editor/diffPanel';
 import { openDiffCommandId, openDiffForTarget } from './editor/openDiffCommand';
+import { registerTextEditorRedirect } from './editor/textEditorRedirect';
 
 export function activate(context: vscode.ExtensionContext): void {
     const provider = new MarkdownEditorProvider(context);
@@ -20,6 +21,7 @@ export function activate(context: vscode.ExtensionContext): void {
     );
 
     context.subscriptions.push(registerDiffPanelSerializer(context));
+    context.subscriptions.push(registerTextEditorRedirect(provider));
 
     // Register command to open the current markdown file in the Beautiful Editor
     context.subscriptions.push(

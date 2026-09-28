@@ -6,11 +6,15 @@ import { getGitApi, isInRepository, showAtRef, type GitRepositoryLike } from './
 import { fontFamilySettingSection, getConfiguredFontFamily } from './settings';
 import type { HostToWebviewMessage, WebviewToHostMessage } from '../shared/messages';
 import { parseLinkTarget } from '../shared/links';
+import type { TextSelection } from '../shared/textEditorRedirect';
+import { markdownEditorViewType } from '../shared/viewTypes';
+
+type RevealMessage = Extract<HostToWebviewMessage, { type: 'scrollToAnchor' | 'revealSelection' }>;
 
 export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
     private activeWebviewPanels = new Map<string, vscode.WebviewPanel>();
-    /** Heading slug to scroll to once a freshly-opened editor signals `ready`, keyed by document URI string. */
-    private pendingAnchors = new Map<string, string>();
+    /** Posted once a freshly-opened editor signals `ready`, keyed by document URI string. */
+    private pendingReveals = new Map<string, RevealMessage>();
     /**
      * Cached git HEAD content per open document (keyed by URI string), the
      * single source both `sendDocument`/the change gutter and `toggleDiffMode`
@@ -24,8 +28,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
      * only does a string compare against this cache, no git spawn.
      */
     private headContentCache = new Map<string, string | null>();
-    /** View type id registered for this custom editor (see extension.ts). */
-    private static readonly VIEW_TYPE = 'markdown.beautifulEditor';
+    private static readonly VIEW_TYPE = markdownEditorViewType;
 
     constructor(private readonly context: vscode.ExtensionContext) {}
 
@@ -149,27 +152,44 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
     }
 
     /**
-     * Open a markdown file in the beautiful editor and scroll to a heading slug.
-     * If the file is already open, reveal it and scroll immediately; otherwise
-     * stash the slug for {@link pendingAnchors} so it scrolls once the new
-     * editor's webview is ready.
+     * Show a markdown file in the beautiful editor, then apply `reveal`. If the
+     * file is already open, reveal it and post immediately; otherwise stash the
+     * message in {@link pendingReveals} so it is posted once the new editor's
+     * webview is ready.
      */
-    private async openMarkdownAtAnchor(fileUri: vscode.Uri, fragment: string): Promise<void> {
+    private async openWithReveal(
+        fileUri: vscode.Uri,
+        reveal: RevealMessage | null,
+        showOptions?: vscode.TextDocumentShowOptions
+    ): Promise<void> {
         const targetKey = fileUri.toString();
         const existingPanel = this.activeWebviewPanels.get(targetKey);
 
         if (existingPanel) {
-            existingPanel.reveal();
-            if (fragment) {
-                this.post(existingPanel, { type: 'scrollToAnchor', slug: fragment });
+            existingPanel.reveal(undefined, showOptions?.preserveFocus);
+            if (reveal) {
+                this.post(existingPanel, reveal);
             }
             return;
         }
 
-        if (fragment) {
-            this.pendingAnchors.set(targetKey, fragment);
+        if (reveal) {
+            this.pendingReveals.set(targetKey, reveal);
         }
-        await vscode.commands.executeCommand('vscode.openWith', fileUri, MarkdownEditorProvider.VIEW_TYPE);
+        await vscode.commands.executeCommand('vscode.openWith', fileUri, MarkdownEditorProvider.VIEW_TYPE, showOptions);
+    }
+
+    private async openMarkdownAtAnchor(fileUri: vscode.Uri, fragment: string): Promise<void> {
+        await this.openWithReveal(fileUri, fragment ? { type: 'scrollToAnchor', slug: fragment } : null);
+    }
+
+    /** Open (or reveal) `fileUri` in this editor with `selection` selected. */
+    public async openAtSelection(
+        fileUri: vscode.Uri,
+        selection: TextSelection | null,
+        showOptions: vscode.TextDocumentShowOptions
+    ): Promise<void> {
+        await this.openWithReveal(fileUri, selection && { type: 'revealSelection', selection }, showOptions);
     }
 
     public async resolveCustomTextEditor(
@@ -292,13 +312,13 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                 case 'ready':
                     // Webview is ready, send initial content
                     await sendDocument();
-                    // If this editor was opened to navigate to an anchor, scroll
-                    // to it now that the content has been sent and rendered.
+                    // If this editor was opened to navigate to an anchor or a
+                    // selection, apply it now that the content has been sent.
                     {
-                        const pendingSlug = this.pendingAnchors.get(uriString);
-                        if (pendingSlug) {
-                            this.pendingAnchors.delete(uriString);
-                            this.post(webviewPanel, { type: 'scrollToAnchor', slug: pendingSlug });
+                        const pendingReveal = this.pendingReveals.get(uriString);
+                        if (pendingReveal) {
+                            this.pendingReveals.delete(uriString);
+                            this.post(webviewPanel, pendingReveal);
                         }
                     }
                     break;

@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
-import { diffPanelViewType } from '../../shared/viewTypes';
+import { diffPanelViewType, markdownEditorViewType } from '../../shared/viewTypes';
 
 /**
  * Guards a manifest coupling no other test can see: the diff panel's
@@ -13,6 +13,7 @@ import { diffPanelViewType } from '../../shared/viewTypes';
 
 interface Manifest {
     activationEvents?: string[];
+    contributes?: { customEditors?: { viewType: string }[] };
 }
 
 const manifest = JSON.parse(
@@ -24,6 +25,21 @@ describe('package.json activation events', () => {
         assert.ok(
             manifest.activationEvents?.includes(`onWebviewPanel:${diffPanelViewType}`),
             `activationEvents must contain onWebviewPanel:${diffPanelViewType}`
+        );
+    });
+
+    // The experimental `replaceTextEditors` setting acts on markdown text
+    // editors, which open without this extension being asked for otherwise.
+    it('activates the extension when a markdown text editor opens', () => {
+        assert.ok(manifest.activationEvents?.includes('onLanguage:markdown'));
+    });
+});
+
+describe('package.json custom editor', () => {
+    it('registers the view type the code opens', () => {
+        assert.deepStrictEqual(
+            manifest.contributes?.customEditors?.map(editor => editor.viewType),
+            [markdownEditorViewType]
         );
     });
 });

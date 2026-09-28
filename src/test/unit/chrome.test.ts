@@ -11,6 +11,7 @@ import {
     resolveHoverTitle,
     resolveInteractiveTargetAt,
     resolveOpenAffordance,
+    selectionRangeFromTextSelection,
 } from '../../webview/cm/ui/chrome';
 
 /**
@@ -327,5 +328,42 @@ describe('chrome: cursor position <-> doc position', () => {
     it('clamps a negative offset to the start of the line', () => {
         const state = EditorState.create({ doc: 'hello' });
         assert.strictEqual(headFromCursorPosition(state, { lineIndex: 0, offset: -5 }), 0);
+    });
+});
+
+describe('chrome: selectionRangeFromTextSelection', () => {
+    it('maps a VS Code line/character selection to doc offsets', () => {
+        const doc = 'first line\nline 1 bneedle here\nlast';
+        const state = EditorState.create({ doc });
+        const range = selectionRangeFromTextSelection(state, {
+            anchor: { line: 1, character: 7 },
+            active: { line: 1, character: 14 },
+        });
+        assert.strictEqual(doc.slice(range.anchor, range.head), 'bneedle');
+    });
+
+    it('keeps a backward selection backward', () => {
+        const state = EditorState.create({ doc: 'abc\ndef' });
+        assert.deepStrictEqual(
+            selectionRangeFromTextSelection(state, { anchor: { line: 1, character: 2 }, active: { line: 0, character: 1 } }),
+            { anchor: 6, head: 1 }
+        );
+    });
+
+    it('counts a CRLF line break as the single break CodeMirror stores', () => {
+        const state = EditorState.create({ doc: 'abc\r\nbneedle' });
+        const range = selectionRangeFromTextSelection(state, {
+            anchor: { line: 1, character: 0 },
+            active: { line: 1, character: 7 },
+        });
+        assert.strictEqual(state.sliceDoc(range.anchor, range.head), 'bneedle');
+    });
+
+    it('clamps a selection past the end of a document that shrank since it was reported to its last line', () => {
+        const state = EditorState.create({ doc: 'first\nshort' });
+        assert.deepStrictEqual(
+            selectionRangeFromTextSelection(state, { anchor: { line: 9, character: 0 }, active: { line: 9, character: 40 } }),
+            { anchor: 6, head: 11 }
+        );
     });
 });

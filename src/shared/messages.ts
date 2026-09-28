@@ -12,6 +12,7 @@
 
 import type { EditorFontFamily } from './fontFamily';
 import type { DiffPanelRestoreState } from './gitRefs';
+import type { TextSelection } from './textEditorRedirect';
 
 /** Messages sent from the extension host to the webview. */
 export type HostToWebviewMessage =
@@ -75,6 +76,9 @@ export type HostToWebviewMessage =
     // Scroll the editor to the heading whose slug matches (e.g. from a
     // `#fragment` link, including cross-file `other.md#heading` navigation).
     | { type: 'scrollToAnchor'; slug: string }
+    // Select and scroll to the range a caller opened this file at, recovered
+    // from the text editor it opened first (`src/editor/textEditorRedirect.ts`).
+    | { type: 'revealSelection'; selection: TextSelection }
     // NOTE: no webview handler exists for this today — see suspected bug #3.
     | { type: 'imageResolved'; originalPath: string; resolvedUri: string };
 

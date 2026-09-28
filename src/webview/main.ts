@@ -14,7 +14,7 @@ import { dispatchLineChangeMarkers } from './cm/lineNumberGutter';
 import { initFloatingToolbar } from './cm/ui/floatingToolbar';
 import { initLineTypeToolbar } from './cm/ui/lineTypeToolbar';
 import { initTocPanel } from './cm/ui/tocPanel';
-import { initChrome } from './cm/ui/chrome';
+import { initChrome, selectionRangeFromTextSelection } from './cm/ui/chrome';
 import { initGlobalFindShortcut } from './cm/search';
 import { updateToc, extractHeadingsFromMarkdown, findHeadingIndexBySlug, findHeadingLineIndex, setTocVisible } from './toc';
 import { resolveTocVisibility, toggledTocPreference, type TocVisibilityPreference } from '../shared/tocVisibility';
@@ -26,6 +26,7 @@ import {
     type EditorFontFamily} from '../shared/fontFamily';
 import { getStoredState, saveTocPreference } from './editor/state';
 import type { HostToWebviewMessage, WebviewToHostMessage } from '../shared/messages';
+import type { TextSelection } from '../shared/textEditorRedirect';
 
 // Cold-start marker (logged on first 'init'): the still-unmeasured decision
 // gate docs/plans/CODEMIRROR6_MIGRATION.md names.
@@ -182,6 +183,18 @@ function scrollToAnchorInEditor(editor: EditorView, slug: string): void {
             effects: EditorView.scrollIntoView(line.from, { y: 'start' }),
         });
         editor.focus();
+    }));
+}
+
+function revealSelectionInEditor(editor: EditorView, selection: TextSelection): void {
+    const range = selectionRangeFromTextSelection(editor.state, selection);
+    // Double rAF: same reasoning as `scrollToAnchorInEditor`. Centered, as
+    // VS Code's own text editor reveals a search result.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        editor.dispatch({
+            selection: range,
+            effects: EditorView.scrollIntoView(range.head, { y: 'center' }),
+        });
     }));
 }
 
@@ -524,6 +537,12 @@ function init(): void {
             case 'scrollToAnchor': {
                 if (view) {
                     scrollToAnchorInEditor(view, message.slug);
+                }
+                break;
+            }
+            case 'revealSelection': {
+                if (view) {
+                    revealSelectionInEditor(view, message.selection);
                 }
                 break;
             }

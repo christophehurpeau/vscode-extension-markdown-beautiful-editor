@@ -3,6 +3,9 @@
  * asserted from a unit test (`viewTypes.test.ts`).
  */
 
+/** The custom editor (`customEditors` in `package.json`). */
+export const markdownEditorViewType = 'markdown.beautifulEditor';
+
 /**
  * The standalone diff tab (`src/editor/diffPanel.ts`).
  *

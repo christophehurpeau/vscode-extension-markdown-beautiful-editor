@@ -40,7 +40,8 @@
   "main": "./dist/extension.js",
   "packageManager": "pnpm@11.17.0",
   "activationEvents": [
-    "onWebviewPanel:markdown.beautifulEditor.diffPanel"
+    "onWebviewPanel:markdown.beautifulEditor.diffPanel",
+    "onLanguage:markdown"
   ],
   "contributes": {
     "customEditors": [
@@ -73,6 +74,12 @@
         "title": "Open Beautiful Markdown Diff",
         "category": "Markdown Beautiful Editor",
         "icon": "$(sparkle-filled)"
+      },
+      {
+        "command": "markdown.beautifulEditor.openAsText",
+        "title": "Open as Text",
+        "category": "Markdown Beautiful Editor",
+        "icon": "$(file-code)"
       }
     ],
     "configuration": {
@@ -90,6 +97,14 @@
           ],
           "default": "normal",
           "description": "Font used for markdown content. Inline code and fenced code blocks always use the monospace editor font."
+        },
+        "markdown.beautifulEditor.experimental.replaceTextEditors": {
+          "type": "boolean",
+          "default": false,
+          "tags": [
+            "experimental"
+          ],
+          "markdownDescription": "Replace every markdown text editor with Markdown Beautiful Editor, keeping the selection it was opened with, so Search results, Go to Symbol and Problems open at the right place. VS Code does not pass that selection to a custom editor ([microsoft/vscode#289785](https://github.com/microsoft/vscode/issues/289785)), so the text editor opens briefly first. Use this *instead of* making Markdown Beautiful Editor the default through `#workbench.editorAssociations#`. Run **Open as Text** (or **Reopen Editor With… > Text Editor** on a pinned tab) to keep a file in the text editor. Extensions that open a markdown file as text get their editor closed."
         }
       }
     },
@@ -109,6 +124,11 @@
           "command": "markdown.beautifulEditor.toggleDiffMode",
           "when": "activeCustomEditorId == markdown.beautifulEditor",
           "group": "navigation"
+        },
+        {
+          "command": "markdown.beautifulEditor.openAsText",
+          "when": "activeCustomEditorId == markdown.beautifulEditor && config.markdown.beautifulEditor.experimental.replaceTextEditors",
+          "group": "1_beautifulEditor"
         }
       ],
       "scm/resourceState/context": [
@@ -116,6 +136,12 @@
           "command": "markdown.beautifulEditor.openDiff",
           "when": "scmProvider == git",
           "group": "navigation@10"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "markdown.beautifulEditor.openAsText",
+          "when": "activeCustomEditorId == markdown.beautifulEditor"
         }
       ]
     }

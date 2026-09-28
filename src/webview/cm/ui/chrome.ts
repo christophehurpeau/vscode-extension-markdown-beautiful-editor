@@ -45,6 +45,7 @@ import { EditorView } from '@codemirror/view';
 import type { SyntaxNode } from '@lezer/common';
 import { linkDisplayUrl, parseLinkTarget, resolveReferenceUrl, type LinkDefinition } from '../../../shared/links';
 import type { WebviewToHostMessage } from '../../../shared/messages';
+import type { TextPosition, TextSelection } from '../../../shared/textEditorRedirect';
 import { getStoredState, saveState, type CursorPosition } from '../../editor/state';
 import { extractHeadingsFromMarkdown, findHeadingIndexBySlug, findHeadingLineIndex } from '../../toc';
 
@@ -269,6 +270,14 @@ export function headFromCursorPosition(state: EditorState, cursor: CursorPositio
     const lineNumber = Math.min(Math.max(cursor.lineIndex + 1, 1), state.doc.lines);
     const line = state.doc.line(lineNumber);
     return line.from + Math.min(Math.max(cursor.offset, 0), line.length);
+}
+
+/** Doc offsets for a host-side `TextSelection`, clamped the same way: the
+ *  file can change between the text editor reporting it and this running. */
+export function selectionRangeFromTextSelection(state: EditorState, selection: TextSelection): { anchor: number; head: number } {
+    const toOffset = ({ line, character }: TextPosition): number =>
+        headFromCursorPosition(state, { lineIndex: line, offset: character });
+    return { anchor: toOffset(selection.anchor), head: toOffset(selection.active) };
 }
 
 function scrollViewToPos(view: EditorView, pos: number): void {

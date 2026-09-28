@@ -130,6 +130,24 @@ Full support for GitHub's alert syntax:
 - **Right-click** any `.md` file → **Open With...** → **Markdown Beautiful Editor**
 - Or set as default: **Open With...** → Select editor → **Configure Default Editor...**
 
+#### Opening at a search result (experimental)
+
+Set as the default editor, a markdown file opened from the Search view, Go to Symbol or Problems
+opens at the top: VS Code does not pass the target selection to a custom editor
+([microsoft/vscode#289785](https://github.com/microsoft/vscode/issues/289785)).
+
+`markdown.beautifulEditor.experimental.replaceTextEditors` works around it. Leave the text editor
+as the default (remove `markdown.beautifulEditor` from `workbench.editorAssociations`) and enable
+the setting: every markdown text editor is then replaced by this editor, with the text the caller
+pointed at selected. Trade-offs:
+
+- The text editor shows for a moment before being replaced.
+- To keep a file as text, run **Open as Text** (editor title `...` menu or Command Palette), or
+  **Reopen Editor With... → Text Editor** on a pinned tab.
+- When the file has unsaved changes, its text tab stays open in the background: closing it would
+  prompt to save.
+- An extension that opens a markdown file as text gets its editor closed.
+
 ### Diffs
 
 Two ways in:
