@@ -12,6 +12,7 @@
 
 import type { EditorFontFamily } from './fontFamily';
 import type { DiffPanelRestoreState } from './gitRefs';
+import type { IndentDirection } from './indentCommands';
 import type { TextSelection } from './textEditorRedirect';
 
 /** Messages sent from the extension host to the webview. */
@@ -79,6 +80,9 @@ export type HostToWebviewMessage =
     // Select and scroll to the range a caller opened this file at, recovered
     // from the text editor it opened first (`src/editor/textEditorRedirect.ts`).
     | { type: 'revealSelection'; selection: TextSelection }
+    // Cmd+[ / Cmd+] pressed while this webview's panel is active; applied only
+    // if an editable view still has focus. See `./indentCommands.ts`.
+    | { type: 'indent'; direction: IndentDirection }
     // NOTE: no webview handler exists for this today — see suspected bug #3.
     | { type: 'imageResolved'; originalPath: string; resolvedUri: string };
 

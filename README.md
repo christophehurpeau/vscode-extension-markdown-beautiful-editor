@@ -194,6 +194,7 @@ recommended.
 | `Cmd/Ctrl+V` | Paste |
 | `Cmd/Ctrl+Click` | Open link in browser |
 | `Tab` | Insert 4 spaces |
+| `Cmd/Ctrl+]` / `Cmd/Ctrl+[` | Indent / outdent line — VS Code keybindings (`markdown.beautifulEditor.indentLines` / `outdentLines`), so they can be rebound or removed like any other; a key you bind to another command (e.g. `workbench.action.navigateBack`) runs that command instead |
 | `Enter` | New line |
 | `Backspace` | Delete/merge lines |
 | `Cmd/Ctrl+Z` | Undo |

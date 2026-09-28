@@ -77,6 +77,14 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
         return headContent !== null && headContent !== currentContent;
     }
 
+    public postToActivePanel(message: HostToWebviewMessage): void {
+        for (const panel of this.activeWebviewPanels.values()) {
+            if (panel.active) {
+                this.post(panel, message);
+            }
+        }
+    }
+
     public async toggleDiffMode(documentUri: vscode.Uri): Promise<void> {
         const uriString = documentUri.toString();
         const webviewPanel = this.activeWebviewPanels.get(uriString);

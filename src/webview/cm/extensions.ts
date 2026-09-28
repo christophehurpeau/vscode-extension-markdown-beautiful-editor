@@ -16,10 +16,14 @@
  * multi-cursor support. It genuinely needs to be top-level — it turns on a
  * state facet and replaces the native selection rendering for the whole
  * view — and everything it configures lives in that one file.
+ *
+ * Exception: the keymap is `editingKeymap` (`./commands/indent.ts`) rather
+ * than `defaultKeymap` + `historyKeymap` inline, so VS Code alone owns
+ * Cmd+[ / Cmd+] (`src/shared/indentCommands.ts`).
  */
 import type { Extension } from '@codemirror/state';
 import { EditorView, highlightActiveLineGutter, keymap } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { history } from '@codemirror/commands';
 import { commonmarkLanguage, markdown } from '@codemirror/lang-markdown';
 import { GFM } from '@lezer/markdown';
 import { LanguageDescription } from '@codemirror/language';
@@ -29,6 +33,7 @@ import { html } from '@codemirror/lang-html';
 import { css } from '@codemirror/lang-css';
 import { markdownExtensions as ourGrammarExtensions } from './lang/registry';
 import { codeHighlighting } from './codeHighlight';
+import { editingKeymap } from './commands/indent';
 import { markdownDecorations } from './decorations';
 import { markdownLineNumbers } from './lineNumberGutter';
 import { multipleSelections } from './multipleSelections';
@@ -72,7 +77,7 @@ export const markdownExtensions: Extension[] = [
     markdownLineNumbers(),
     highlightActiveLineGutter(),
     history(),
-    keymap.of([...defaultKeymap, ...historyKeymap]),
+    keymap.of(editingKeymap),
     multipleSelections,
     // Find/replace panel + Cmd+F. Its keymap carries its own `Prec.high`, so
     // it beats `defaultKeymap` above regardless of position here; see

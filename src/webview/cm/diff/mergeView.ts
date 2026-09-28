@@ -34,7 +34,7 @@
  */
 import { EditorState, type Extension } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { history } from '@codemirror/commands';
 import { MergeView } from '@codemirror/merge';
 import { commonmarkLanguage, markdown } from '@codemirror/lang-markdown';
 import { GFM } from '@lezer/markdown';
@@ -43,6 +43,7 @@ import { markdownDecorations } from '../decorations';
 import { markdownLineNumbers } from '../lineNumberGutter';
 import { markdownSearch } from '../search';
 import { multipleSelections } from '../multipleSelections';
+import { editingKeymap } from '../commands/indent';
 import { hasChanges } from '../../editor/diff';
 
 export interface CreateMergeViewOptions {
@@ -67,8 +68,8 @@ export interface CreateMergeViewOptions {
  * decoration + gutter layers that make a heading look like a heading and a
  * line show its number. Rebuilt here rather than imported because
  * `extensions.ts` is frozen and its single `markdownExtensions` array
- * bundles editing concerns (`history()`, `keymap.of([...defaultKeymap,
- * ...historyKeymap])`) together with presentation — a read-only merge pane
+ * bundles editing concerns (`history()`, `keymap.of(editingKeymap)`)
+ * together with presentation — a read-only merge pane
  * must not carry those (see the file header on why nothing here may edit or
  * sync), and that file's own convention is "say what you need, don't edit
  * it".
@@ -127,7 +128,7 @@ const readOnlyPaneExtensions: Extension[] = [
  */
 const editablePaneExtensions: Extension[] = [
     history(),
-    keymap.of([...defaultKeymap, ...historyKeymap]),
+    keymap.of(editingKeymap),
     EditorView.lineWrapping,
     markdownSearch,
     multipleSelections,

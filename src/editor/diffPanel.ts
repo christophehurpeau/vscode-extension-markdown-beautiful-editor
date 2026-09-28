@@ -94,6 +94,14 @@ export function registerDiffPanelSerializer(context: vscode.ExtensionContext): v
     });
 }
 
+export function postToActiveDiffPanel(message: HostToWebviewMessage): void {
+    for (const panel of openPanels.values()) {
+        if (panel.active) {
+            panel.webview.postMessage(message);
+        }
+    }
+}
+
 function registerPanel({ key, panel }: { key: string; panel: vscode.WebviewPanel }): void {
     openPanels.set(key, panel);
     panel.onDidDispose(() => {

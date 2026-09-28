@@ -16,6 +16,7 @@ import { initLineTypeToolbar } from './cm/ui/lineTypeToolbar';
 import { initTocPanel } from './cm/ui/tocPanel';
 import { initChrome, selectionRangeFromTextSelection } from './cm/ui/chrome';
 import { initGlobalFindShortcut } from './cm/search';
+import { indentCommand } from './cm/commands/indent';
 import { updateToc, extractHeadingsFromMarkdown, findHeadingIndexBySlug, findHeadingLineIndex, setTocVisible } from './toc';
 import { resolveTocVisibility, toggledTocPreference, type TocVisibilityPreference } from '../shared/tocVisibility';
 import {
@@ -543,6 +544,15 @@ function init(): void {
             case 'revealSelection': {
                 if (view) {
                     revealSelectionInEditor(view, message.selection);
+                }
+                break;
+            }
+            case 'indent': {
+                // Focus gate: the host keybinding can also fire while the
+                // panel is active but focus is elsewhere in the workbench.
+                const target = mergeView?.b ?? view;
+                if (target?.hasFocus) {
+                    indentCommand(message.direction)(target);
                 }
                 break;
             }

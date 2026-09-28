@@ -80,6 +80,30 @@
         "title": "Open as Text",
         "category": "Markdown Beautiful Editor",
         "icon": "$(file-code)"
+      },
+      {
+        "command": "markdown.beautifulEditor.indentLines",
+        "title": "Indent Line",
+        "category": "Markdown Beautiful Editor"
+      },
+      {
+        "command": "markdown.beautifulEditor.outdentLines",
+        "title": "Outdent Line",
+        "category": "Markdown Beautiful Editor"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "markdown.beautifulEditor.indentLines",
+        "key": "ctrl+]",
+        "mac": "cmd+]",
+        "when": "activeCustomEditorId == markdown.beautifulEditor || activeWebviewPanelId == markdown.beautifulEditor.diffPanel"
+      },
+      {
+        "command": "markdown.beautifulEditor.outdentLines",
+        "key": "ctrl+[",
+        "mac": "cmd+[",
+        "when": "activeCustomEditorId == markdown.beautifulEditor || activeWebviewPanelId == markdown.beautifulEditor.diffPanel"
       }
     ],
     "configuration": {
@@ -142,6 +166,14 @@
         {
           "command": "markdown.beautifulEditor.openAsText",
           "when": "activeCustomEditorId == markdown.beautifulEditor"
+        },
+        {
+          "command": "markdown.beautifulEditor.indentLines",
+          "when": "false"
+        },
+        {
+          "command": "markdown.beautifulEditor.outdentLines",
+          "when": "false"
         }
       ]
     }
