@@ -15,6 +15,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
     private activeWebviewPanels = new Map<string, vscode.WebviewPanel>();
     /** Posted once a freshly-opened editor signals `ready`, keyed by document URI string. */
     private pendingReveals = new Map<string, RevealMessage>();
+    private disposedPanels = new WeakSet<vscode.WebviewPanel>();
     /**
      * Cached git HEAD content per open document (keyed by URI string), the
      * single source both `sendDocument`/the change gutter and `toggleDiffMode`
@@ -34,6 +35,11 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 
     /** Post a typed message to a webview. */
     private post(panel: vscode.WebviewPanel, message: HostToWebviewMessage): void {
+        // Async senders (`sendDocument` awaits git) can outlive the tab, and
+        // reading `webview` off a disposed panel throws.
+        if (this.disposedPanels.has(panel)) {
+            return;
+        }
         panel.webview.postMessage(message);
     }
 
@@ -394,7 +400,9 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
         // Set up git repository event listeners
         const setupGitListeners = async () => {
             const api = await getGitApi();
-            if (!api) {
+            // Closed while the git extension was loading: the `onDidDispose`
+            // cleanup below would never fire, leaking every listener.
+            if (!api || this.disposedPanels.has(webviewPanel)) {
                 return;
             }
 
@@ -489,6 +497,9 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
         });
 
         webviewPanel.onDidDispose(() => {
+            this.disposedPanels.add(webviewPanel);
+            // Closed before `ready`: don't apply the reveal to the next open.
+            this.pendingReveals.delete(uriString);
             messageHandler.dispose();
             changeHandler.dispose();
             configHandler.dispose();
