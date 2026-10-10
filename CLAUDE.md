@@ -51,4 +51,4 @@ There are two separate build paths: `compile-tests`/unit tests use tsc → `out/
 
 ## Publishing
 
-See [docs/PUBLISHING.md](docs/PUBLISHING.md). Uses `vsce` (pinned to 2.15.0 in devDeps).
+See [docs/PUBLISHING.md](docs/PUBLISHING.md). Uses `@vscode/vsce` (pinned to 4.0.0 in devDeps).
