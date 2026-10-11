@@ -26,6 +26,7 @@
  */
 import { EditorSelection, EditorState, type Extension, type SelectionRange } from '@codemirror/state';
 import { EditorView, crosshairCursor, drawSelection, keymap, rectangularSelection, type Command } from '@codemirror/view';
+import { selectionOverlay } from './selectionOverlay';
 
 export interface AddedCursorOptions {
     selection: EditorSelection;
@@ -75,6 +76,7 @@ function addCursorVertically(forward: boolean): Command {
 export const multipleSelections: Extension[] = [
     EditorState.allowMultipleSelections.of(true),
     drawSelection(),
+    selectionOverlay,
     rectangularSelection(),
     crosshairCursor(),
     EditorView.clickAddsSelectionRange.of((event) => event.altKey),

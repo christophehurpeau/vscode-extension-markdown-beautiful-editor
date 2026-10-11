@@ -47,6 +47,7 @@
        a code block so a document still opens on its first heading. Derived
        from the same key so it tracks the theme, at half the wash. */
     --mbe-frontmatter-bg: color-mix(in srgb, var(--mbe-code-bg) 40%, transparent);
+    --mbe-selection-bg: var(--vscode-editor-selectionBackground, rgba(0, 122, 204, 0.3));
 }
 
 body.font-mono {
@@ -298,7 +299,27 @@ html, body {
 .cm-editor .cm-selectionBackground,
 .cm-editor.cm-focused .cm-selectionBackground,
 .cm-editor ::selection {
-    background: var(--vscode-editor-selectionBackground, rgba(0, 122, 204, 0.3)) !important;
+    background: var(--mbe-selection-bg) !important;
+}
+
+/* The selection layer sits behind `.cm-content`, so these surfaces' own fill
+   hides it. `cm/selectionOverlay.ts` re-marks the selection inside them.
+   Scoped to them alone: elsewhere the layer shows, and a second fill would
+   double a translucent selection colour.
+   A fully selected line is painted whole below; only a code chip, which
+   covers its line too, still needs the mark there. */
+.cm-editor .md-code .mbe-selection,
+.cm-line.md-code-block:not(.mbe-selection-line) .mbe-selection,
+.cm-line.md-blockquote:not(.mbe-selection-line) .mbe-selection,
+.cm-line.md-frontmatter:not(.mbe-selection-line) .mbe-selection {
+    background: var(--mbe-selection-bg);
+}
+
+/* An image, not a colour: it stacks on top of the line's own background. */
+.cm-line.md-code-block.mbe-selection-line,
+.cm-line.md-blockquote.mbe-selection-line,
+.cm-line.md-frontmatter.mbe-selection-line {
+    background-image: linear-gradient(var(--mbe-selection-bg), var(--mbe-selection-bg));
 }
 
 /* `drawSelection()` (cm/multipleSelections.ts) draws every cursor itself and

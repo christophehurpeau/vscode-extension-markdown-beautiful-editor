@@ -240,3 +240,17 @@
     background-color: transparent;
     background-image: linear-gradient(var(--mbe-frontmatter-bg), var(--mbe-frontmatter-bg));
 }
+
+/* The two rules above take over `background-image`, which is also where
+ * `cm-shell.css` paints a fully selected line; stack the selection on top. */
+.cm-mergeView .cm-line.md-code-block.mbe-selection-line {
+    background-image:
+        linear-gradient(var(--mbe-selection-bg), var(--mbe-selection-bg)),
+        linear-gradient(var(--mbe-code-block-bg-translucent), var(--mbe-code-block-bg-translucent));
+}
+
+.cm-mergeView .cm-line.md-frontmatter.mbe-selection-line {
+    background-image:
+        linear-gradient(var(--mbe-selection-bg), var(--mbe-selection-bg)),
+        linear-gradient(var(--mbe-frontmatter-bg), var(--mbe-frontmatter-bg));
+}
