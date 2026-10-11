@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  // closest to the existing code style, to keep the initial reformat small
+  "printWidth": 120,
+  "tabWidth": 4,
+  "singleQuote": true,
+  "trailingComma": "es5",
+  "sortPackageJson": { "sortScripts": true },
+  "overrides": [{ "files": ["package.json", ".claude/*.json", "*.{jsonc,yml,yaml,md}"], "options": { "tabWidth": 2 } }],
+  "ignorePatterns": [
+    "CHANGELOG.md",
+    "pnpm-lock.yaml",
+    "/dist",
+    "/out",
+    "/samples",
+    "/screenshots/fixtures",
+    "/src/test/fixtures",
+  ],
+}

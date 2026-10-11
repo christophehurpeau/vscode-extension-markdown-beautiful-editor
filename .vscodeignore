@@ -23,6 +23,9 @@ node_modules/**
 
 # Build configuration
 esbuild.js
+.oxfmtrc.jsonc
+lint-staged.config.js
+.git-hooks/**
 tsconfig*.json
 eslint.config.mjs
 pnpm-workspace.yaml
