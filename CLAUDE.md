@@ -51,4 +51,4 @@ There are two separate build paths: `compile-tests`/unit tests use tsc → `out/
 
 ## Publishing
 
-`pnpm release [patch|minor|major|x.y.z]` bumps, writes CHANGELOG.md from conventional commits, tags and pushes; the tag triggers `.github/workflows/release.yml`, which publishes to the VS Code Marketplace and Open VSX. See [docs/PUBLISHING.md](docs/PUBLISHING.md). `@vscode/vsce` and `ovsx` are pinned in devDeps.
+Releases run only in CI: the manual **Release** workflow (`.github/workflows/release.yml`) versions with `pob-version` (conventional commits → bump, CHANGELOG.md, tag, GitHub release), then publishes to the VS Code Marketplace (Entra ID OIDC, no PAT) and Open VSX. Never bump `version` or edit released CHANGELOG sections by hand. See [docs/PUBLISHING.md](docs/PUBLISHING.md).

@@ -1,109 +1,92 @@
 # Publishing Guide
 
-Releases are cut locally and published by GitHub Actions.
+Releases run entirely in GitHub Actions: nothing is versioned, tagged or published from a local
+machine.
 
 ## Releasing a version
 
-```bash
-pnpm release --dry-run        # preview the version and CHANGELOG section
-pnpm release                  # patch (default)
-pnpm release minor            # or major, or an explicit x.y.z
-```
+GitHub → **Actions** → **Release** → **Run workflow** on `main`.
 
-`scripts/release.ts`:
+- **Dry run** checked: runs the tests, prints what
+  [`pob-version`](https://github.com/christophehurpeau/pob/tree/main/@pob/version) would release,
+  and checks the Marketplace (Entra ID) and Open VSX credentials.
+- **Dry run** unchecked: releases.
 
-1. checks you are on `main`, clean, and not behind `origin/main`;
-2. computes the next version and renders a CHANGELOG section from the conventional commits since
-   the last `v*` tag (`feat` → Added, `perf` and other breaking changes → Changed, `fix` → Fixed;
-   `deps`-scoped and internal types are left out);
-3. runs `compile-tests`, `test:unit` and `package`;
-4. bumps `package.json`, prepends the section to `CHANGELOG.md`, commits `chore: vX.Y.Z`, creates the
-   annotated tag `vX.Y.Z` and pushes `main` and the tag atomically.
+[`.github/workflows/release.yml`](../.github/workflows/release.yml) has two jobs:
 
-To reword the changelog, run with `--dry-run`, then improve the commit messages it is built from
-before releasing, or amend `CHANGELOG.md` in a follow-up commit (the Marketplace shows the version
-published from the tag).
+1. **version**: runs `compile-tests`, `test:unit` and `package`, then `pob-version
+   --create-release=github`, which computes the bump from the conventional commits since the last
+   `v*` tag (`feat` → minor, `fix` → patch; on 0.x a breaking change is a minor), prepends the
+   section to `CHANGELOG.md`, bumps `package.json`, commits `chore: release X.Y.Z [skip ci]`, tags
+   `vX.Y.Z`, pushes and creates the GitHub release. With no releasable commit it does nothing.
+2. **publish**: checks out the tag, builds the `.vsix`, publishes it to the VS Code Marketplace and
+   Open VSX, and attaches it to the GitHub release.
 
-The tag push triggers [`.github/workflows/release.yml`](../.github/workflows/release.yml), which
-checks the tag matches `package.json`, runs the unit tests, builds the `.vsix`, publishes it to the
-VS Code Marketplace and Open VSX, and creates a GitHub release with the CHANGELOG section and the
-`.vsix`. Integration tests are not run there; run `pnpm test` before releasing a risky change.
+If **publish** fails, fix the cause and use **Re-run failed jobs**: it starts from the tag without
+versioning again, and both registries skip a version they already have (`--skip-duplicate`).
 
-If the workflow fails after the tag is pushed, fix the cause (secret, registry error) and
-**Re-run jobs** on the same run: both publish steps use `--skip-duplicate`, so a registry that
-already has the version is skipped. If the code itself must change, delete the tag locally and on
-`origin`, fix, and release the same version again with `pnpm release x.y.z`.
+Integration tests are not run by the workflow; run `pnpm test` before releasing a risky change.
 
-## Open VSX authentication
+The **Bump** input overrides the computed bump type (`pob-version --force`); keep `auto` to follow
+the commits.
 
-The `chrp` namespace already exists and is verified on https://open-vsx.org. Create an access token
-at https://open-vsx.org/user-settings/tokens (signed in with the account that owns the namespace),
-then:
+## Repository setup
 
-```bash
-gh secret set OVSX_PAT                # paste the token
-```
+| Name | Kind | Purpose |
+| --- | --- | --- |
+| `PUSH_DEPLOY_KEY` | secret | private half of the read-write deploy key "Push Github Actions Key"; the push of the release commit and tag uses it |
+| `OVSX_PAT` | secret | Open VSX access token |
+| `AZURE_CLIENT_ID` | variable | Entra app registration used for the Marketplace |
+| `AZURE_TENANT_ID` | variable | its tenant |
+| `marketplace` | environment | the **publish** and **check-auth** jobs run in it; the Entra federated credential trusts it |
+
+The `main` ruleset requires the reviewflow status checks; deploy keys are exempt so the release
+commit can be pushed.
+
+### Open VSX
+
+Token from https://open-vsx.org/user-settings/tokens (account owning the verified `chrp`
+namespace), stored with `gh secret set OVSX_PAT`.
 
 `ovsx` pulls `keytar` for local token storage; its native build is denied in
 `pnpm-workspace.yaml` because CI passes the token through `OVSX_PAT`.
 
-## Marketplace authentication
+### VS Code Marketplace (Entra ID, no token)
 
-The workflow uses Microsoft Entra ID when the repository variable `AZURE_CLIENT_ID` is set,
-otherwise the `VSCE_PAT` secret.
+Azure DevOps PATs are not used: global PATs, the only kind the Marketplace accepts, cannot be
+created since 2026-03-15 and stop working on 2026-12-01
+([announcement](https://devblogs.microsoft.com/devops/retirement-of-global-personal-access-tokens-in-azure-devops)).
+`azure/login` signs in through GitHub OIDC and `vsce publish --azure-credential` uses that session.
 
-### PAT (until 2026-12-01)
+Setup, once:
 
-Azure DevOps blocked creating new global PATs on 2026-03-15 and decommissions all of them on
-2026-12-01 ([announcement](https://devblogs.microsoft.com/devops/retirement-of-global-personal-access-tokens-in-azure-devops)).
-The Marketplace requires a PAT scoped to **All accessible organizations** with
-**Marketplace → Manage**, so an existing one keeps working only until that date.
-
-```bash
-pnpm exec vsce verify-pat chrp        # check the locally stored token
-gh secret set VSCE_PAT                # paste the token
-```
-
-### Entra ID (required from 2026-12-01)
-
-`vsce publish --azure-credential` (vsce >= 2.26.1) authenticates with the Azure CLI session that
-`azure/login` opens through GitHub OIDC. Setup, once:
-
-1. In the Entra tenant of the Microsoft account that owns the publisher, create an app registration
-   (or a user-assigned managed identity).
-2. Add a federated credential for GitHub Actions: organization `christophehurpeau`, repository
-   `vscode-extension-markdown-beautiful-editor`, entity **Environment**, name `marketplace` (the
-   workflow job runs in that environment, which gives a fixed OIDC subject for every tag).
-3. Get the identity's Marketplace profile id by running once, in a temporary workflow step after
-   `azure/login`:
-   ```bash
-   az rest -u https://app.vssps.visualstudio.com/_apis/profile/profiles/me \
-     --resource 499b84ac-1321-427f-aa17-267ca6975798
-   ```
-   and add that `id` as a **Contributor** member of the `chrp` publisher at
-   https://marketplace.visualstudio.com/manage.
-4. Set the repository variables:
-   ```bash
+1. https://portal.azure.com → **Microsoft Entra ID** → **App registrations** → **New
+   registration**, single tenant. Note the **Application (client) ID** and **Directory (tenant)
+   ID**.
+2. In the app: **Certificates & secrets** → **Federated credentials** → **Add credential** →
+   *GitHub Actions deploying Azure resources*: organization `christophehurpeau`, repository
+   `vscode-extension-markdown-beautiful-editor`, entity **Environment**, name `marketplace`.
+3. ```bash
    gh variable set AZURE_CLIENT_ID --body <client-id>
    gh variable set AZURE_TENANT_ID --body <tenant-id>
    ```
+4. Run **Release** with **Dry run**. The **check-auth** job's *Show Marketplace identity* step
+   prints an `id`.
+5. https://marketplace.visualstudio.com/manage/publishers/chrp → **Members** → add that `id` with
+   the **Contributor** role.
 
-This path is not yet exercised by a real release; see the
-[VS Code publishing docs](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#secure-automated-publishing)
-for the reference procedure (written for Azure Pipelines).
+Reference: [VS Code publishing docs, secure automated publishing](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#secure-automated-publishing)
+(written for a managed identity in Azure Pipelines).
 
-## Manual publishing
+## Packaging locally
 
 Everything is bundled by esbuild and `node_modules` is excluded via `.vscodeignore`, so `vsce` is
 always run with `--no-dependencies`: its npm-based dependency walk does not understand pnpm's
 symlinked `node_modules`.
 
 ```bash
-pnpm run package:vsce                           # build markdown-beautiful-editor-X.Y.Z.vsix
-pnpm exec vsce ls --no-dependencies             # list the files that would ship
-pnpm exec vsce publish --no-dependencies        # publish (PAT from `vsce login chrp` or VSCE_PAT)
-pnpm exec vsce publish --pre-release --no-dependencies
-pnpm exec ovsx publish markdown-beautiful-editor-X.Y.Z.vsix -p <token>
+pnpm run package:vsce                   # build markdown-beautiful-editor-X.Y.Z.vsix to try locally
+pnpm exec vsce ls --no-dependencies     # list the files that would ship
 ```
 
 ## Screenshots
@@ -118,8 +101,10 @@ See [screenshots/README.md](../screenshots/README.md) to change what they show.
 
 ## Troubleshooting
 
-- **Personal Access Token invalid**: the token expired, was scoped to a single organization instead
-  of **All accessible organizations**, lacks **Marketplace → Manage**, or it is past 2026-12-01.
-- **Tag does not match package.json**: the tag was created by hand; use `pnpm release`.
-- **No CHANGELOG.md section for X.Y.Z**: the GitHub release step reads the section the release
-  script wrote; the tag points at a commit without it.
+- **version job fails on push**: `PUSH_DEPLOY_KEY` is missing, or the deploy key lost its write
+  access or its ruleset exemption.
+- **azure/login fails**: the federated credential subject must be
+  `repo:christophehurpeau/vscode-extension-markdown-beautiful-editor:environment:marketplace`.
+- **vsce 401/403 with --azure-credential**: the identity is not a member of the `chrp` publisher,
+  or not as Contributor.
+- **ovsx "Invalid access token"**: regenerate it and update `OVSX_PAT`.

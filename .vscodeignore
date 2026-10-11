@@ -10,8 +10,7 @@ out/**
 # Screenshot harness (regenerates images/, not shipped)
 screenshots/**
 
-# Release tooling
-scripts/**
+# CI
 .github/**
 
 # Contributor and agent docs

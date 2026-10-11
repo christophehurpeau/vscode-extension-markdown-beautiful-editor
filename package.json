@@ -186,11 +186,10 @@
     "watch:tsc": "tsc -b --watch",
     "package": "pnpm run check-types && pnpm run lint && node esbuild.js --production",
     "package:vsce": "vsce package --no-dependencies",
-    "release": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/release.ts",
     "compile-tests": "tsc -p tsconfig.test.json",
     "watch-tests": "tsc -p tsconfig.test.json -w",
     "check-types": "tsc -b && tsc -p tsconfig.test.json --noEmit",
-    "lint": "eslint src screenshots scripts",
+    "lint": "eslint src screenshots",
     "playwright:prepare": "playwright install chromium",
     "screenshots": "node esbuild.js && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON screenshots/capture.ts",
     "test": "pnpm run compile-tests && pnpm run compile && pnpm run lint && pnpm run test:unit && pnpm run test:integration",
@@ -198,6 +197,7 @@
     "test:integration": "vscode-test"
   },
   "devDependencies": {
+    "@pob/version": "6.5.1",
     "@types/diff": "^8.0.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
