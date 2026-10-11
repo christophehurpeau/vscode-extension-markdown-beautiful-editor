@@ -45,15 +45,19 @@ describe('cm/search: match highlights nest inside construct marks', () => {
         const sources = EditorState.create({ doc: '', extensions: markdownExtensions }).facet(EditorView.decorations);
         const markIndex = sources.indexOf(markDecorationSource);
         assert.ok(markIndex >= 0);
-        const outranked = sources.filter((source, index) =>
-            index > markIndex && source !== lineDecorationSource);
+        const outranked = sources.filter((source, index) => index > markIndex && source !== lineDecorationSource);
         assert.deepStrictEqual(outranked, []);
     });
 });
 
 describe('cm/search: isFindShortcut', () => {
     const event = (overrides: Partial<Parameters<typeof isFindShortcut>[0]>) => ({
-        key: 'f', metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, ...overrides,
+        key: 'f',
+        metaKey: false,
+        ctrlKey: false,
+        altKey: false,
+        shiftKey: false,
+        ...overrides,
     });
 
     it('accepts Cmd+F and Ctrl+F', () => {

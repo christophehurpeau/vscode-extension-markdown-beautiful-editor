@@ -103,10 +103,7 @@ describe('cm/lang/math: mathExtension', () => {
         });
 
         it('escaped-mixed: \\$5 among other escapes stays Escape, not math', () => {
-            assert.strictEqual(
-                tree(corpusMarkdown('escaped-mixed')),
-                'Document(Paragraph(Escape,Escape,Escape))'
-            );
+            assert.strictEqual(tree(corpusMarkdown('escaped-mixed')), 'Document(Paragraph(Escape,Escape,Escape))');
         });
 
         it('table cells with a lone $amount do not trigger math', () => {

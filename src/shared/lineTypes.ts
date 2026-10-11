@@ -36,7 +36,7 @@ export const DEFAULT_LINE_TYPE: LineTypeDefinition = { type: 'paragraph', patter
 // Menu items (subset of LINE_TYPES that appear in the menu, in display order)
 export const MENU_LINE_TYPES: LineTypeDefinition[] = [
     DEFAULT_LINE_TYPE,
-    ...LINE_TYPES.filter(t => t.label), // Only types with labels
+    ...LINE_TYPES.filter((t) => t.label), // Only types with labels
 ];
 
 /**
@@ -69,12 +69,12 @@ export function getLineTypeIcon(line: string): string {
 export function stripLinePrefix(line: string): string {
     return line
         .replace(/^(-{3,}|\*{3,}|_{3,})\s*$/, '') // Horizontal rule
-        .replace(/^#{1,6}\s/, '')                 // Headings
-        .replace(/^[-*+]\s\[[ xX]\]\s/, '')       // Task list
-        .replace(/^[-*+]\s/, '')                  // Unordered list
-        .replace(/^\d+\.\s/, '')                  // Ordered list
-        .replace(/^>+\s?/, '')                    // Blockquote (incl. nested)
-        .replace(/^```\w*\s*/, '');               // Code fence
+        .replace(/^#{1,6}\s/, '') // Headings
+        .replace(/^[-*+]\s\[[ xX]\]\s/, '') // Task list
+        .replace(/^[-*+]\s/, '') // Unordered list
+        .replace(/^\d+\.\s/, '') // Ordered list
+        .replace(/^>+\s?/, '') // Blockquote (incl. nested)
+        .replace(/^```\w*\s*/, ''); // Code fence
 }
 
 /**
@@ -83,19 +83,33 @@ export function stripLinePrefix(line: string): string {
  */
 export function applyLinePrefix(content: string, type: string): string {
     switch (type) {
-        case 'paragraph': return content;
-        case 'h1': return `# ${content}`;
-        case 'h2': return `## ${content}`;
-        case 'h3': return `### ${content}`;
-        case 'h4': return `#### ${content}`;
-        case 'h5': return `##### ${content}`;
-        case 'h6': return `###### ${content}`;
-        case 'hr': return `---`;
-        case 'ul': return `- ${content}`;
-        case 'ol': return `1. ${content}`;
-        case 'task': return `- [ ] ${content}`;
-        case 'quote': return `> ${content}`;
-        case 'code': return `\`\`\`\n${content}\n\`\`\``;
-        default: return content;
+        case 'paragraph':
+            return content;
+        case 'h1':
+            return `# ${content}`;
+        case 'h2':
+            return `## ${content}`;
+        case 'h3':
+            return `### ${content}`;
+        case 'h4':
+            return `#### ${content}`;
+        case 'h5':
+            return `##### ${content}`;
+        case 'h6':
+            return `###### ${content}`;
+        case 'hr':
+            return `---`;
+        case 'ul':
+            return `- ${content}`;
+        case 'ol':
+            return `1. ${content}`;
+        case 'task':
+            return `- [ ] ${content}`;
+        case 'quote':
+            return `> ${content}`;
+        case 'code':
+            return `\`\`\`\n${content}\n\`\`\``;
+        default:
+            return content;
     }
 }

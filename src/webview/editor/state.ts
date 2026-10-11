@@ -44,28 +44,21 @@ export function getStoredState(vscode: Pick<VscodeStateApi, 'getState'>): Editor
  * @param cursorPosition Current cursor position
  * @param scrollTop Current scroll position
  */
-export function saveState(
-    vscode: VscodeStateApi,
-    cursorPosition: CursorPosition | null,
-    scrollTop: number
-): void {
+export function saveState(vscode: VscodeStateApi, cursorPosition: CursorPosition | null, scrollTop: number): void {
     const state: EditorState = {
         ...getStoredState(vscode),
         cursorPosition,
-        scrollTop
+        scrollTop,
     };
     vscode.setState(state);
 }
 
-export function saveTocPreference(
-    vscode: VscodeStateApi,
-    tocPreference: TocVisibilityPreference
-): void {
+export function saveTocPreference(vscode: VscodeStateApi, tocPreference: TocVisibilityPreference): void {
     const state: EditorState = {
         cursorPosition: null,
         scrollTop: 0,
         ...getStoredState(vscode),
-        tocPreference
+        tocPreference,
     };
     vscode.setState(state);
 }

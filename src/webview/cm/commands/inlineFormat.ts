@@ -48,7 +48,7 @@ function selectionCoveringSameText(
     originalFrom: number,
     originalTo: number,
     selectedText: string,
-    change: InlineFormatChange,
+    change: InlineFormatChange
 ): SelectionRange {
     const insertFromAbs = lineFrom + change.from;
     const grew = change.insert.length > originalTo - originalFrom;

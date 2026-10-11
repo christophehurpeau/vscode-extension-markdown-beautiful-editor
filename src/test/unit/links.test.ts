@@ -15,7 +15,10 @@ describe('parseLinkTarget', () => {
     });
 
     it('strips a double-quoted title', () => {
-        assert.deepStrictEqual(parseLinkTarget('./full.md#links "Go to links"'), { path: './full.md', fragment: 'links' });
+        assert.deepStrictEqual(parseLinkTarget('./full.md#links "Go to links"'), {
+            path: './full.md',
+            fragment: 'links',
+        });
     });
 
     it('strips a single-quoted title', () => {
@@ -23,10 +26,10 @@ describe('parseLinkTarget', () => {
     });
 
     it('strips a double-quoted title containing an apostrophe', () => {
-        assert.deepStrictEqual(
-            parseLinkTarget('https://www.google.com "Google\'s Homepage"'),
-            { path: 'https://www.google.com', fragment: '' }
-        );
+        assert.deepStrictEqual(parseLinkTarget('https://www.google.com "Google\'s Homepage"'), {
+            path: 'https://www.google.com',
+            fragment: '',
+        });
     });
 
     it('strips a title on a pure fragment', () => {
@@ -42,17 +45,17 @@ describe('parseLinkTarget', () => {
     });
 
     it('leaves a plain web URL untouched', () => {
-        assert.deepStrictEqual(parseLinkTarget('https://example.com/page'), { path: 'https://example.com/page', fragment: '' });
+        assert.deepStrictEqual(parseLinkTarget('https://example.com/page'), {
+            path: 'https://example.com/page',
+            fragment: '',
+        });
     });
 });
 
 describe('linkDisplayUrl', () => {
-    it("shows only the URL for an inline link with a title", () => {
+    it('shows only the URL for an inline link with a title', () => {
         // [I'm an inline-style link with title](https://www.google.com "Google's Homepage")
-        assert.strictEqual(
-            linkDisplayUrl('https://www.google.com "Google\'s Homepage"'),
-            'https://www.google.com'
-        );
+        assert.strictEqual(linkDisplayUrl('https://www.google.com "Google\'s Homepage"'), 'https://www.google.com');
     });
 
     it('keeps the fragment but drops the title', () => {

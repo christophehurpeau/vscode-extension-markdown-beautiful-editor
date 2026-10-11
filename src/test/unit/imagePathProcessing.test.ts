@@ -83,7 +83,10 @@ describe('rewriteImagePaths', () => {
 
     it('leaves the match unchanged when the resolver returns null (resolution failure)', () => {
         const markdown = '![a](./broken.png)';
-        assert.strictEqual(rewriteImagePaths(markdown, () => null), markdown);
+        assert.strictEqual(
+            rewriteImagePaths(markdown, () => null),
+            markdown
+        );
     });
 
     it('resolves an absolute path via the injected resolver', () => {

@@ -41,12 +41,13 @@ export interface FloatingToolbarPosition {
  * by `toolbarHeight + 8`, or below it (`rect.bottom + 8`) when that would go
  * off the top of the viewport.
  */
-export function floatingToolbarPosition(rect: ToolbarAnchorRect, options: FloatingToolbarPositionOptions): FloatingToolbarPosition {
+export function floatingToolbarPosition(
+    rect: ToolbarAnchorRect,
+    options: FloatingToolbarPositionOptions
+): FloatingToolbarPosition {
     const { toolbarWidth, toolbarHeight, viewportWidth, minLeft, align } = options;
 
-    let left = align === 'center'
-        ? rect.left + (rect.width / 2) - (toolbarWidth / 2)
-        : rect.left;
+    let left = align === 'center' ? rect.left + rect.width / 2 - toolbarWidth / 2 : rect.left;
     let top = rect.top - toolbarHeight - 8;
 
     if (left < minLeft) {

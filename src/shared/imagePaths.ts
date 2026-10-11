@@ -21,22 +21,19 @@ const IMAGE_MARKDOWN_PATTERN = /!\[([^\]]*)\]\(([^)\s'"]+)(\s+['"][^'"]*['"])?\)
  * that image's markdown unchanged, matching the original try/catch fallback.
  */
 export function rewriteImagePaths(markdown: string, resolveLocalPath: (imagePath: string) => string | null): string {
-    return markdown.replace(
-        IMAGE_MARKDOWN_PATTERN,
-        (match, alt, imagePath, title = '') => {
-            // Skip URLs (http, https, data URIs)
-            if (/^(https?:|data:)/i.test(imagePath)) {
-                return match;
-            }
-            // Skip already-converted webview URIs
-            if (imagePath.startsWith('vscode-webview://')) {
-                return match;
-            }
-            const resolved = resolveLocalPath(imagePath);
-            if (resolved === null) {
-                return match;
-            }
-            return `![${alt}](${resolved}${title})`;
+    return markdown.replace(IMAGE_MARKDOWN_PATTERN, (match, alt, imagePath, title = '') => {
+        // Skip URLs (http, https, data URIs)
+        if (/^(https?:|data:)/i.test(imagePath)) {
+            return match;
         }
-    );
+        // Skip already-converted webview URIs
+        if (imagePath.startsWith('vscode-webview://')) {
+            return match;
+        }
+        const resolved = resolveLocalPath(imagePath);
+        if (resolved === null) {
+            return match;
+        }
+        return `![${alt}](${resolved}${title})`;
+    });
 }

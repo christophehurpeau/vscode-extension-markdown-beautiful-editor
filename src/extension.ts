@@ -9,16 +9,12 @@ export function activate(context: vscode.ExtensionContext): void {
     const provider = new MarkdownEditorProvider(context);
 
     context.subscriptions.push(
-        vscode.window.registerCustomEditorProvider(
-            'markdown.beautifulEditor',
-            provider,
-            {
-                supportsMultipleEditorsPerDocument: false,
-                webviewOptions: {
-                    retainContextWhenHidden: true
-                }
-            }
-        )
+        vscode.window.registerCustomEditorProvider('markdown.beautifulEditor', provider, {
+            supportsMultipleEditorsPerDocument: false,
+            webviewOptions: {
+                retainContextWhenHidden: true,
+            },
+        })
     );
 
     context.subscriptions.push(registerDiffPanelSerializer(context));
@@ -35,11 +31,7 @@ export function activate(context: vscode.ExtensionContext): void {
                 return;
             }
 
-            await vscode.commands.executeCommand(
-                'vscode.openWith',
-                target,
-                'markdown.beautifulEditor'
-            );
+            await vscode.commands.executeCommand('vscode.openWith', target, 'markdown.beautifulEditor');
         })
     );
 
@@ -47,9 +39,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // diff-editor title bar, command palette, the read-only banner -- because
     // the pairing is read off the clicked resource, not off the menu.
     context.subscriptions.push(
-        vscode.commands.registerCommand(openDiffCommandId, (target: unknown) =>
-            openDiffForTarget({ context, target })
-        )
+        vscode.commands.registerCommand(openDiffCommandId, (target: unknown) => openDiffForTarget({ context, target }))
     );
 
     // Register toggle diff mode command

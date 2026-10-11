@@ -103,7 +103,10 @@ export async function showAtRef(uri: vscode.Uri, ref: string): Promise<string | 
  * Without a group (the command palette, the diff-editor title bar) the working
  * tree comes first, matching what those entry points are looking at.
  */
-export async function findChange({ fileUri, scmResourceGroupId }: {
+export async function findChange({
+    fileUri,
+    scmResourceGroupId,
+}: {
     fileUri: vscode.Uri;
     scmResourceGroupId?: string;
 }): Promise<GitChangeLike | null> {
@@ -207,7 +210,10 @@ export async function readDiffSide({ fileUri, side }: { fileUri: vscode.Uri; sid
     try {
         return (await vscode.workspace.openTextDocument(toGitUri(fileUri, ref))).getText();
     } catch (error) {
-        console.log(`Markdown Beautiful Editor: git: URI read failed at "${ref}", falling back to repository.show`, error);
+        console.log(
+            `Markdown Beautiful Editor: git: URI read failed at "${ref}", falling back to repository.show`,
+            error
+        );
         return showAtRef(fileUri, ref);
     }
 }

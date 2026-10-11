@@ -7,12 +7,15 @@ import { saveState, saveTocPreference, getStoredState, type CursorPosition } fro
  * with an in-memory fake.
  */
 describe('Editor State', () => {
-
     function createFakeVscode() {
         let stored: unknown;
         return {
-            setState(state: unknown): void { stored = state; },
-            getState(): unknown { return stored; },
+            setState(state: unknown): void {
+                stored = state;
+            },
+            getState(): unknown {
+                return stored;
+            },
         };
     }
 

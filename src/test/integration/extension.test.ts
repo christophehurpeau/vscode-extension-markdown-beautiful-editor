@@ -5,7 +5,7 @@ import * as fs from 'fs';
 
 suite('Extension Integration Tests', () => {
     const testWorkspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || __dirname;
-    
+
     // Helper to create a temporary markdown file
     async function createTempMarkdownFile(content: string, filename?: string): Promise<vscode.Uri> {
         const tempDir = path.join(testWorkspaceRoot, '.test-temp');
@@ -58,12 +58,12 @@ suite('Extension Integration Tests', () => {
 
         try {
             const doc = await vscode.workspace.openTextDocument(fileUri);
-            
+
             // Make an edit
             const edit = new vscode.WorkspaceEdit();
             edit.replace(fileUri, new vscode.Range(0, 0, 0, content.length), '# New Title');
             const success = await vscode.workspace.applyEdit(edit);
-            
+
             assert.ok(success, 'Edit should succeed');
             assert.strictEqual(doc.getText(), '# New Title', 'Content should be updated');
         } finally {
@@ -92,7 +92,7 @@ suite('Extension Integration Tests', () => {
             try {
                 const doc = await vscode.workspace.openTextDocument(fileUri);
                 const text = doc.getText();
-                
+
                 assert.ok(text.includes('# H1 Heading'), 'H1 should be preserved');
                 assert.ok(text.includes('## H2 Heading'), 'H2 should be preserved');
                 assert.ok(text.includes('### H3 Heading'), 'H3 should be preserved');
@@ -115,7 +115,7 @@ _also italic_`;
             try {
                 const doc = await vscode.workspace.openTextDocument(fileUri);
                 const text = doc.getText();
-                
+
                 assert.ok(text.includes('**bold text**'), 'Double asterisk bold should be preserved');
                 assert.ok(text.includes('*italic text*'), 'Single asterisk italic should be preserved');
                 assert.ok(text.includes('***bold and italic***'), 'Triple asterisk should be preserved');
@@ -136,9 +136,12 @@ _also italic_`;
             try {
                 const doc = await vscode.workspace.openTextDocument(fileUri);
                 const text = doc.getText();
-                
+
                 assert.ok(text.includes('[Link text](https://example.com)'), 'Link should be preserved');
-                assert.ok(text.includes('[Link with title](https://example.com "Title")'), 'Link with title should be preserved');
+                assert.ok(
+                    text.includes('[Link with title](https://example.com "Title")'),
+                    'Link with title should be preserved'
+                );
                 assert.ok(text.includes('![Alt text](./image.png)'), 'Image should be preserved');
                 assert.ok(text.includes('![](./image-no-alt.png)'), 'Image without alt should be preserved');
             } finally {
@@ -161,7 +164,7 @@ plain code block
             try {
                 const doc = await vscode.workspace.openTextDocument(fileUri);
                 const text = doc.getText();
-                
+
                 assert.ok(text.includes('`code`'), 'Inline code should be preserved');
                 assert.ok(text.includes('```javascript'), 'Code fence with language should be preserved');
                 assert.ok(text.includes('const x = 1;'), 'Code content should be preserved');
@@ -185,7 +188,7 @@ plain code block
             try {
                 const doc = await vscode.workspace.openTextDocument(fileUri);
                 const text = doc.getText();
-                
+
                 assert.ok(text.includes('- Unordered item 1'), 'Unordered list should be preserved');
                 assert.ok(text.includes('1. Ordered item 1'), 'Ordered list should be preserved');
                 assert.ok(text.includes('- [ ] Todo unchecked'), 'Unchecked task should be preserved');
@@ -207,7 +210,7 @@ plain code block
             try {
                 const doc = await vscode.workspace.openTextDocument(fileUri);
                 const text = doc.getText();
-                
+
                 assert.ok(text.includes('> Single blockquote'), 'Single blockquote should be preserved');
                 assert.ok(text.includes('>> Nested blockquote'), 'Nested blockquote should be preserved');
             } finally {
@@ -235,7 +238,7 @@ plain code block
             try {
                 const doc = await vscode.workspace.openTextDocument(fileUri);
                 const text = doc.getText();
-                
+
                 assert.ok(text.includes('> [!NOTE]'), 'NOTE alert should be preserved');
                 assert.ok(text.includes('> [!TIP]'), 'TIP alert should be preserved');
                 assert.ok(text.includes('> [!IMPORTANT]'), 'IMPORTANT alert should be preserved');
@@ -255,7 +258,7 @@ plain code block
             try {
                 const doc = await vscode.workspace.openTextDocument(fileUri);
                 const text = doc.getText();
-                
+
                 assert.ok(text.includes('| Header 1 |'), 'Table header should be preserved');
                 assert.ok(text.includes('|----------|'), 'Table separator should be preserved');
                 assert.ok(text.includes('| Cell 1   |'), 'Table cells should be preserved');
@@ -273,7 +276,7 @@ plain code block
             try {
                 const doc = await vscode.workspace.openTextDocument(fileUri);
                 const text = doc.getText();
-                
+
                 assert.ok(text.includes('\\*not italic\\*'), 'Escaped asterisks should be preserved');
             } finally {
                 await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
@@ -291,7 +294,7 @@ Below`;
             try {
                 const doc = await vscode.workspace.openTextDocument(fileUri);
                 const text = doc.getText();
-                
+
                 assert.ok(text.includes('---'), 'Horizontal rule should be preserved');
             } finally {
                 await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
@@ -305,7 +308,7 @@ Below`;
             try {
                 const doc = await vscode.workspace.openTextDocument(fileUri);
                 const text = doc.getText();
-                
+
                 assert.ok(text.includes('~~deleted text~~'), 'Strikethrough should be preserved');
             } finally {
                 await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
@@ -320,17 +323,17 @@ Below`;
 
             try {
                 const doc = await vscode.workspace.openTextDocument(fileUri);
-                
+
                 // First edit
                 let edit = new vscode.WorkspaceEdit();
                 edit.insert(fileUri, new vscode.Position(2, 9), ' one');
                 await vscode.workspace.applyEdit(edit);
-                
+
                 // Second edit
                 edit = new vscode.WorkspaceEdit();
                 edit.insert(fileUri, new vscode.Position(2, 13), ' two');
                 await vscode.workspace.applyEdit(edit);
-                
+
                 assert.ok(doc.getText().includes('Paragraph one two'), 'Both edits should be applied');
             } finally {
                 await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
@@ -343,11 +346,11 @@ Below`;
 
             try {
                 const doc = await vscode.workspace.openTextDocument(fileUri);
-                
+
                 const edit = new vscode.WorkspaceEdit();
                 edit.delete(fileUri, new vscode.Range(0, 0, 1, 0));
                 await vscode.workspace.applyEdit(edit);
-                
+
                 assert.ok(!doc.getText().includes('Title to delete'), 'Deleted content should be removed');
                 assert.ok(doc.getText().includes('Keep this'), 'Remaining content should be preserved');
             } finally {
@@ -361,11 +364,11 @@ Below`;
 
             try {
                 const doc = await vscode.workspace.openTextDocument(fileUri);
-                
+
                 const edit = new vscode.WorkspaceEdit();
                 edit.replace(fileUri, new vscode.Range(0, 2, 0, 11), 'New Title');
                 await vscode.workspace.applyEdit(edit);
-                
+
                 assert.strictEqual(doc.getText(), '# New Title', 'Content should be replaced');
             } finally {
                 await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
@@ -416,7 +419,7 @@ emoji 🎉 🚀`;
             try {
                 const doc = await vscode.workspace.openTextDocument(fileUri);
                 const text = doc.getText();
-                
+
                 assert.ok(text.includes('<angle brackets>'), 'Angle brackets should be preserved');
                 assert.ok(text.includes('& ampersand'), 'Ampersand should be preserved');
                 assert.ok(text.includes('emoji 🎉 🚀'), 'Emoji should be preserved');

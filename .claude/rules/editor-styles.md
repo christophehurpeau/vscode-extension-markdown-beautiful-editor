@@ -18,20 +18,20 @@ class names, never geometry.
 
 Margin sits outside the border box, but CM6 sizes each `.cm-gutterElement` from its line's block
 height and maps click coordinates to line blocks. A margin therefore pushes the line's text down
-while the gutter number stays put, *and* leaves vertical gaps belonging to no line where a click
+while the gutter number stays put, _and_ leaves vertical gaps belonging to no line where a click
 resolves to the wrong line. Use padding.
 
 ## Scope line-decoration rules to `.cm-line`
 
 The line-number gutter mirrors line-decoration class names onto its own elements so the two share
 font metrics (see `cm/lineNumberGutter.ts`). An unscoped `.md-*` rule therefore also paints the line
-*number* — that is how heading numbers ended up bold and the code block's background got drawn around
+_number_ — that is how heading numbers ended up bold and the code block's background got drawn around
 them. Only `cm-shell.css` styles the gutter, and only font-size and padding.
 
 ## Mirror vertical padding onto the gutter
 
 CM6 already compensates for `.cm-content`'s own padding (it builds gutters with
-`-documentPadding.top`), so do not add a base offset on top of that. But any *per-line* vertical
+`-documentPadding.top`), so do not add a base offset on top of that. But any _per-line_ vertical
 padding — headings, alerts, code fences — must be repeated on the matching `.cm-gutterElement` rule
 or that line's number drifts off its text baseline.
 

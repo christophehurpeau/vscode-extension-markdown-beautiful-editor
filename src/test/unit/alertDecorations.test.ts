@@ -73,7 +73,7 @@ describe('cm/decorations: GitHub alerts (WP-A)', () => {
                     `md-alert-${type.toLowerCase()}`,
                     'md-blockquote',
                     'md-quote-1',
-                ].sort(),
+                ].sort()
             );
         });
     }
@@ -86,11 +86,11 @@ describe('cm/decorations: GitHub alerts (WP-A)', () => {
 
         assert.deepStrictEqual(
             classSet(lines[0]),
-            ['blockquote-first', 'md-alert', 'md-alert-warning', 'md-blockquote', 'md-quote-1', 'alert-first'].sort(),
+            ['blockquote-first', 'md-alert', 'md-alert-warning', 'md-blockquote', 'md-quote-1', 'alert-first'].sort()
         );
         assert.deepStrictEqual(
             classSet(lines[1]),
-            ['md-alert-content', 'md-alert-warning', 'md-blockquote', 'md-quote-1'].sort(),
+            ['md-alert-content', 'md-alert-warning', 'md-blockquote', 'md-quote-1'].sort()
         );
         assert.deepStrictEqual(
             classSet(lines[2]),
@@ -101,7 +101,7 @@ describe('cm/decorations: GitHub alerts (WP-A)', () => {
                 'md-alert-warning',
                 'md-blockquote',
                 'md-quote-1',
-            ].sort(),
+            ].sort()
         );
     });
 
@@ -136,7 +136,7 @@ describe('cm/decorations: GitHub alerts (WP-A)', () => {
         assert.ok(tuples(built.markDecorations).some((t) => t.class === 'md-bold'));
         assert.deepStrictEqual(
             lineClasses(state, 2),
-            ['alert-last', 'blockquote-last', 'md-alert-content', 'md-alert-tip', 'md-blockquote', 'md-quote-1'].sort(),
+            ['alert-last', 'blockquote-last', 'md-alert-content', 'md-alert-tip', 'md-blockquote', 'md-quote-1'].sort()
         );
     });
 

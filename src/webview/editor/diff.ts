@@ -31,7 +31,10 @@ import * as Diff from 'diff';
  * @param modifiedText Modified text content
  * @returns Sets of added and removed line indices
  */
-export function computeDiff(originalText: string, modifiedText: string): {
+export function computeDiff(
+    originalText: string,
+    modifiedText: string
+): {
     added: Set<number>;
     removed: Set<number>;
 } {

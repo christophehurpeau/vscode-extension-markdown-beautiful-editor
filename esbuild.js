@@ -1,6 +1,6 @@
-const esbuild = require("esbuild");
-const fs = require("fs");
-const path = require("path");
+const esbuild = require('esbuild');
+const fs = require('fs');
+const path = require('path');
 
 const production = process.argv.includes('--production');
 const watch = process.argv.includes('--watch');
@@ -36,16 +36,16 @@ const copyCssPlugin = {
         build.onEnd(() => {
             const srcDir = path.join(__dirname, 'src', 'styles');
             const distDir = path.join(__dirname, 'dist');
-            
+
             // Ensure dist directory exists
             if (!fs.existsSync(distDir)) {
                 fs.mkdirSync(distDir, { recursive: true });
             }
-            
+
             // Copy CSS files
             if (fs.existsSync(srcDir)) {
                 const files = fs.readdirSync(srcDir);
-                files.forEach(file => {
+                files.forEach((file) => {
                     if (file.endsWith('.css')) {
                         const src = path.join(srcDir, file);
                         const dest = path.join(distDir, file);
@@ -89,21 +89,15 @@ async function main() {
     });
 
     if (watch) {
-        await Promise.all([
-            extensionCtx.watch(),
-            webviewCtx.watch()
-        ]);
+        await Promise.all([extensionCtx.watch(), webviewCtx.watch()]);
     } else {
-        await Promise.all([
-            extensionCtx.rebuild(),
-            webviewCtx.rebuild()
-        ]);
+        await Promise.all([extensionCtx.rebuild(), webviewCtx.rebuild()]);
         await extensionCtx.dispose();
         await webviewCtx.dispose();
     }
 }
 
-main().catch(e => {
+main().catch((e) => {
     console.error(e);
     process.exit(1);
 });

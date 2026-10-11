@@ -143,7 +143,7 @@ function pushMark(target: Range<Decoration>[], cls: string, from: number, to: nu
 
 export function buildMarkdownDecorations(
     state: EditorState,
-    ranges: readonly { from: number; to: number }[],
+    ranges: readonly { from: number; to: number }[]
 ): MarkdownDecorationSets {
     const markRanges: Range<Decoration>[] = [];
     const syntaxRanges: Range<Decoration>[] = [];
@@ -372,7 +372,7 @@ export function buildMarkdownDecorations(
                         markRanges,
                         `md-table-cell md-table-sep md-col-${align}`,
                         delimiterRow.from + cellStart,
-                        delimiterRow.from + i,
+                        delimiterRow.from + i
                     );
                     colIndex++;
                 }
@@ -466,7 +466,7 @@ export function buildMarkdownDecorations(
     }
 
     const lineRanges: Range<Decoration>[] = [...lineClasses.entries()].map(([from, classes]) =>
-        Decoration.line({ class: [...classes].join(' ') }).range(from),
+        Decoration.line({ class: [...classes].join(' ') }).range(from)
     );
 
     return {
@@ -492,7 +492,7 @@ const emptyDecorationSets: MarkdownDecorationSets = {
 function buildOrKeep(
     state: EditorState,
     visibleRanges: readonly { from: number; to: number }[],
-    previous: MarkdownDecorationSets,
+    previous: MarkdownDecorationSets
 ): MarkdownDecorationSets {
     try {
         return buildMarkdownDecorations(state, visibleRanges);
@@ -521,7 +521,7 @@ class MarkdownDecorationsPlugin implements PluginValue, MarkdownDecorationSets {
         const built = buildOrKeep(
             update.state,
             update.view.visibleRanges,
-            update.docChanged ? emptyDecorationSets : this,
+            update.docChanged ? emptyDecorationSets : this
         );
         this.lineDecorations = built.lineDecorations;
         this.markDecorations = built.markDecorations;
@@ -539,7 +539,7 @@ export const markDecorationSource = (view: EditorView): DecorationSet =>
 const markdownLineDecorations = Prec.lowest(EditorView.decorations.of(lineDecorationSource));
 const markdownMarkDecorations = Prec.lowest(EditorView.decorations.of(markDecorationSource));
 const markdownSyntaxDecorations = Prec.highest(
-    EditorView.decorations.of((view) => view.plugin(markdownDecorationsPlugin)?.syntaxDecorations ?? Decoration.none),
+    EditorView.decorations.of((view) => view.plugin(markdownDecorationsPlugin)?.syntaxDecorations ?? Decoration.none)
 );
 
 /** The full decoration extension: add this once to `./extensions.ts`. */

@@ -101,7 +101,10 @@ describe('cm/codeHighlight: YAML frontmatter tokens', () => {
 
     it('emits nothing for the markdown below the closing fence', () => {
         const tokens = tokensIn('---\ntitle: x\n---\n\n# Heading\n\n**bold**\n');
-        assert.deepStrictEqual(tokens.filter((token) => /Heading|bold/.test(token.text)), []);
+        assert.deepStrictEqual(
+            tokens.filter((token) => /Heading|bold/.test(token.text)),
+            []
+        );
     });
 });
 

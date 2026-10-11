@@ -184,7 +184,7 @@ function findFootnotePos(
     state: EditorState,
     nodeName: 'Footnote' | 'FootnoteDef',
     labelNodeName: 'FootnoteLabel' | 'FootnoteDefLabel',
-    id: string,
+    id: string
 ): number | null {
     let found: number | null = null;
     syntaxTree(state).iterate({
@@ -201,7 +201,10 @@ function findFootnotePos(
     return found;
 }
 
-export type ChromeClickAction = { kind: 'scrollTo'; pos: number } | { kind: 'openLink'; url: string } | { kind: 'none' };
+export type ChromeClickAction =
+    | { kind: 'scrollTo'; pos: number }
+    | { kind: 'openLink'; url: string }
+    | { kind: 'none' };
 
 /** What a Cmd/Ctrl-click at `pos` should do: jump within the document
  *  (a `#fragment` link or a footnote ref/def crossing to its other side),
@@ -274,7 +277,10 @@ export function headFromCursorPosition(state: EditorState, cursor: CursorPositio
 
 /** Doc offsets for a host-side `TextSelection`, clamped the same way: the
  *  file can change between the text editor reporting it and this running. */
-export function selectionRangeFromTextSelection(state: EditorState, selection: TextSelection): { anchor: number; head: number } {
+export function selectionRangeFromTextSelection(
+    state: EditorState,
+    selection: TextSelection
+): { anchor: number; head: number } {
     const toOffset = ({ line, character }: TextPosition): number =>
         headFromCursorPosition(state, { lineIndex: line, offset: character });
     return { anchor: toOffset(selection.anchor), head: toOffset(selection.active) };
@@ -290,7 +296,7 @@ function scrollViewToPos(view: EditorView, pos: number): void {
                 effects: EditorView.scrollIntoView(pos, { y: 'start' }),
             });
             view.focus();
-        }),
+        })
     );
 }
 
@@ -413,7 +419,7 @@ export function initChrome(view: EditorView, root: HTMLElement, vscodeApi?: Vsco
                 if (scrollTop) {
                     view.scrollDOM.scrollTop = scrollTop;
                 }
-            }),
+            })
         );
     }
 

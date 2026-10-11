@@ -108,7 +108,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
         // Toggle diff mode by sending a message to the webview
         this.post(webviewPanel, {
             type: 'toggleDiff',
-            originalVersionContent: originalContent
+            originalVersionContent: originalContent,
         });
     }
 
@@ -141,9 +141,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                 return;
             }
 
-            const resolvedPath = path.isAbsolute(pathPart)
-                ? pathPart
-                : path.resolve(documentDirPath, pathPart);
+            const resolvedPath = path.isAbsolute(pathPart) ? pathPart : path.resolve(documentDirPath, pathPart);
             const fileUri = vscode.Uri.file(resolvedPath);
 
             // Make sure the target exists before trying to open it.
@@ -278,7 +276,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                     diffAvailable,
                     fontFamily,
                     readOnly: isReadOnly,
-                    headContent
+                    headContent,
                 });
             } else {
                 // Normal editor mode
@@ -290,7 +288,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                     diffAvailable,
                     fontFamily,
                     readOnly: isReadOnly,
-                    headContent
+                    headContent,
                 });
             }
         };
@@ -309,7 +307,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                 content: processedContent,
                 originalContent: currentContent,
                 diffAvailable,
-                headContent
+                headContent,
             });
         };
 
@@ -365,15 +363,11 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                     // Track that we're applying an edit from the webview
                     isApplyingEdit = true;
                     lastKnownContent = message.content;
-                    
+
                     try {
                         // Apply edit from webview to document
                         const edit = new vscode.WorkspaceEdit();
-                        edit.replace(
-                            document.uri,
-                            new vscode.Range(0, 0, document.lineCount, 0),
-                            message.content
-                        );
+                        edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), message.content);
                         await vscode.workspace.applyEdit(edit);
                     } finally {
                         isApplyingEdit = false;
@@ -393,7 +387,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                         this.post(webviewPanel, {
                             type: 'imageResolved',
                             originalPath: message.path,
-                            resolvedUri: webviewImageUri.toString()
+                            resolvedUri: webviewImageUri.toString(),
                         });
                     } catch {
                         // Ignore resolution errors
@@ -448,7 +442,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
             webviewPanel.onDidDispose(() => {
                 gitStateHandler.dispose();
                 openRepoHandler.dispose();
-                gitRepoHandlers.forEach(h => h.dispose());
+                gitRepoHandlers.forEach((h) => h.dispose());
             });
         };
 
@@ -491,16 +485,16 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 
         // Track previous active state to detect tab switches
         let wasActive = webviewPanel.active;
-        
+
         // Notify webview when panel becomes active (tab switch)
         const viewStateHandler = webviewPanel.onDidChangeViewState((e) => {
             const isNowActive = e.webviewPanel.active;
-            
+
             // Only send focus when transitioning from inactive to active
             if (isNowActive && !wasActive) {
                 this.post(webviewPanel, { type: 'focus' });
             }
-            
+
             wasActive = isNowActive;
         });
 

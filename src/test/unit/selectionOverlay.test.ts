@@ -43,7 +43,10 @@ describe('cm/selectionOverlay: selectionOverlayRanges', () => {
 
     it('handles every range of a multiple selection', () => {
         const selection = EditorSelection.create([EditorSelection.range(0, 2), EditorSelection.range(11, 13)]);
-        assert.deepStrictEqual(overlayFor(selection).marks, [{ from: 0, to: 2 }, { from: 11, to: 13 }]);
+        assert.deepStrictEqual(overlayFor(selection).marks, [
+            { from: 0, to: 2 },
+            { from: 11, to: 13 },
+        ]);
     });
 
     it('clips to the visible ranges', () => {

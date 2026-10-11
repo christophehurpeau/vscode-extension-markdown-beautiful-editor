@@ -60,12 +60,29 @@
 }
 
 /* TOC indentation levels */
-.toc-level-1 .toc-link { padding-left: 8px; font-weight: 600; }
-.toc-level-2 .toc-link { padding-left: 16px; }
-.toc-level-3 .toc-link { padding-left: 24px; font-size: 0.8em; }
-.toc-level-4 .toc-link { padding-left: 32px; font-size: 0.8em; }
-.toc-level-5 .toc-link { padding-left: 40px; font-size: 0.75em; }
-.toc-level-6 .toc-link { padding-left: 48px; font-size: 0.75em; }
+.toc-level-1 .toc-link {
+    padding-left: 8px;
+    font-weight: 600;
+}
+.toc-level-2 .toc-link {
+    padding-left: 16px;
+}
+.toc-level-3 .toc-link {
+    padding-left: 24px;
+    font-size: 0.8em;
+}
+.toc-level-4 .toc-link {
+    padding-left: 32px;
+    font-size: 0.8em;
+}
+.toc-level-5 .toc-link {
+    padding-left: 40px;
+    font-size: 0.75em;
+}
+.toc-level-6 .toc-link {
+    padding-left: 48px;
+    font-size: 0.75em;
+}
 
 /* Empty TOC state */
 .toc-empty {

@@ -8,7 +8,6 @@ import { inlineFormatChange, isInlineFormat } from '../../shared/inlineFormat';
  * would pass regardless of what the production code did.
  */
 describe('inlineFormatChange', () => {
-
     describe('bold', () => {
         it('wraps a plain selection', () => {
             const change = inlineFormatChange({ text: 'some text here', from: 5, to: 9, format: 'bold' });

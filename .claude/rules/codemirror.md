@@ -24,7 +24,7 @@ the migration away from the old regex parser existed to remove.
 
 Three layers at explicit `Prec`: line decorations and construct marks lowest, leaf marks
 (`md-syntax`, `md-url`, `md-alt`) highest. Higher precedence creates the inner DOM node, which is
-what makes `md-syntax` render *inside* `md-bold` rather than beside it. Decorations nest in the DOM,
+what makes `md-syntax` render _inside_ `md-bold` rather than beside it. Decorations nest in the DOM,
 so descendant CSS selectors like `.md-link .md-url` work.
 
 Construct marks must stay below every other mark source. A lower-precedence mark that partially
@@ -53,7 +53,7 @@ Math, footnotes, definition lists and YAML frontmatter are hand-written `Markdow
 `cm/lang/`; `math.ts` is the reference implementation to copy. Their ordering directives
 (`before: 'Link'`, `before: 'LinkReference'`, `before: 'HorizontalRule'`, `endLeaf`) are
 load-bearing: get one wrong and the construct silently never fires. GitHub alerts are deliberately
-*not* a grammar extension — a `> [!NOTE]` block already parses as a `Blockquote`, read the type off
+_not_ a grammar extension — a `> [!NOTE]` block already parses as a `Blockquote`, read the type off
 that node in the decoration layer.
 
 `MarkdownConfig.wrap`s compose (`configure` concatenates them), so an extension may mount another

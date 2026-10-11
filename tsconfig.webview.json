@@ -17,11 +17,6 @@
         "composite": true,
         "moduleResolution": "bundler"
     },
-    "include": [
-        "src/webview/**/*.ts"
-    ],
-    "references": [
-        { "path": "./tsconfig.shared.json" }
-    ]
+    "include": ["src/webview/**/*.ts"],
+    "references": [{ "path": "./tsconfig.shared.json" }]
 }
-

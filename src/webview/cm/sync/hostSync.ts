@@ -125,7 +125,15 @@ export interface DebouncedTask {
  * because whether the work is needed depends on state the queue cannot see
  * (the document AND the git HEAD text it is compared against).
  */
-export function createDebouncedTask({ delayMs, clock, run }: { delayMs: number; clock: DebounceClock; run: () => void }): DebouncedTask {
+export function createDebouncedTask({
+    delayMs,
+    clock,
+    run,
+}: {
+    delayMs: number;
+    clock: DebounceClock;
+    run: () => void;
+}): DebouncedTask {
     let timer: ReturnType<typeof setTimeout> | null = null;
 
     function cancel(): void {
@@ -207,7 +215,12 @@ export interface HostSync {
     destroy(): void;
 }
 
-export function createHostSync({ view, postToHost, debounceMs = DEFAULT_DEBOUNCE_MS, clock = realClock }: HostSyncOptions): HostSync {
+export function createHostSync({
+    view,
+    postToHost,
+    debounceMs = DEFAULT_DEBOUNCE_MS,
+    clock = realClock,
+}: HostSyncOptions): HostSync {
     const editQueue = createEditQueue({
         debounceMs,
         clock,
@@ -225,7 +238,7 @@ export function createHostSync({ view, postToHost, debounceMs = DEFAULT_DEBOUNCE
                     return;
                 }
                 editQueue.schedule(update.state.doc.toString());
-            }),
+            })
         ),
     });
 

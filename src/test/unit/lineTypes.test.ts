@@ -15,7 +15,6 @@ import {
  */
 
 describe('Line Type Detection', () => {
-    
     describe('Headings', () => {
         it('should detect H1', () => {
             const result = getLineType('# Heading 1');
@@ -254,7 +253,6 @@ describe('Line Type Detection', () => {
 });
 
 describe('Line Prefix Stripping', () => {
-    
     describe('Headings', () => {
         it('should strip H1 prefix', () => {
             assert.strictEqual(stripLinePrefix('# Heading'), 'Heading');
@@ -329,7 +327,6 @@ describe('Line Prefix Stripping', () => {
 });
 
 describe('Line Type Transformations', () => {
-    
     describe('To Heading', () => {
         it('should convert paragraph to H1', () => {
             const content = stripLinePrefix('Plain text');
@@ -439,32 +436,32 @@ describe('Menu Line Types', () => {
     });
 
     it('should include all heading levels', () => {
-        const headings = MENU_LINE_TYPES.filter(t => /^h[1-6]$/.test(t.type));
+        const headings = MENU_LINE_TYPES.filter((t) => /^h[1-6]$/.test(t.type));
         assert.strictEqual(headings.length, 6);
-        assert.ok(headings.some(h => h.type === 'h1'));
-        assert.ok(headings.some(h => h.type === 'h6'));
+        assert.ok(headings.some((h) => h.type === 'h1'));
+        assert.ok(headings.some((h) => h.type === 'h6'));
     });
 
     it('should include horizontal rule', () => {
-        assert.ok(MENU_LINE_TYPES.some(t => t.type === 'hr'));
+        assert.ok(MENU_LINE_TYPES.some((t) => t.type === 'hr'));
     });
 
     it('should include all list types', () => {
-        assert.ok(MENU_LINE_TYPES.some(t => t.type === 'ul'));
-        assert.ok(MENU_LINE_TYPES.some(t => t.type === 'ol'));
-        assert.ok(MENU_LINE_TYPES.some(t => t.type === 'task'));
+        assert.ok(MENU_LINE_TYPES.some((t) => t.type === 'ul'));
+        assert.ok(MENU_LINE_TYPES.some((t) => t.type === 'ol'));
+        assert.ok(MENU_LINE_TYPES.some((t) => t.type === 'task'));
     });
 
     it('should include quote', () => {
-        assert.ok(MENU_LINE_TYPES.some(t => t.type === 'quote'));
+        assert.ok(MENU_LINE_TYPES.some((t) => t.type === 'quote'));
     });
 
     it('should include code block', () => {
-        assert.ok(MENU_LINE_TYPES.some(t => t.type === 'code'));
+        assert.ok(MENU_LINE_TYPES.some((t) => t.type === 'code'));
     });
 
     it('should NOT include alert (no menu entry)', () => {
-        assert.ok(!MENU_LINE_TYPES.some(t => t.type === 'alert'));
+        assert.ok(!MENU_LINE_TYPES.some((t) => t.type === 'alert'));
     });
 
     it('should have labels for all menu items', () => {
@@ -485,7 +482,7 @@ describe('Code Block Content Detection', () => {
      * Code content lines should NOT be detected as any line type.
      * They should be treated specially (no icon, no clickable button).
      */
-    
+
     it('should not detect Python comment as heading inside code block', () => {
         // This is the key test - inside a code block, # is not a heading
         const codeContent = '# This is a Python comment';
@@ -516,47 +513,46 @@ describe('Icon Consistency', () => {
     });
 
     it('should use {} for code blocks', () => {
-        const codeDef = LINE_TYPES.find(t => t.type === 'code');
+        const codeDef = LINE_TYPES.find((t) => t.type === 'code');
         assert.strictEqual(codeDef?.icon, '{}');
     });
 
     it('should use subscript numbers for headings', () => {
-        assert.strictEqual(LINE_TYPES.find(t => t.type === 'h1')?.icon, 'H₁');
-        assert.strictEqual(LINE_TYPES.find(t => t.type === 'h2')?.icon, 'H₂');
-        assert.strictEqual(LINE_TYPES.find(t => t.type === 'h3')?.icon, 'H₃');
-        assert.strictEqual(LINE_TYPES.find(t => t.type === 'h4')?.icon, 'H₄');
-        assert.strictEqual(LINE_TYPES.find(t => t.type === 'h5')?.icon, 'H₅');
-        assert.strictEqual(LINE_TYPES.find(t => t.type === 'h6')?.icon, 'H₆');
+        assert.strictEqual(LINE_TYPES.find((t) => t.type === 'h1')?.icon, 'H₁');
+        assert.strictEqual(LINE_TYPES.find((t) => t.type === 'h2')?.icon, 'H₂');
+        assert.strictEqual(LINE_TYPES.find((t) => t.type === 'h3')?.icon, 'H₃');
+        assert.strictEqual(LINE_TYPES.find((t) => t.type === 'h4')?.icon, 'H₄');
+        assert.strictEqual(LINE_TYPES.find((t) => t.type === 'h5')?.icon, 'H₅');
+        assert.strictEqual(LINE_TYPES.find((t) => t.type === 'h6')?.icon, 'H₆');
     });
 
     it('should use 1. for ordered lists', () => {
-        const olDef = LINE_TYPES.find(t => t.type === 'ol');
+        const olDef = LINE_TYPES.find((t) => t.type === 'ol');
         assert.strictEqual(olDef?.icon, '1.');
     });
 
     it('should use • for unordered lists', () => {
-        const ulDef = LINE_TYPES.find(t => t.type === 'ul');
+        const ulDef = LINE_TYPES.find((t) => t.type === 'ul');
         assert.strictEqual(ulDef?.icon, '•');
     });
 
     it('should use ☐ for task lists', () => {
-        const taskDef = LINE_TYPES.find(t => t.type === 'task');
+        const taskDef = LINE_TYPES.find((t) => t.type === 'task');
         assert.strictEqual(taskDef?.icon, '☐');
     });
 
     it('should use ❝ for quotes', () => {
-        const quoteDef = LINE_TYPES.find(t => t.type === 'quote');
+        const quoteDef = LINE_TYPES.find((t) => t.type === 'quote');
         assert.strictEqual(quoteDef?.icon, '❝');
     });
 
     it('should use ! for alerts', () => {
-        const alertDef = LINE_TYPES.find(t => t.type === 'alert');
+        const alertDef = LINE_TYPES.find((t) => t.type === 'alert');
         assert.strictEqual(alertDef?.icon, '!');
     });
 
     it('should use ― for horizontal rules', () => {
-        const hrDef = LINE_TYPES.find(t => t.type === 'hr');
+        const hrDef = LINE_TYPES.find((t) => t.type === 'hr');
         assert.strictEqual(hrDef?.icon, '―');
     });
 });
-

@@ -36,7 +36,12 @@ function multiRangeStateFor(doc: string, ranges: [number, number][]): EditorStat
 
 function run(cmd: StateCommand, state: EditorState): { ran: boolean; state: EditorState } {
     let resultState = state;
-    const ran = cmd({ state, dispatch: (tr) => { resultState = tr.state; } });
+    const ran = cmd({
+        state,
+        dispatch: (tr) => {
+            resultState = tr.state;
+        },
+    });
     return { ran, state: resultState };
 }
 
@@ -45,7 +50,10 @@ describe('cm/commands/inlineFormat: toggleInlineFormat', () => {
         it('bold', () => {
             const doc = 'hello world';
             const from = doc.indexOf('world');
-            const { ran, state } = run(toggleInlineFormat('bold'), stateFor(doc, EditorSelection.single(from, from + 5)));
+            const { ran, state } = run(
+                toggleInlineFormat('bold'),
+                stateFor(doc, EditorSelection.single(from, from + 5))
+            );
             assert.strictEqual(ran, true);
             assert.strictEqual(state.doc.toString(), 'hello **world**');
             assert.strictEqual(state.sliceDoc(state.selection.main.from, state.selection.main.to), 'world');
@@ -70,7 +78,10 @@ describe('cm/commands/inlineFormat: toggleInlineFormat', () => {
         it('strikethrough', () => {
             const doc = 'hello world';
             const from = doc.indexOf('world');
-            const { state } = run(toggleInlineFormat('strikethrough'), stateFor(doc, EditorSelection.single(from, from + 5)));
+            const { state } = run(
+                toggleInlineFormat('strikethrough'),
+                stateFor(doc, EditorSelection.single(from, from + 5))
+            );
             assert.strictEqual(state.doc.toString(), 'hello ~~world~~');
             assert.strictEqual(state.sliceDoc(state.selection.main.from, state.selection.main.to), 'world');
         });
@@ -110,7 +121,10 @@ describe('cm/commands/inlineFormat: toggleInlineFormat', () => {
         it('strikethrough', () => {
             const doc = 'hello ~~world~~';
             const from = doc.indexOf('world');
-            const { state } = run(toggleInlineFormat('strikethrough'), stateFor(doc, EditorSelection.single(from, from + 5)));
+            const { state } = run(
+                toggleInlineFormat('strikethrough'),
+                stateFor(doc, EditorSelection.single(from, from + 5))
+            );
             assert.strictEqual(state.doc.toString(), 'hello world');
         });
 
@@ -146,7 +160,10 @@ describe('cm/commands/inlineFormat: toggleInlineFormat', () => {
     describe('TRIAGE #10: link toggle with two links in the selection', () => {
         it('wraps the whole selection as a new link instead of unwrapping either', () => {
             const doc = '[a](b) [c](d)';
-            const { ran, state } = run(toggleInlineFormat('link'), stateFor(doc, EditorSelection.single(0, doc.length)));
+            const { ran, state } = run(
+                toggleInlineFormat('link'),
+                stateFor(doc, EditorSelection.single(0, doc.length))
+            );
             assert.strictEqual(ran, true);
             assert.strictEqual(state.doc.toString(), `[${doc}](url)`);
             assert.strictEqual(state.sliceDoc(state.selection.main.from, state.selection.main.to), doc);
@@ -165,7 +182,11 @@ describe('cm/commands/inlineFormat: toggleInlineFormat', () => {
     describe('multiple selection ranges', () => {
         it('wraps every selected range, on the same line and across lines', () => {
             const doc = 'one two\nthree';
-            const state = multiRangeStateFor(doc, [[0, 3], [4, 7], [8, 13]]);
+            const state = multiRangeStateFor(doc, [
+                [0, 3],
+                [4, 7],
+                [8, 13],
+            ]);
             const { ran, state: result } = run(toggleInlineFormat('bold'), state);
             assert.strictEqual(ran, true);
             assert.strictEqual(result.doc.toString(), '**one** **two**\n**three**');
@@ -173,24 +194,39 @@ describe('cm/commands/inlineFormat: toggleInlineFormat', () => {
 
         it('keeps each range covering the same text it started on', () => {
             const doc = 'one two';
-            const { state } = run(toggleInlineFormat('italic'), multiRangeStateFor(doc, [[0, 3], [4, 7]]));
+            const { state } = run(
+                toggleInlineFormat('italic'),
+                multiRangeStateFor(doc, [
+                    [0, 3],
+                    [4, 7],
+                ])
+            );
             assert.deepStrictEqual(
                 state.selection.ranges.map((r) => state.sliceDoc(r.from, r.to)),
-                ['one', 'two'],
+                ['one', 'two']
             );
         });
 
         it('toggles a shared construct once when two cursors sit inside it', () => {
             const doc = 'before **bold** after';
             const first = doc.indexOf('bold');
-            const { ran, state } = run(toggleInlineFormat('bold'), multiRangeStateFor(doc, [[first + 1, first + 1], [first + 3, first + 3]]));
+            const { ran, state } = run(
+                toggleInlineFormat('bold'),
+                multiRangeStateFor(doc, [
+                    [first + 1, first + 1],
+                    [first + 3, first + 3],
+                ])
+            );
             assert.strictEqual(ran, true);
             assert.strictEqual(state.doc.toString(), 'before bold after');
         });
 
         it('applies to the ranges that can toggle and leaves the others alone', () => {
             const doc = 'plain text\nsecond line';
-            const state = multiRangeStateFor(doc, [[3, 3], [11, 17]]);
+            const state = multiRangeStateFor(doc, [
+                [3, 3],
+                [11, 17],
+            ]);
             const { ran, state: result } = run(toggleInlineFormat('bold'), state);
             assert.strictEqual(ran, true);
             assert.strictEqual(result.doc.toString(), 'plain text\n**second** line');
@@ -198,7 +234,13 @@ describe('cm/commands/inlineFormat: toggleInlineFormat', () => {
 
         it('is a no-op when no range can toggle', () => {
             const doc = 'plain text';
-            const { ran, state } = run(toggleInlineFormat('bold'), multiRangeStateFor(doc, [[3, 3], [7, 7]]));
+            const { ran, state } = run(
+                toggleInlineFormat('bold'),
+                multiRangeStateFor(doc, [
+                    [3, 3],
+                    [7, 7],
+                ])
+            );
             assert.strictEqual(ran, false);
             assert.strictEqual(state.doc.toString(), doc);
         });

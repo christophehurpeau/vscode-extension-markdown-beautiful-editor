@@ -60,7 +60,11 @@ export function formattingAt(state: EditorState, pos: number): FormattingAtCurso
  * full), matching the old `findFormattingSpanAtCursor` + `selectNodeContents`
  * behavior used to seed a toggle when the cursor is collapsed.
  */
-export function enclosingFormatRange(state: EditorState, pos: number, format: InlineFormat): { from: number; to: number } | null {
+export function enclosingFormatRange(
+    state: EditorState,
+    pos: number,
+    format: InlineFormat
+): { from: number; to: number } | null {
     let node: SyntaxNode | null = syntaxTree(state).resolveInner(pos, -1);
     while (node) {
         if (formatForNode(node) === format) {

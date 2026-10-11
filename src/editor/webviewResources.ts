@@ -15,7 +15,10 @@ import { rewriteImagePaths } from '../shared/imagePaths';
  * The document's own directory plus two levels up (for `../images/` and
  * `../../` style paths), every workspace folder, and the extension's `dist/`.
  */
-export function webviewLocalResourceRoots({ extensionUri, documentDirPath }: {
+export function webviewLocalResourceRoots({
+    extensionUri,
+    documentDirPath,
+}: {
     extensionUri: vscode.Uri;
     documentDirPath: string;
 }): vscode.Uri[] {
@@ -29,10 +32,10 @@ export function webviewLocalResourceRoots({ extensionUri, documentDirPath }: {
     ];
 }
 
-export function webviewAssetUris({ context, webview }: {
-    context: vscode.ExtensionContext;
-    webview: vscode.Webview;
-}): { scriptUri: vscode.Uri; styleUri: vscode.Uri } {
+export function webviewAssetUris({ context, webview }: { context: vscode.ExtensionContext; webview: vscode.Webview }): {
+    scriptUri: vscode.Uri;
+    styleUri: vscode.Uri;
+} {
     const asset = (name: string): vscode.Uri => {
         const uri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'dist', name));
         // In the Extension Development Host the bundles are rebuilt under a
@@ -48,19 +51,23 @@ export function webviewAssetUris({ context, webview }: {
     return { scriptUri: asset('webview.js'), styleUri: asset('editor.css') };
 }
 
-export function createImagePathProcessor({ webview, documentDirPath }: {
+export function createImagePathProcessor({
+    webview,
+    documentDirPath,
+}: {
     webview: vscode.Webview;
     documentDirPath: string;
 }): (markdown: string) => string {
-    return (markdown) => rewriteImagePaths(markdown, (imagePath) => {
-        try {
-            const imageUri = path.isAbsolute(imagePath)
-                ? vscode.Uri.file(imagePath)
-                : vscode.Uri.file(path.resolve(documentDirPath, imagePath));
-            return webview.asWebviewUri(imageUri).toString();
-        } catch (error) {
-            console.error('Markdown Beautiful Editor: failed to process image path:', imagePath, error);
-            return null;
-        }
-    });
+    return (markdown) =>
+        rewriteImagePaths(markdown, (imagePath) => {
+            try {
+                const imageUri = path.isAbsolute(imagePath)
+                    ? vscode.Uri.file(imagePath)
+                    : vscode.Uri.file(path.resolve(documentDirPath, imagePath));
+                return webview.asWebviewUri(imageUri).toString();
+            } catch (error) {
+                console.error('Markdown Beautiful Editor: failed to process image path:', imagePath, error);
+                return null;
+            }
+        });
 }

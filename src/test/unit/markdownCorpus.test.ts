@@ -19,7 +19,7 @@ describe('markdown-corpus', () => {
     });
 
     it('has unique entry names', () => {
-        const names = markdownCorpus.map(e => e.name);
+        const names = markdownCorpus.map((e) => e.name);
         assert.strictEqual(new Set(names).size, names.length);
     });
 });

@@ -28,7 +28,7 @@ function tabKind(tab: vscode.Tab): TabKind {
 }
 
 function openTabKinds(): TabKind[] {
-    return vscode.window.tabGroups.all.flatMap(group => group.tabs.map(tabKind));
+    return vscode.window.tabGroups.all.flatMap((group) => group.tabs.map(tabKind));
 }
 
 async function waitFor(condition: () => boolean, timeoutMs = 3000): Promise<void> {
@@ -37,18 +37,20 @@ async function waitFor(condition: () => boolean, timeoutMs = 3000): Promise<void
         if (Date.now() - start > timeoutMs) {
             throw new Error(`Timed out; open tabs: ${JSON.stringify(openTabKinds())}`);
         }
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 50));
     }
 }
 
 /** Long enough for a redirect that should not happen to have happened. */
 function settle(): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, 800));
+    return new Promise((resolve) => setTimeout(resolve, 800));
 }
 
 suite('Replace text editors (experimental)', () => {
     const tempDir = path.join(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? __dirname, '.test-temp-redirect');
-    const content = Array.from({ length: 40 }, (_, i) => (i === 20 ? 'line 20 bneedle here' : `filler line ${i}`)).join('\n');
+    const content = Array.from({ length: 40 }, (_, i) => (i === 20 ? 'line 20 bneedle here' : `filler line ${i}`)).join(
+        '\n'
+    );
     const matchSelection = new vscode.Range(20, 8, 20, 15);
 
     function createFile(name: string): vscode.Uri {

@@ -12,7 +12,6 @@ import { mergePaneOptions, planToggleDiff } from '../../webview/cm/diff/mergeVie
  * - Line change detection (added/removed)
  */
 describe('Diff Mode Tests', () => {
-
     describe('Diff Computation', () => {
         it('should detect added lines', () => {
             const original = 'Line 1\nLine 2\n';
@@ -21,11 +20,11 @@ describe('Diff Mode Tests', () => {
             const changes = Diff.diffLines(original, modified);
 
             // Should detect the added line
-            const hasAdded = changes.some(c => c.added);
+            const hasAdded = changes.some((c) => c.added);
             assert.ok(hasAdded, 'Should have added change');
 
             // Verify the added content contains Line 3
-            const addedChange = changes.find(c => c.added);
+            const addedChange = changes.find((c) => c.added);
             assert.ok(addedChange?.value.includes('Line 3'));
         });
 
@@ -36,11 +35,11 @@ describe('Diff Mode Tests', () => {
             const changes = Diff.diffLines(original, modified);
 
             // Should detect the removed line
-            const hasRemoved = changes.some(c => c.removed);
+            const hasRemoved = changes.some((c) => c.removed);
             assert.ok(hasRemoved, 'Should have removed change');
 
             // Verify the removed content contains Line 3
-            const removedChange = changes.find(c => c.removed);
+            const removedChange = changes.find((c) => c.removed);
             assert.ok(removedChange?.value.includes('Line 3'));
         });
 
@@ -54,8 +53,8 @@ describe('Diff Mode Tests', () => {
             assert.ok(changes.length >= 3);
 
             // Check that we have removed and added changes
-            const hasRemoved = changes.some(c => c.removed);
-            const hasAdded = changes.some(c => c.added);
+            const hasRemoved = changes.some((c) => c.removed);
+            const hasAdded = changes.some((c) => c.added);
             assert.ok(hasRemoved, 'Should have removed change');
             assert.ok(hasAdded, 'Should have added change');
         });
@@ -87,7 +86,7 @@ describe('Diff Mode Tests', () => {
             const changes = Diff.diffLines(original, modified);
 
             // Should have only unchanged content
-            const hasChanges = changes.some(c => c.added || c.removed);
+            const hasChanges = changes.some((c) => c.added || c.removed);
             assert.ok(!hasChanges, 'Should have no additions or removals');
         });
 
@@ -97,7 +96,7 @@ describe('Diff Mode Tests', () => {
 
             const changes = Diff.diffLines(original, modified);
 
-            const addedChange = changes.find(c => c.added);
+            const addedChange = changes.find((c) => c.added);
             assert.ok(addedChange, 'Should have added change');
             // Verify multiple lines were added
             assert.ok(addedChange!.value.includes('Line 2'));
@@ -111,7 +110,7 @@ describe('Diff Mode Tests', () => {
 
             const changes = Diff.diffLines(original, modified);
 
-            const removedChange = changes.find(c => c.removed);
+            const removedChange = changes.find((c) => c.removed);
             assert.ok(removedChange, 'Should have removed change');
             // Verify multiple lines were removed
             assert.ok(removedChange!.value.includes('Line 2'));
@@ -126,7 +125,7 @@ describe('Diff Mode Tests', () => {
             const changes = Diff.diffLines(original, modified);
 
             // Whitespace changes should be detected
-            const hasChanges = changes.some(c => c.added || c.removed);
+            const hasChanges = changes.some((c) => c.added || c.removed);
             assert.ok(hasChanges, 'Should detect whitespace changes');
         });
     });
@@ -331,7 +330,10 @@ describe('Diff Mode Tests', () => {
 
             assert.deepStrictEqual(
                 [...markers].sort(([a], [b]) => a - b),
-                [[2, 'added'], [3, 'added']],
+                [
+                    [2, 'added'],
+                    [3, 'added'],
+                ]
             );
         });
 

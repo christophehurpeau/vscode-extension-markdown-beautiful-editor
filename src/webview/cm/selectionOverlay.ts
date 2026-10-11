@@ -30,7 +30,10 @@ interface VisibleRange {
  *  width: the range starts at or before it and runs past its line break.
  *  Marks cover every selected character, fully selected lines included, since
  *  an inline code chip paints over its line as well as over the layer. */
-export function selectionOverlayRanges(state: EditorState, visibleRanges: readonly VisibleRange[]): SelectionOverlayRanges {
+export function selectionOverlayRanges(
+    state: EditorState,
+    visibleRanges: readonly VisibleRange[]
+): SelectionOverlayRanges {
     const lines = new Set<number>();
     const marks: SelectionOverlayRanges['marks'] = [];
 
@@ -70,7 +73,7 @@ function buildSelectionOverlay(view: EditorView): DecorationSet {
             ...lines.map((from) => selectedLine.range(from)),
             ...marks.map(({ from, to }) => selectedText.range(from, to)),
         ],
-        true,
+        true
     );
 }
 
@@ -88,5 +91,5 @@ export const selectionOverlay = ViewPlugin.fromClass(
             }
         }
     },
-    { decorations: (plugin) => plugin.decorations },
+    { decorations: (plugin) => plugin.decorations }
 );

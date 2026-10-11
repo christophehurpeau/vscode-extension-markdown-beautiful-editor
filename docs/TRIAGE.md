@@ -8,22 +8,22 @@ Scope note: the consolidation refactor deliberately did **not** fix these
 (refactor/tests only). Items 1–5 were surfaced in the consolidation plan;
 6–11 are additional findings.
 
-| # | Severity | Confidence | Summary |
-|---|----------|-----------|---------|
-| 1 | ✅ Fixed | High | Image title dropped on rewrite → data loss on save |
-| 2 | ✅ Moot | High | Unreachable initial-diff-mode code |
-| 3 | Low | High | Dead `resolveImage` / `imageResolved` round-trip |
-| 4 | ✅ Fixed | Medium | Tab uses deprecated `execCommand`, bypasses edit pipeline |
-| 5 | ✅ Fixed | High | `isDiffAvailable` runs the git lookup twice |
-| 6 | ✅ Fixed | Medium | TOC index vs editor heading count can diverge (wrong scroll target) |
-| 7 | ✅ Moot | Medium | `isExternalUpdate` can stay stuck on a render throw (2 sites) |
-| 8 | ✅ Fixed | Low | Edits within the debounce window can be lost on close |
-| 9 | ✅ Moot | Medium | `update` while in init-diff-mode renders onto the diff DOM |
-| 10 | ✅ Fixed | Low | Inline link toggle-off regex is greedy |
-| 11 | ✅ Moot | Low | `extractMarkdown` fallback can capture line-number text |
-| 12 | Medium | Med (repro pending) | Diffs don't render in this editor when it's the default for `*.md` |
+| #   | Severity | Confidence          | Summary                                                             |
+| --- | -------- | ------------------- | ------------------------------------------------------------------- |
+| 1   | ✅ Fixed | High                | Image title dropped on rewrite → data loss on save                  |
+| 2   | ✅ Moot  | High                | Unreachable initial-diff-mode code                                  |
+| 3   | Low      | High                | Dead `resolveImage` / `imageResolved` round-trip                    |
+| 4   | ✅ Fixed | Medium              | Tab uses deprecated `execCommand`, bypasses edit pipeline           |
+| 5   | ✅ Fixed | High                | `isDiffAvailable` runs the git lookup twice                         |
+| 6   | ✅ Fixed | Medium              | TOC index vs editor heading count can diverge (wrong scroll target) |
+| 7   | ✅ Moot  | Medium              | `isExternalUpdate` can stay stuck on a render throw (2 sites)       |
+| 8   | ✅ Fixed | Low                 | Edits within the debounce window can be lost on close               |
+| 9   | ✅ Moot  | Medium              | `update` while in init-diff-mode renders onto the diff DOM          |
+| 10  | ✅ Fixed | Low                 | Inline link toggle-off regex is greedy                              |
+| 11  | ✅ Moot  | Low                 | `extractMarkdown` fallback can capture line-number text             |
+| 12  | Medium   | Med (repro pending) | Diffs don't render in this editor when it's the default for `*.md`  |
 
-**Status after the CodeMirror 6 migration.** Items marked *Moot* were not fixed individually —
+**Status after the CodeMirror 6 migration.** Items marked _Moot_ were not fixed individually —
 the code they describe no longer exists. #7 and #9 depended on the `isExternalUpdate` re-entrancy
 guard and the `innerHTML` re-render, both replaced by transactions (host-originated updates now
 carry an annotation, which cannot get stuck the way a shared boolean could). #11 depended on the
@@ -298,7 +298,7 @@ falling back. For `CustomTextEditorProvider` it adds two optional methods:
 - `resolveCustomTextEditorSideBySideDiff(documents, webviewPanels, token)` — two linked
   webviews (`webviewPanels.original` / `.modified`) for synced scroll, hidden chrome, etc.
 
-This hooks into *all* of VS Code's diff entry points, unlike the current manual git-HEAD
+This hooks into _all_ of VS Code's diff entry points, unlike the current manual git-HEAD
 toggle in [customEditorProvider.ts:125](src/editor/customEditorProvider.ts#L125). Related:
 a proposed API for computing text diffs with VS Code's own algorithm
 ([microsoft/vscode#314939](https://github.com/microsoft/vscode/pull/314939)). Reference
@@ -307,7 +307,7 @@ implementation: the built-in markdown preview
 When implementing, reuse the existing `computeDiff` highlighting from
 [diff.ts](src/webview/editor/diff.ts) and consider retiring the manual toggle.
 
-**Blocked on:** `customEditorDiffs` is a *proposed* API. It requires
+**Blocked on:** `customEditorDiffs` is a _proposed_ API. It requires
 `"enabledApiProposals": ["customEditorDiffs"]` + a vendored `.d.ts`, and **an extension
 using proposed APIs cannot be published to the Marketplace** — it only runs in the
 Extension Development Host or VS Code Insiders with the proposal manually enabled
@@ -359,7 +359,7 @@ machinery, so it needs no proposed API:
   **Each entry point is resolved on its own terms and never falls back onto another's
   context.** A first cut chained them (`scmResource ?? activeDiffTab ?? fileStatus`), so a
   Source Control row whose resource object was not recognised silently answered with
-  *whatever diff tab happened to be open* — clicking a file under *Changes* while that same
+  _whatever diff tab happened to be open_ — clicking a file under _Changes_ while that same
   file's staged diff was the active tab returned the staged pair. A Source Control click now
   never consults the editors at all, and the title-bar path accepts the active diff tab only
   when it is showing the same file.
@@ -373,14 +373,15 @@ machinery, so it needs no proposed API:
   resource object, so it fell through to the default. `git:`'s `~` ref maps onto the index:
   for an unstaged tracked file the index still holds the HEAD version, so they are the same
   bytes either way.
+
 - [src/editor/gitContent.ts](src/editor/gitContent.ts) — reads through `git:` URIs (the same
   mechanism VS Code's diff uses, so the text matches exactly), falling back to
   `repository.show`. The `{path, ref}` query shape is verified against the shipped git
   extension bundle but is de-facto, not public API — hence the fallback.
 - **`scm/resourceState/context` has no resource URI context.** Verified in the 1.137.0
-  workbench: the SCM resource menu is created per *group* with an overlay of only
+  workbench: the SCM resource menu is created per _group_ with an overlay of only
   `scmResourceGroup` + `multiDiffEditorEnableViewChanges`, and the per-resource overlay adds
-  only `scmResourceState` (the git extension sets that to the repository *kind*). So
+  only `scmResourceState` (the git extension sets that to the repository _kind_). So
   `resourceExtname` / `resourceFilename` / `resourceScheme` / `resourceLangId` in a `when`
   there do **not** describe the clicked file — they fall through to the ambient context, i.e.
   whatever editor is active. A `resourceExtname == .md` clause made the menu entry appear or
@@ -398,7 +399,7 @@ machinery, so it needs no proposed API:
 
 **The diff panel is deliberately not a registered editor**, so it does not appear in the
 editor-association picker (the dropdown at the top-right of a diff tab, or **Open With…**).
-VS Code resolves a custom editor once per diff *side*, so an entry in that picker yields two
+VS Code resolves a custom editor once per diff _side_, so an entry in that picker yields two
 independent panes.
 
 That is a design constraint, **not** an impossibility — an earlier revision of this note
@@ -419,7 +420,7 @@ diff chrome cannot be hidden. See "Possible: paned diff rendering" below.
 `workbench.editorAssociations` and `workbench.diffEditorAssociations`, the latter described
 as "Configure glob patterns to editors for diff views… These override
 `workbench.editorAssociations` for diffs". The diff picker's **Set Default (Diff Only) for
-'*.md'** submenu writes the second one. Pointing either at `markdown.beautifulEditor`
+'\*.md'** submenu writes the second one. Pointing either at `markdown.beautifulEditor`
 reproduces the two-pane state; the reset is that picker's **Text Diff Editor** entry.
 
 **Still not covered** (only `customEditorDiffs` can): the multi-diff editor, "Compare with…",
@@ -438,7 +439,7 @@ pairing fails. `customEditorDiffs` replaces the whole thing when it finalizes.
 ### Editable modified pane — shipped 2026-09-19 (in-editor toggle only)
 
 Both `MergeView` panes used to be forced read-only, overriding the library's editable `b`
-side, because `b` was a *snapshot* not wired to `hostSync`: edits there would have been
+side, because `b` was a _snapshot_ not wired to `hostSync`: edits there would have been
 silently lost. `revertControls` was unset for the same reason.
 
 The in-editor diff toggle now hands document ownership to the `b` pane for the duration of
@@ -472,12 +473,12 @@ not taken. `webviewAssetUris` now appends a `reload=<timestamp>` query in
 `ExtensionMode.Development` only; released builds keep the plain URI so caching works
 normally.
 
-`HostSync` gained `flush()` for the handover: `destroy()` *cancels* a debounced edit rather
+`HostSync` gained `flush()` for the handover: `destroy()` _cancels_ a debounced edit rather
 than sending it, which would have lost the last keystrokes before the toggle closed — the
 same loss #8 covers for disposal, reached by a different route.
 
 **The toggle was unreachable, which is how this went unnoticed.** The toolbar's ⇄ button hid
-itself whenever `diffAvailable` was false — and that flag is false for *every* way the HEAD
+itself whenever `diffAvailable` was false — and that flag is false for _every_ way the HEAD
 lookup can fail (not in a repository, untracked, git extension not yet activated, repository
 list still empty right after activation), not just "the file matches HEAD". A control that
 vanishes is indistinguishable from one that is broken, and it gave the user nothing to act
@@ -487,8 +488,8 @@ host can say so out loud. A native title-bar button (`activeCustomEditorId ==
 markdown.beautifulEditor`) now offers the same command independently of the webview.
 
 **The diff panel got the same treatment where it can take it** — `isModifiedSideWritable`
-gates on the modified side being the working tree, so *Unstaged* and *Untracked* views edit
-and revert, while *Staged* (the index) and *Deleted* stay read-only. The panel is a plain
+gates on the modified side being the working tree, so _Unstaged_ and _Untracked_ views edit
+and revert, while _Staged_ (the index) and _Deleted_ stay read-only. The panel is a plain
 `WebviewPanel` with no `TextDocument` behind it, so `diffPanel.ts` applies the pane's `edit`
 messages as a `WorkspaceEdit` against the file itself, mirroring `customEditorProvider.ts`
 including its `isApplyingEdit` echo suppression. An external change to the file re-sends the

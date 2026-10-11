@@ -20,6 +20,7 @@ pnpm check-types      # tsc type check only
 ## Architecture
 
 Two separate bundles compiled by esbuild:
+
 - **Extension host** (`src/extension.ts`, `src/editor/`) — runs in Node.js, registers the custom editor
 - **Webview** (`src/webview/`) — runs in the browser inside the VS Code webview panel
 

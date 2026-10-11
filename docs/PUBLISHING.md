@@ -32,13 +32,13 @@ the commits.
 
 ## Repository setup
 
-| Name | Kind | Purpose |
-| --- | --- | --- |
-| `PUSH_DEPLOY_KEY` | secret | private half of the read-write deploy key "Push Github Actions Key"; the push of the release commit and tag uses it |
-| `OVSX_PAT` | secret | Open VSX access token |
-| `AZURE_CLIENT_ID` | variable | Entra app registration used for the Marketplace |
-| `AZURE_TENANT_ID` | variable | its tenant |
-| `marketplace` | environment | the **publish** and **check-auth** jobs run in it; the Entra federated credential trusts it |
+| Name              | Kind        | Purpose                                                                                                             |
+| ----------------- | ----------- | ------------------------------------------------------------------------------------------------------------------- |
+| `PUSH_DEPLOY_KEY` | secret      | private half of the read-write deploy key "Push Github Actions Key"; the push of the release commit and tag uses it |
+| `OVSX_PAT`        | secret      | Open VSX access token                                                                                               |
+| `AZURE_CLIENT_ID` | variable    | Entra app registration used for the Marketplace                                                                     |
+| `AZURE_TENANT_ID` | variable    | its tenant                                                                                                          |
+| `marketplace`     | environment | the **publish** and **check-auth** jobs run in it; the Entra federated credential trusts it                         |
 
 The `main` ruleset requires the reviewflow status checks; deploy keys are exempt so the release
 commit can be pushed.
@@ -64,13 +64,13 @@ Setup, once:
    registration**, single tenant. Note the **Application (client) ID** and **Directory (tenant)
    ID**.
 2. In the app: **Certificates & secrets** → **Federated credentials** → **Add credential** →
-   *GitHub Actions deploying Azure resources*: organization `christophehurpeau`, repository
+   _GitHub Actions deploying Azure resources_: organization `christophehurpeau`, repository
    `vscode-extension-markdown-beautiful-editor`, entity **Environment**, name `marketplace`.
 3. ```bash
    gh variable set AZURE_CLIENT_ID --body <client-id>
    gh variable set AZURE_TENANT_ID --body <tenant-id>
    ```
-4. Run **Release** with **Dry run**. The **check-auth** job's *Show Marketplace identity* step
+4. Run **Release** with **Dry run**. The **check-auth** job's _Show Marketplace identity_ step
    prints an `id`.
 5. https://marketplace.visualstudio.com/manage/publishers/chrp → **Members** → add that `id` with
    the **Contributor** role.

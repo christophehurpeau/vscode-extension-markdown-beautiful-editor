@@ -119,7 +119,7 @@ class LineNumberMarker extends GutterMarker {
     constructor(
         readonly number: number,
         readonly strutClass: string,
-        readonly changeClass: string,
+        readonly changeClass: string
     ) {
         super();
         this.elementClass = [strutClass, changeClass].filter(Boolean).join(' ');

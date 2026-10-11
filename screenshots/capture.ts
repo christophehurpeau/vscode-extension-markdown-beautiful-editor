@@ -208,9 +208,8 @@ function hostStubScript(): string {
  * no longer blink, so it renders identically every run.
  */
 function captureStabilityCss(caret: 'hidden' | 'visible'): string {
-    const caretRule = caret === 'visible'
-        ? ''
-        : '.cm-cursor, .cm-cursor-primary, .cm-dropCursor { display: none !important; }';
+    const caretRule =
+        caret === 'visible' ? '' : '.cm-cursor, .cm-cursor-primary, .cm-dropCursor { display: none !important; }';
     return `
     ${caretRule}
     *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -293,9 +292,11 @@ async function initMessageFor(shot: Shot): Promise<HostToWebviewMessage> {
  */
 async function openDiffMode(page: Page, head: string): Promise<void> {
     await page.evaluate((originalVersionContent) => {
-        window.dispatchEvent(new MessageEvent('message', {
-            data: { type: 'toggleDiff', originalVersionContent },
-        }));
+        window.dispatchEvent(
+            new MessageEvent('message', {
+                data: { type: 'toggleDiff', originalVersionContent },
+            })
+        );
     }, head);
     await page.waitForSelector('.cm-mergeView');
 }
@@ -374,7 +375,9 @@ async function capture(): Promise<void> {
 
             const output = join(imagesDir, shot.output);
             await page.screenshot({ path: output });
-            console.log(`  ${shot.output}  ${shot.width * deviceScaleFactor}x${shot.height * deviceScaleFactor}  <- ${shot.fixture}`);
+            console.log(
+                `  ${shot.output}  ${shot.width * deviceScaleFactor}x${shot.height * deviceScaleFactor}  <- ${shot.fixture}`
+            );
         }
     } finally {
         await browser.close();

@@ -135,10 +135,16 @@
     padding-right: 0;
 }
 
-.md-col-center { text-align: center; }
-.md-col-right { text-align: right; }
+.md-col-center {
+    text-align: center;
+}
+.md-col-right {
+    text-align: right;
+}
 .md-col-left,
-.md-col-none { text-align: left; }
+.md-col-none {
+    text-align: left;
+}
 
 .md-table-sep {
     color: var(--vscode-editorLineNumber-foreground, #6e7681);

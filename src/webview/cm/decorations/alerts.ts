@@ -22,10 +22,7 @@ export interface AlertLineClasses {
     classes: readonly string[];
 }
 
-export function alertLineClassesForBlockquote(
-    state: EditorState,
-    blockquote: SyntaxNodeRef,
-): AlertLineClasses[] {
+export function alertLineClassesForBlockquote(state: EditorState, blockquote: SyntaxNodeRef): AlertLineClasses[] {
     const firstLine = state.doc.lineAt(blockquote.from);
     const type = parseAlertHeader(firstLine.text);
     if (!type) {

@@ -34,7 +34,7 @@ describe('cm/lang/frontmatter: frontmatterExtension', () => {
             tree('---\ntitle: Hello\n---\n\nbody'),
             'Document(Frontmatter(FrontmatterMark,' +
                 'Stream(Document(BlockMapping(Pair(Key(Literal),":",Literal)))),' +
-                'FrontmatterMark),Paragraph)',
+                'FrontmatterMark),Paragraph)'
         );
     });
 
@@ -44,7 +44,7 @@ describe('cm/lang/frontmatter: frontmatterExtension', () => {
             'Document(Frontmatter(FrontmatterMark,' +
                 'Stream(Document(BlockMapping(Pair(Key(Literal),":",Literal),' +
                 'Pair(Key(Literal),":",FlowSequence("[",Item(Literal),",",Item(Literal),"]"))))),' +
-                'FrontmatterMark),ATXHeading1(HeaderMark),Paragraph)',
+                'FrontmatterMark),ATXHeading1(HeaderMark),Paragraph)'
         );
     });
 
@@ -66,14 +66,14 @@ describe('cm/lang/frontmatter: frontmatterExtension', () => {
                 'Pair(Key(Literal),":",BlockMapping(Pair(Key(Literal),":",' +
                 'BlockSequence("-",Item(BlockMapping(Pair(Key(Literal),":",Literal))))))),' +
                 'Pair(Key(Literal),":",BlockLiteral(BlockLiteralHeader,BlockLiteralContent))))),' +
-                'FrontmatterMark),Paragraph)',
+                'FrontmatterMark),Paragraph)'
         );
     });
 
     it('accepts an empty block, emitting no content node', () => {
         assert.strictEqual(
             tree('---\n---\n\nbody'),
-            'Document(Frontmatter(FrontmatterMark,FrontmatterMark),Paragraph)',
+            'Document(Frontmatter(FrontmatterMark,FrontmatterMark),Paragraph)'
         );
     });
 
@@ -82,7 +82,7 @@ describe('cm/lang/frontmatter: frontmatterExtension', () => {
             tree('--- \ntitle: x\n--- \n\nbody'),
             'Document(Frontmatter(FrontmatterMark,' +
                 'Stream(Document(BlockMapping(Pair(Key(Literal),":",Literal)))),' +
-                'FrontmatterMark),Paragraph)',
+                'FrontmatterMark),Paragraph)'
         );
     });
 
@@ -98,7 +98,7 @@ describe('cm/lang/frontmatter: frontmatterExtension', () => {
     it('does not fire inside block markup', () => {
         assert.strictEqual(
             tree('> ---\n> a: 1\n> ---'),
-            'Document(Blockquote(QuoteMark,HorizontalRule,QuoteMark,SetextHeading2(HeaderMark)))',
+            'Document(Blockquote(QuoteMark,HorizontalRule,QuoteMark,SetextHeading2(HeaderMark)))'
         );
     });
 
@@ -112,7 +112,7 @@ describe('cm/lang/frontmatter: frontmatterExtension', () => {
         assert.strictEqual(
             tree('---\ntitle: x\n\n# Heading'),
             'Document(Frontmatter(FrontmatterMark,' +
-                'Stream(Document(BlockMapping(Pair(Key(Literal),":",Literal))),Comment)))',
+                'Stream(Document(BlockMapping(Pair(Key(Literal),":",Literal))),Comment)))'
         );
     });
 });

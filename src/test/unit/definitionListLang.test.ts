@@ -30,10 +30,7 @@ describe('cm/lang/definitionList: definitionListExtension', () => {
         // follows a term line, which is a Paragraph, so absent `endLeaf` this
         // would be silently absorbed as lazy continuation text and never
         // reach our block parser. See definitionList.ts's header.
-        assert.strictEqual(
-            tree('Term 1\n: Definition for term 1'),
-            'Document(Paragraph,Definition(DefinitionMark))'
-        );
+        assert.strictEqual(tree('Term 1\n: Definition for term 1'), 'Document(Paragraph,Definition(DefinitionMark))');
     });
 
     it('parses multiple consecutive definitions under one term as sibling Definition nodes', () => {
@@ -77,10 +74,7 @@ describe('cm/lang/definitionList: definitionListExtension', () => {
         });
 
         it('accepts a tab after the colon, as the old `^:\\s` regex did', () => {
-            assert.strictEqual(
-                tree('Term\n:\tthe definition'),
-                'Document(Paragraph,Definition(DefinitionMark))'
-            );
+            assert.strictEqual(tree('Term\n:\tthe definition'), 'Document(Paragraph,Definition(DefinitionMark))');
         });
     });
 });

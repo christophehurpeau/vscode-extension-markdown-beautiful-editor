@@ -8,7 +8,6 @@ import {
 } from '../../shared/fontFamily';
 
 describe('Editor font family', () => {
-
     describe('Default', () => {
         it('is the proportional font', () => {
             assert.strictEqual(defaultEditorFontFamily, 'normal');

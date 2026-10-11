@@ -25,7 +25,7 @@ export interface TableColumn {
  * optional surrounding colons (`---`, `:--:`, `--:`, ...).
  */
 export function isDelimiterRowCells(cells: string[]): boolean {
-    return cells.length > 0 && cells.every(c => /^\s*:?-+:?\s*$/.test(c));
+    return cells.length > 0 && cells.every((c) => /^\s*:?-+:?\s*$/.test(c));
 }
 
 /**
@@ -35,9 +35,15 @@ function alignFromDelimiterCell(cell: string): TableColumnAlign {
     const trimmed = cell.trim();
     const left = trimmed.startsWith(':');
     const right = trimmed.endsWith(':');
-    if (left && right) { return 'center'; }
-    if (right) { return 'right'; }
-    if (left) { return 'left'; }
+    if (left && right) {
+        return 'center';
+    }
+    if (right) {
+        return 'right';
+    }
+    if (left) {
+        return 'left';
+    }
     return 'none';
 }
 
@@ -51,7 +57,7 @@ function alignFromDelimiterCell(cell: string): TableColumnAlign {
 export function parseTableColumns(rows: string[][]): TableColumn[] {
     const delimiterCells = rows.find(isDelimiterRowCells);
     const aligns = delimiterCells ? delimiterCells.map(alignFromDelimiterCell) : [];
-    const colCount = Math.max(aligns.length, ...rows.map(r => r.length));
+    const colCount = Math.max(aligns.length, ...rows.map((r) => r.length));
 
     const columns: TableColumn[] = [];
     for (let c = 0; c < colCount; c++) {

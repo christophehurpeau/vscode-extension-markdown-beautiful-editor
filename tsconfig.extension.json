@@ -13,16 +13,7 @@
         "resolveJsonModule": true,
         "composite": true
     },
-    "include": [
-        "src/**/*.ts"
-    ],
-    "exclude": [
-        "src/webview/**/*.ts",
-        "src/shared/**/*.ts",
-        "src/test/**/*.ts"
-    ],
-    "references": [
-        { "path": "./tsconfig.shared.json" }
-    ]
+    "include": ["src/**/*.ts"],
+    "exclude": ["src/webview/**/*.ts", "src/shared/**/*.ts", "src/test/**/*.ts"],
+    "references": [{ "path": "./tsconfig.shared.json" }]
 }
-

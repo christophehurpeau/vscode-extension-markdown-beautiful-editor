@@ -44,9 +44,7 @@ function tuples(set: DecorationSet): DecorationTuple[] {
  *  often push several overlapping ranges at the same position) sort before
  *  comparing rather than asserting array order. */
 function sortTuples(list: DecorationTuple[]): DecorationTuple[] {
-    return [...list].sort(
-        (a, b) => a.from - b.from || a.to - b.to || a.class.localeCompare(b.class),
-    );
+    return [...list].sort((a, b) => a.from - b.from || a.to - b.to || a.class.localeCompare(b.class));
 }
 
 function assertTuples(actual: DecorationTuple[], expected: DecorationTuple[]): void {
@@ -73,7 +71,9 @@ function stateForMath(doc: string): EditorState {
 function stateForAll(doc: string): EditorState {
     return EditorState.create({
         doc,
-        extensions: [markdown({ base: commonmarkLanguage, extensions: [GFM, ...markdownExtensions], completeHTMLTags: false })],
+        extensions: [
+            markdown({ base: commonmarkLanguage, extensions: [GFM, ...markdownExtensions], completeHTMLTags: false }),
+        ],
     });
 }
 
@@ -126,7 +126,10 @@ describe('cm/decorations: YAML frontmatter', () => {
 
         // Lines at 0 (`---`), 4 (`title: x`) and 13 (`---`); the blank line
         // and the paragraph below the closing fence carry no line class.
-        assert.deepStrictEqual(lines.map((t) => t.from), [0, 4, 13]);
+        assert.deepStrictEqual(
+            lines.map((t) => t.from),
+            [0, 4, 13]
+        );
         assert.deepStrictEqual(classSet(lines[0]), ['md-frontmatter', 'md-frontmatter-first']);
         assert.deepStrictEqual(classSet(lines[1]), ['md-frontmatter']);
         assert.deepStrictEqual(classSet(lines[2]), ['md-frontmatter', 'md-frontmatter-last']);
@@ -148,12 +151,16 @@ describe('cm/decorations: YAML frontmatter', () => {
         const built = builtFor('---\nlist:\n  - "a"\n---');
         const marks = [...tuples(built.markDecorations), ...tuples(built.syntaxDecorations)];
 
-        assert.deepStrictEqual(marks.filter((t) => t.from > 3 && t.to < 16), []);
+        assert.deepStrictEqual(
+            marks.filter((t) => t.from > 3 && t.to < 16),
+            []
+        );
     });
 
     it('still maps a standalone horizontal rule below frontmatter to md-hr', () => {
-        const classes = tuples(builtFor('---\na: 1\n---\n\npara\n\n---').lineDecorations)
-            .flatMap((t) => t.class.split(' '));
+        const classes = tuples(builtFor('---\na: 1\n---\n\npara\n\n---').lineDecorations).flatMap((t) =>
+            t.class.split(' ')
+        );
 
         assert.ok(classes.includes('md-hr'));
     });
@@ -203,11 +210,11 @@ describe('cm/decorations: buildMarkdownDecorations', () => {
         assert.strictEqual(lines.length, 2);
         assert.deepStrictEqual(
             lines.map((l) => l.class),
-            ['md-heading md-h1', 'md-heading md-h2'],
+            ['md-heading md-h1', 'md-heading md-h2']
         );
     });
 
-    it('does not descend into a fenced code block\'s CodeText region', () => {
+    it("does not descend into a fenced code block's CodeText region", () => {
         const state = stateFor('```\n**not bold**\n```');
         const built = buildMarkdownDecorations(state, [{ from: 0, to: state.doc.length }]);
 
@@ -258,8 +265,8 @@ describe('cm/decorations: buildMarkdownDecorations (WP-H)', () => {
 
         assert.ok(
             tuples(built.markDecorations).some(
-                (t) => t.from === 2 && t.to === 10 && t.class === 'md-task md-task-unchecked',
-            ),
+                (t) => t.from === 2 && t.to === 10 && t.class === 'md-task md-task-unchecked'
+            )
         );
     });
 
@@ -423,24 +430,21 @@ describe('cm/decorations: buildMarkdownDecorations (WP-H)', () => {
         assertTuples(tuples(built.markDecorations), [{ from: 0, to: 3, class: 'md-hr-text' }]);
     });
 
-    it('counts ancestor Blockquote depth (capped at 3) and marks the outermost block\'s first/last lines', () => {
+    it("counts ancestor Blockquote depth (capped at 3) and marks the outermost block's first/last lines", () => {
         const state = stateFor('> quote\n>> nested\n>>> deep');
         const built = buildMarkdownDecorations(state, [{ from: 0, to: state.doc.length }]);
 
         const lines = tuples(built.lineDecorations);
         assert.strictEqual(lines.length, 3);
         assert.deepStrictEqual(classSet(lines[0]), ['blockquote-first', 'md-blockquote', 'md-quote-1'].sort());
-        assert.deepStrictEqual(
-            classSet(lines[1]),
-            ['md-blockquote', 'md-quote-1', 'md-quote-2'].sort(),
-        );
+        assert.deepStrictEqual(classSet(lines[1]), ['md-blockquote', 'md-quote-1', 'md-quote-2'].sort());
         assert.deepStrictEqual(
             classSet(lines[2]),
-            ['blockquote-last', 'md-blockquote', 'md-quote-1', 'md-quote-2', 'md-quote-3'].sort(),
+            ['blockquote-last', 'md-blockquote', 'md-quote-1', 'md-quote-2', 'md-quote-3'].sort()
         );
     });
 
-    it('marks md-code-block-first/md-code-block-last on a fenced code block\'s boundary lines', () => {
+    it("marks md-code-block-first/md-code-block-last on a fenced code block's boundary lines", () => {
         const state = stateFor('```ts\nconst x = 1;\n```');
         const built = buildMarkdownDecorations(state, [{ from: 0, to: state.doc.length }]);
 
@@ -450,9 +454,7 @@ describe('cm/decorations: buildMarkdownDecorations (WP-H)', () => {
         assert.deepStrictEqual(classSet(lines[1]), ['md-code-block']);
         assert.deepStrictEqual(classSet(lines[2]), ['md-code-block', 'md-code-block-last'].sort());
 
-        assert.ok(
-            tuples(built.markDecorations).some((t) => t.from === 3 && t.to === 5 && t.class === 'md-code-info'),
-        );
+        assert.ok(tuples(built.markDecorations).some((t) => t.from === 3 && t.to === 5 && t.class === 'md-code-info'));
         assertTuples(tuples(built.syntaxDecorations), [
             { from: 0, to: 3, class: 'md-syntax' },
             { from: 19, to: 22, class: 'md-syntax' },
@@ -473,12 +475,10 @@ describe('cm/decorations: buildMarkdownDecorations (WP-H)', () => {
         assert.ok(marks.some((t) => t.from === 27 && t.to === 29 && t.class === 'md-table-cell md-col-center'));
         // The delimiter row's own two cells, re-split from its single node's text
         assert.ok(
-            marks.some((t) => t.from === 12 && t.to === 15 && t.class === 'md-table-cell md-table-sep md-col-left'),
+            marks.some((t) => t.from === 12 && t.to === 15 && t.class === 'md-table-cell md-table-sep md-col-left')
         );
         assert.ok(
-            marks.some(
-                (t) => t.from === 16 && t.to === 19 && t.class === 'md-table-cell md-table-sep md-col-center',
-            ),
+            marks.some((t) => t.from === 16 && t.to === 19 && t.class === 'md-table-cell md-table-sep md-col-center')
         );
 
         // Every pipe (header, body and the delimiter row's own) is md-syntax.
@@ -486,12 +486,12 @@ describe('cm/decorations: buildMarkdownDecorations (WP-H)', () => {
         for (const pos of [0, 4, 9, 11, 15, 19, 21, 25, 30]) {
             assert.ok(
                 syntax.some((t) => t.from === pos && t.to === pos + 1 && t.class === 'md-syntax'),
-                `expected a md-syntax pipe at ${pos}`,
+                `expected a md-syntax pipe at ${pos}`
             );
         }
     });
 
-    it('still styles inline constructs nested inside a table cell (the walk does not skip Table\'s subtree)', () => {
+    it("still styles inline constructs nested inside a table cell (the walk does not skip Table's subtree)", () => {
         const state = stateFor('| a |\n|:--|\n| **x** |');
         const built = buildMarkdownDecorations(state, [{ from: 0, to: state.doc.length }]);
 
@@ -516,7 +516,10 @@ describe('cm/decorations: buildMarkdownDecorations (WP-H)', () => {
         const built = buildMarkdownDecorations(state, [{ from: 0, to: state.doc.length }]);
         const lines = sortTuples(tuples(built.lineDecorations));
 
-        assert.deepStrictEqual(lines.map((t) => t.from), [0, 6]);
+        assert.deepStrictEqual(
+            lines.map((t) => t.from),
+            [0, 6]
+        );
         assert.deepStrictEqual(classSet(lines[0]), ['md-h2', 'md-heading', 'md-setext-title']);
         assert.deepStrictEqual(classSet(lines[1]), ['md-setext-underline']);
     });
@@ -526,7 +529,10 @@ describe('cm/decorations: buildMarkdownDecorations (WP-H)', () => {
         const built = buildMarkdownDecorations(state, [{ from: 0, to: state.doc.length }]);
         const lines = sortTuples(tuples(built.lineDecorations));
 
-        assert.deepStrictEqual(lines.map((t) => t.from), [0, 4, 10]);
+        assert.deepStrictEqual(
+            lines.map((t) => t.from),
+            [0, 4, 10]
+        );
         assert.deepStrictEqual(classSet(lines[0]), ['md-h1', 'md-heading', 'md-setext-title']);
         assert.deepStrictEqual(classSet(lines[1]), ['md-h1', 'md-heading', 'md-setext-title']);
         assert.deepStrictEqual(classSet(lines[2]), ['md-setext-underline']);

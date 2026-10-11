@@ -26,7 +26,9 @@ import {
 function stateFor(doc: string): EditorState {
     return EditorState.create({
         doc,
-        extensions: [markdown({ base: commonmarkLanguage, extensions: [GFM, ...markdownExtensions], completeHTMLTags: false })],
+        extensions: [
+            markdown({ base: commonmarkLanguage, extensions: [GFM, ...markdownExtensions], completeHTMLTags: false }),
+        ],
     });
 }
 
@@ -345,7 +347,10 @@ describe('chrome: selectionRangeFromTextSelection', () => {
     it('keeps a backward selection backward', () => {
         const state = EditorState.create({ doc: 'abc\ndef' });
         assert.deepStrictEqual(
-            selectionRangeFromTextSelection(state, { anchor: { line: 1, character: 2 }, active: { line: 0, character: 1 } }),
+            selectionRangeFromTextSelection(state, {
+                anchor: { line: 1, character: 2 },
+                active: { line: 0, character: 1 },
+            }),
             { anchor: 6, head: 1 }
         );
     });
@@ -362,7 +367,10 @@ describe('chrome: selectionRangeFromTextSelection', () => {
     it('clamps a selection past the end of a document that shrank since it was reported to its last line', () => {
         const state = EditorState.create({ doc: 'first\nshort' });
         assert.deepStrictEqual(
-            selectionRangeFromTextSelection(state, { anchor: { line: 9, character: 0 }, active: { line: 9, character: 40 } }),
+            selectionRangeFromTextSelection(state, {
+                anchor: { line: 9, character: 0 },
+                active: { line: 9, character: 40 },
+            }),
             { anchor: 6, head: 11 }
         );
     });

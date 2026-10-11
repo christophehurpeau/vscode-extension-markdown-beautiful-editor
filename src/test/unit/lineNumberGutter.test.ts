@@ -39,7 +39,7 @@ describe('cm/lineNumberGutter: lineStrutClass', () => {
             assert.deepStrictEqual(
                 classes(state, 0, state.doc.length),
                 ['md-h' + level, 'md-heading'].sort(),
-                `level ${level}`,
+                `level ${level}`
             );
         }
     });
@@ -48,19 +48,22 @@ describe('cm/lineNumberGutter: lineStrutClass', () => {
         // The underline is the heading's syntax, not a second heading line:
         // it must NOT inherit the heading strut, or the gutter reserves a
         // 2em line box for a row whose content line is normal-sized.
-        for (const [level, underline] of [[1, '====='], [2, '-----']] as const) {
+        for (const [level, underline] of [
+            [1, '====='],
+            [2, '-----'],
+        ] as const) {
             const state = stateFor(`Title\n${underline}`);
             const title = state.doc.line(1);
             const rule = state.doc.line(2);
             assert.deepStrictEqual(
                 classes(state, title.from, title.to),
                 ['md-h' + level, 'md-heading', 'md-setext-title'].sort(),
-                `level ${level} title`,
+                `level ${level} title`
             );
             assert.deepStrictEqual(
                 classes(state, rule.from, rule.to),
                 ['md-setext-underline'],
-                `level ${level} underline`,
+                `level ${level} underline`
             );
         }
     });
@@ -83,7 +86,7 @@ describe('cm/lineNumberGutter: lineStrutClass', () => {
         const state = stateFor('> quoted text');
         assert.deepStrictEqual(
             classes(state, 0, state.doc.length),
-            ['blockquote-first', 'blockquote-last', 'md-blockquote', 'md-quote-1'].sort(),
+            ['blockquote-first', 'blockquote-last', 'md-blockquote', 'md-quote-1'].sort()
         );
     });
 

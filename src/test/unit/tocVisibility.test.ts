@@ -7,7 +7,6 @@ import {
 } from '../../shared/tocVisibility';
 
 describe('TOC visibility', () => {
-
     describe('Width-based default (no explicit preference)', () => {
         it('shows the TOC on a wide viewport', () => {
             assert.strictEqual(resolveTocVisibility({ preference: null, viewportWidth: 1200 }), true);

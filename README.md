@@ -7,6 +7,7 @@ A beautiful WYSIWYG-style markdown editor for VS Code that renders markdown synt
 ## Features
 
 ### 📝 Visual Markdown Editing
+
 - **Styled Headings**: H1-H6 rendered with proper typography and sizing
 - **Text Formatting**: Bold, italic, strikethrough, and inline code with visual styling
 - **Links & Images**: Clickable links (Cmd/Ctrl+Click) with styled syntax
@@ -23,7 +24,9 @@ A beautiful WYSIWYG-style markdown editor for VS Code that renders markdown synt
 ![Lists and Tables](images/structure.png)
 
 ### 🏷️ YAML Frontmatter
+
 A `---` block on the first line of the file renders as a metadata panel:
+
 - Parsed as YAML — not as a horizontal rule followed by a giant heading
 - Syntax-highlighted keys, strings and comments, including nested maps and lists
 - The markdown below the closing `---` is unaffected
@@ -31,9 +34,11 @@ A `---` block on the first line of the file renders as a metadata panel:
 ![YAML Frontmatter](images/frontmatter.png)
 
 ### 🎨 GitHub-Style Alerts
+
 Full support for GitHub's alert syntax:
+
 - `[!NOTE]` - Blue informational notes
-- `[!TIP]` - Green helpful tips  
+- `[!TIP]` - Green helpful tips
 - `[!IMPORTANT]` - Purple important information
 - `[!WARNING]` - Yellow/orange warnings
 - `[!CAUTION]` - Red caution alerts
@@ -41,12 +46,14 @@ Full support for GitHub's alert syntax:
 ![GitHub Alerts](images/alerts.png)
 
 ### 📑 Table of Contents
+
 - Auto-generated sidebar TOC from document headings
 - Click to navigate to any section
 - Scroll spy highlights current section
 - Toggle it from the toolbar (☰) for more editing space; hidden by default on narrow viewports
 
 ### 🛠️ Formatting Toolbar
+
 - **Selection-based toolbar**: Appears when you select text
 - **Toggle formatting**: Bold, italic, code, strikethrough, and links
 - **Smart detection**: Toolbar highlights active formatting at cursor position
@@ -55,6 +62,7 @@ Full support for GitHub's alert syntax:
 ![Formatting Toolbar](images/formatting-toolbar.png)
 
 ### 🔍 Find & Replace
+
 - **Cmd/Ctrl+F**: Opens a find panel over the document, including the parts scrolled out of view
 - **Match options**: Case sensitivity, whole word, and regular expressions
 - **Replace**: Available whenever the document is editable; a read-only side of a diff shows find only
@@ -63,6 +71,7 @@ Full support for GitHub's alert syntax:
 ![Find and Replace](images/find.png)
 
 ### ↕️ Multiple Cursors
+
 - **Alt/Option+Click**: Adds a cursor where you click
 - **Alt/Option+Drag**: Selects a rectangle — one cursor per line
 - **Cmd/Ctrl+Alt+Up/Down**: Adds a cursor on the line above or below
@@ -72,20 +81,23 @@ Full support for GitHub's alert syntax:
 ![Multiple Cursors](images/multiple-cursors.png)
 
 ### 📋 Line Type Selector
+
 - **Quick line conversion**: Click the line type icon next to any line number
 - **Supported types**: Text, Headings (H1-H6), Bullet List, Numbered List, Task List, Quote, Code Block, Horizontal Rule
 - **Visual indicators**: Each line shows its type with a distinctive icon
 - **Nested support**: Properly handles nested blockquotes
 
 ### 🔤 Content Font
+
 - **Proportional by default**: Prose renders with the UI font
 - **Monospace option**: `markdown.beautifulEditor.fontFamily` set to `mono` uses the editor font
 - **Temporary toggle**: The `Aa` button on the right of the toolbar switches the font for the current panel only, without changing the setting
 - **Code stays monospace**: Inline code, fenced code blocks and tables always use the editor font
 
 ### 🔀 Diffs
+
 - **From an open diff**: The ✨ button in a text diff's title bar switches that comparison into the Beautiful Diff view, on exactly the versions that diff was showing
-- **From Source Control**: Right-click a `.md` row in the Source Control panel (under **Changes**, **Staged Changes** or **Untracked**) → **Open Beautiful Markdown Diff**, in the same section as *Open File* and *Open Changes*
+- **From Source Control**: Right-click a `.md` row in the Source Control panel (under **Changes**, **Staged Changes** or **Untracked**) → **Open Beautiful Markdown Diff**, in the same section as _Open File_ and _Open Changes_
 - **Correct pairing**: **Changes** compares the index against your working tree, **Staged Changes** compares HEAD against the index, and staged adds, deletes and renames each get the pair VS Code itself would show
 - **Labelled**: The tab reads `NOTES.md (Staged)` or `(Unstaged)`, and the panel header shows that scope alongside the exact refs — so two diffs of the same file are never confusable
 - **Editable where it can be**: In an **Unstaged** or **Untracked** view the right pane is the file on disk — type in it, or use the `→` button beside a changed block to revert it. A **Staged** view is read-only: that side is the git index, which can't be written directly
@@ -102,6 +114,7 @@ Full support for GitHub's alert syntax:
 ![Diff Mode](images/diff-mode.png)
 
 ### 🎯 Editor Features
+
 - **Line Numbers**: Always visible line numbers for easy reference
 - **Syntax Visible**: Markdown syntax stays visible and editable
 - **VS Code Theme Integration**: Respects your VS Code color theme
@@ -114,12 +127,14 @@ Full support for GitHub's alert syntax:
 ## Installation
 
 ### From VS Code Marketplace
+
 1. Open VS Code
 2. Go to Extensions (Cmd/Ctrl+Shift+X)
 3. Search for "Markdown Beautiful Editor"
 4. Click Install
 
 ### From VSIX
+
 1. Download the `.vsix` file from releases
 2. In VS Code: Cmd/Ctrl+Shift+P → "Extensions: Install from VSIX..."
 3. Select the downloaded file
@@ -127,6 +142,7 @@ Full support for GitHub's alert syntax:
 ## Usage
 
 ### Opening Files
+
 - **Right-click** any `.md` file → **Open With...** → **Markdown Beautiful Editor**
 - Or set as default: **Open With...** → Select editor → **Configure Default Editor...**
 
@@ -154,7 +170,7 @@ Two ways in:
 
 - The **✨ button** in an open text diff's title bar.
 - **Right-click a file row in the Source Control panel** → **Open Beautiful Markdown Diff**
-  (top section, with *Open File* and *Open Changes*). This entry shows for every file, not
+  (top section, with _Open File_ and _Open Changes_). This entry shows for every file, not
   just markdown: VS Code gives an `scm/resourceState/context` menu no information about the
   file it was opened on, so a `when` clause cannot filter it by extension.
 
@@ -173,32 +189,33 @@ writes) at `markdown.beautifulEditor` makes this editor the default for diffs an
 recommended.
 
 ### Keyboard Shortcuts
-| Shortcut | Action |
-|----------|--------|
-| `Cmd/Ctrl+B` | Toggle bold |
-| `Cmd/Ctrl+I` | Toggle italic |
-| `Cmd/Ctrl+E` | Toggle inline code |
-| `Cmd/Ctrl+K` | Insert/edit link |
-| `Cmd/Ctrl+F` | Open find (and replace) |
-| `Cmd/Ctrl+G` / `F3` | Find next (add `Shift` for previous) |
-| `Escape` | Close the find panel, then collapse to a single cursor |
-| `Cmd/Ctrl+D` | Select next occurrence |
-| `Cmd/Ctrl+Shift+L` | Select all occurrences |
-| `Cmd/Ctrl+Alt+G` | Go to line |
-| `Cmd/Ctrl+Alt+Up/Down` | Add a cursor above / below |
-| `Alt+Click` | Add a cursor at the pointer |
-| `Alt+Drag` | Rectangular (column) selection |
-| `Cmd/Ctrl+A` | Select all content |
-| `Cmd/Ctrl+C` | Copy selection |
-| `Cmd/Ctrl+X` | Cut selection |
-| `Cmd/Ctrl+V` | Paste |
-| `Cmd/Ctrl+Click` | Open link in browser |
-| `Tab` | Insert 4 spaces |
+
+| Shortcut                    | Action                                                                                                                                                                                                                                                      |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Cmd/Ctrl+B`                | Toggle bold                                                                                                                                                                                                                                                 |
+| `Cmd/Ctrl+I`                | Toggle italic                                                                                                                                                                                                                                               |
+| `Cmd/Ctrl+E`                | Toggle inline code                                                                                                                                                                                                                                          |
+| `Cmd/Ctrl+K`                | Insert/edit link                                                                                                                                                                                                                                            |
+| `Cmd/Ctrl+F`                | Open find (and replace)                                                                                                                                                                                                                                     |
+| `Cmd/Ctrl+G` / `F3`         | Find next (add `Shift` for previous)                                                                                                                                                                                                                        |
+| `Escape`                    | Close the find panel, then collapse to a single cursor                                                                                                                                                                                                      |
+| `Cmd/Ctrl+D`                | Select next occurrence                                                                                                                                                                                                                                      |
+| `Cmd/Ctrl+Shift+L`          | Select all occurrences                                                                                                                                                                                                                                      |
+| `Cmd/Ctrl+Alt+G`            | Go to line                                                                                                                                                                                                                                                  |
+| `Cmd/Ctrl+Alt+Up/Down`      | Add a cursor above / below                                                                                                                                                                                                                                  |
+| `Alt+Click`                 | Add a cursor at the pointer                                                                                                                                                                                                                                 |
+| `Alt+Drag`                  | Rectangular (column) selection                                                                                                                                                                                                                              |
+| `Cmd/Ctrl+A`                | Select all content                                                                                                                                                                                                                                          |
+| `Cmd/Ctrl+C`                | Copy selection                                                                                                                                                                                                                                              |
+| `Cmd/Ctrl+X`                | Cut selection                                                                                                                                                                                                                                               |
+| `Cmd/Ctrl+V`                | Paste                                                                                                                                                                                                                                                       |
+| `Cmd/Ctrl+Click`            | Open link in browser                                                                                                                                                                                                                                        |
+| `Tab`                       | Insert 4 spaces                                                                                                                                                                                                                                             |
 | `Cmd/Ctrl+]` / `Cmd/Ctrl+[` | Indent / outdent line — VS Code keybindings (`markdown.beautifulEditor.indentLines` / `outdentLines`), so they can be rebound or removed like any other; a key you bind to another command (e.g. `workbench.action.navigateBack`) runs that command instead |
-| `Enter` | New line |
-| `Backspace` | Delete/merge lines |
-| `Cmd/Ctrl+Z` | Undo |
-| `Cmd/Ctrl+Shift+Z` | Redo |
+| `Enter`                     | New line                                                                                                                                                                                                                                                    |
+| `Backspace`                 | Delete/merge lines                                                                                                                                                                                                                                          |
+| `Cmd/Ctrl+Z`                | Undo                                                                                                                                                                                                                                                        |
+| `Cmd/Ctrl+Shift+Z`          | Redo                                                                                                                                                                                                                                                        |
 
 ### Supported Markdown Syntax
 
@@ -209,11 +226,12 @@ tags: [markdown, codemirror]
 ---
 
 # Heading 1
+
 ## Heading 2
 
-**bold** or __bold__
-*italic* or _italic_
-***bold and italic***
+**bold** or **bold**
+_italic_ or _italic_
+_**bold and italic**_
 ~~strikethrough~~
 `inline code`
 
@@ -221,12 +239,15 @@ tags: [markdown, codemirror]
 ![Image](./path/to/image.png)
 
 - Unordered list
+
 1. Ordered list
+
 - [ ] Task list
 - [x] Completed task
 
 > Blockquote
->> Nested blockquote
+>
+> > Nested blockquote
 
 > [!NOTE]
 > GitHub-style alert
@@ -236,20 +257,23 @@ tags: [markdown, codemirror]
 \`\`\`
 
 | Table | Header |
-|-------|--------|
+| ----- | ------ |
 | Cell  | Cell   |
 
 ---
+
 Horizontal rule
 ```
 
 ## Development
 
 ### Prerequisites
+
 - Node.js 18+
 - pnpm
 
 ### Setup
+
 ```bash
 git clone https://github.com/yourusername/vscode-extension-markdown-beautiful-editor.git
 cd vscode-extension-markdown-beautiful-editor
@@ -257,23 +281,27 @@ pnpm install
 ```
 
 ### Build
+
 ```bash
 pnpm run compile      # Build extension
 pnpm run watch        # Watch mode for development
 ```
 
 ### Test
+
 ```bash
 pnpm run test:unit    # Run unit tests
 pnpm run test         # Run all tests
 ```
 
 ### Debug
+
 1. Open project in VS Code
 2. Press F5 to launch Extension Development Host
 3. Open any `.md` file with the WYSIWYG editor
 
 ### Project Structure
+
 ```
 src/
 ├── extension.ts              # Extension entry point
@@ -293,6 +321,7 @@ src/
 ## Contributing
 
 Contributions are welcome! Please:
+
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes

@@ -30,7 +30,10 @@ describe('parseTableColumns', () => {
             ['-------------', ':-------------:', '-----:'],
             ['col 3 is', 'right-aligned', '$1600'],
         ];
-        assert.deepStrictEqual(parseTableColumns(rows).map(c => c.align), ['none', 'center', 'right']);
+        assert.deepStrictEqual(
+            parseTableColumns(rows).map((c) => c.align),
+            ['none', 'center', 'right']
+        );
     });
 
     it('sizes each column to its widest trimmed cell, including the delimiter', () => {
@@ -39,7 +42,10 @@ describe('parseTableColumns', () => {
             ['-------------', ':-------------:', '-----:'],
             ['col 3 is', 'right-aligned', '$1600'],
         ];
-        assert.deepStrictEqual(parseTableColumns(rows).map(c => c.width), [13, 15, 6]);
+        assert.deepStrictEqual(
+            parseTableColumns(rows).map((c) => c.width),
+            [13, 15, 6]
+        );
     });
 
     it('defaults to "none" alignment with no delimiter row', () => {
@@ -47,7 +53,10 @@ describe('parseTableColumns', () => {
             ['a', 'b'],
             ['1', '2'],
         ];
-        assert.deepStrictEqual(parseTableColumns(rows).map(c => c.align), ['none', 'none']);
+        assert.deepStrictEqual(
+            parseTableColumns(rows).map((c) => c.align),
+            ['none', 'none']
+        );
     });
 
     it('handles a ragged block (rows with different cell counts) via the widest row', () => {

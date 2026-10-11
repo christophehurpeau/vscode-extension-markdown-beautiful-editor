@@ -14,7 +14,6 @@ import { escapeHtml } from '../../shared/escapeHtml';
  * These exercise the real heading-extraction and HTML-escaping production code.
  */
 describe('Table of Contents', () => {
-
     describe('Heading Extraction from Markdown', () => {
         it('should extract H1 heading', () => {
             const headings = extractHeadingsFromMarkdown('# Main Title');
@@ -64,7 +63,7 @@ Final thoughts.`;
             const headings = extractHeadingsFromMarkdown(markdown);
             assert.strictEqual(headings.length, 6);
             assert.deepStrictEqual(
-                headings.map(h => h.text),
+                headings.map((h) => h.text),
                 ['Introduction', 'Getting Started', 'Installation', 'Configuration', 'Usage', 'Conclusion']
             );
         });
@@ -123,7 +122,10 @@ No headings at all.`;
             const lineTexts = markdown.split('\n');
 
             const headings = extractHeadingsFromMarkdown(markdown);
-            assert.deepStrictEqual(headings.map(h => h.text), ['Real', 'Second']);
+            assert.deepStrictEqual(
+                headings.map((h) => h.text),
+                ['Real', 'Second']
+            );
 
             // TOC index 0 → "Real" on line 2, index 1 → "Second" on line 6.
             assert.strictEqual(findHeadingLineIndex(lineTexts, 0), 2);

@@ -110,7 +110,5 @@ export const frontmatterExtension: MarkdownConfig = {
             parse: parseFrontmatter,
         },
     ],
-    wrap: parseMixed((node) =>
-        node.name === 'FrontmatterContent' ? { parser: yamlLanguage.parser } : null,
-    ),
+    wrap: parseMixed((node) => (node.name === 'FrontmatterContent' ? { parser: yamlLanguage.parser } : null)),
 };

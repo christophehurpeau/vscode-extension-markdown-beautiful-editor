@@ -53,17 +53,7 @@ export const codeTokenStyles: TagStyle[] = [
     { tag: tags.keyword, class: 'tok-keyword' },
     { tag: tags.string, class: 'tok-string' },
     {
-        tag: [
-            tags.number,
-            tags.bool,
-            tags.null,
-            tags.atom,
-            tags.unit,
-            tags.color,
-            tags.url,
-            tags.regexp,
-            tags.escape,
-        ],
+        tag: [tags.number, tags.bool, tags.null, tags.atom, tags.unit, tags.color, tags.url, tags.regexp, tags.escape],
         class: 'tok-constant',
     },
     { tag: tags.propertyName, class: 'tok-property' },
@@ -97,9 +87,7 @@ const scopedLanguages = [cssLanguage, htmlLanguage, javascriptLanguage, jsonLang
  *  `highlightTree` directly — a `HighlightStyle` is itself a `Highlighter`, so
  *  the scoping rule is assertable without an `EditorView` or a DOM. */
 export const codeHighlighters = scopedLanguages.map((language) =>
-    HighlightStyle.define(codeTokenStyles, { scope: language }),
+    HighlightStyle.define(codeTokenStyles, { scope: language })
 );
 
-export const codeHighlighting: Extension = codeHighlighters.map((highlighter) =>
-    syntaxHighlighting(highlighter),
-);
+export const codeHighlighting: Extension = codeHighlighters.map((highlighter) => syntaxHighlighting(highlighter));

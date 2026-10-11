@@ -2,7 +2,6 @@ import * as assert from 'assert';
 import { webviewBodyClass, webviewBodyHtml } from '../../shared/webviewBody';
 
 describe('Webview body markup', () => {
-
     describe('Editor mode', () => {
         const html = webviewBodyHtml('editor');
 

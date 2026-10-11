@@ -111,7 +111,13 @@ function registerPanel({ key, panel }: { key: string; panel: vscode.WebviewPanel
     });
 }
 
-function fillPanel({ context, panel, fileUri, originalFileUri, sides }: DiffPanelTarget & { panel: vscode.WebviewPanel }): void {
+function fillPanel({
+    context,
+    panel,
+    fileUri,
+    originalFileUri,
+    sides,
+}: DiffPanelTarget & { panel: vscode.WebviewPanel }): void {
     const documentDirPath = path.dirname(fileUri.fsPath);
     const editable = isModifiedSideWritable(sides);
 
@@ -189,7 +195,12 @@ function fillPanel({ context, panel, fileUri, originalFileUri, sides }: DiffPane
 
 /** Returns the modified side's raw text, which the caller keeps as the
  *  baseline for echo suppression; `null` when nothing could be sent. */
-async function postDiff({ panel, fileUri, originalFileUri, sides }: {
+async function postDiff({
+    panel,
+    fileUri,
+    originalFileUri,
+    sides,
+}: {
     panel: vscode.WebviewPanel;
     fileUri: vscode.Uri;
     originalFileUri?: vscode.Uri;

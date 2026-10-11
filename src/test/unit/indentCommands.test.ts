@@ -13,13 +13,16 @@ interface Manifest {
     };
 }
 
-const manifest = JSON.parse(
-    fs.readFileSync(path.resolve(__dirname, '../../../package.json'), 'utf8')
-) as Manifest;
+const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../package.json'), 'utf8')) as Manifest;
 
 function run(cmd: StateCommand, state: EditorState): EditorState {
     let resultState = state;
-    cmd({ state, dispatch: (tr) => { resultState = tr.state; } });
+    cmd({
+        state,
+        dispatch: (tr) => {
+            resultState = tr.state;
+        },
+    });
     return resultState;
 }
 
@@ -36,19 +39,28 @@ describe('cm/commands/indent: editingKeymap', () => {
     });
 
     it('keeps the rest of defaultKeymap and historyKeymap', () => {
-        assert.strictEqual(editingKeymap.filter((binding) => defaultKeymap.includes(binding)).length, defaultKeymap.length - 2);
+        assert.strictEqual(
+            editingKeymap.filter((binding) => defaultKeymap.includes(binding)).length,
+            defaultKeymap.length - 2
+        );
         assert.ok(keysOf(editingKeymap).includes('Mod-z'));
     });
 });
 
 describe('cm/commands/indent: indentCommand', () => {
     it('indents the cursor line', () => {
-        const state = run(indentCommand('more'), EditorState.create({ doc: '- item', selection: EditorSelection.cursor(3) }));
+        const state = run(
+            indentCommand('more'),
+            EditorState.create({ doc: '- item', selection: EditorSelection.cursor(3) })
+        );
         assert.strictEqual(state.doc.toString(), '  - item');
     });
 
     it('outdents the cursor line', () => {
-        const state = run(indentCommand('less'), EditorState.create({ doc: '  - item', selection: EditorSelection.cursor(5) }));
+        const state = run(
+            indentCommand('less'),
+            EditorState.create({ doc: '  - item', selection: EditorSelection.cursor(5) })
+        );
         assert.strictEqual(state.doc.toString(), '- item');
     });
 
@@ -60,7 +72,10 @@ describe('cm/commands/indent: indentCommand', () => {
 });
 
 describe('package.json indent keybindings', () => {
-    for (const [direction, key] of [['more', ']'], ['less', '[']] as const) {
+    for (const [direction, key] of [
+        ['more', ']'],
+        ['less', '['],
+    ] as const) {
         it(`binds Cmd/Ctrl+${key} to ${indentCommandIds[direction]}`, () => {
             const commandId = indentCommandIds[direction];
             const binding = manifest.contributes?.keybindings?.find((entry) => entry.command === commandId);

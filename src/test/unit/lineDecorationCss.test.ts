@@ -33,14 +33,27 @@ const mappedLineClasses = Object.values(NODE_CLASS_MAP)
 /** The rest: boundary and depth classes `decorations.ts` synthesizes rather
  *  than reads from `NODE_CLASS_MAP` (see its `addLineClassAt` calls). */
 const synthesizedLineClasses = [
-    'md-quote-1', 'md-quote-2', 'md-quote-3',
-    'blockquote-first', 'blockquote-last',
-    'md-code-block-first', 'md-code-block-last',
-    'md-frontmatter-first', 'md-frontmatter-last',
-    'md-setext-title', 'md-setext-underline',
-    'md-alert', 'md-alert-content',
-    'md-alert-note', 'md-alert-tip', 'md-alert-important', 'md-alert-warning', 'md-alert-caution',
-    'alert-first', 'alert-last', 'alert-single',
+    'md-quote-1',
+    'md-quote-2',
+    'md-quote-3',
+    'blockquote-first',
+    'blockquote-last',
+    'md-code-block-first',
+    'md-code-block-last',
+    'md-frontmatter-first',
+    'md-frontmatter-last',
+    'md-setext-title',
+    'md-setext-underline',
+    'md-alert',
+    'md-alert-content',
+    'md-alert-note',
+    'md-alert-tip',
+    'md-alert-important',
+    'md-alert-warning',
+    'md-alert-caution',
+    'alert-first',
+    'alert-last',
+    'alert-single',
 ];
 
 const lineDecorationClasses = [...mappedLineClasses, ...synthesizedLineClasses];
@@ -82,7 +95,10 @@ describe('line-decoration CSS', () => {
     it('finds the stylesheets (guard against a silently empty scan)', () => {
         const rules = readRules();
         assert.ok(rules.length > 50, `only found ${rules.length} rules in ${stylesDir}`);
-        assert.ok(rules.some((r) => targetsLineBox(r.selector)), 'no line-box rules matched');
+        assert.ok(
+            rules.some((r) => targetsLineBox(r.selector)),
+            'no line-box rules matched'
+        );
     });
 
     it('scopes every line-decoration rule to .cm-line', () => {
@@ -109,7 +125,7 @@ describe('line-decoration CSS', () => {
         assert.deepStrictEqual(
             offenders,
             [],
-            `use padding instead — CM6 cannot measure margin on a line block:\n  ${offenders.join('\n  ')}`,
+            `use padding instead — CM6 cannot measure margin on a line block:\n  ${offenders.join('\n  ')}`
         );
     });
 });

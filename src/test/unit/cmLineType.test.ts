@@ -26,7 +26,12 @@ function multiCursorStateFor(doc: string, cursorPositions: number[]): EditorStat
 
 function run(cmd: StateCommand, state: EditorState): { ran: boolean; state: EditorState } {
     let resultState = state;
-    const ran = cmd({ state, dispatch: (tr) => { resultState = tr.state; } });
+    const ran = cmd({
+        state,
+        dispatch: (tr) => {
+            resultState = tr.state;
+        },
+    });
     return { ran, state: resultState };
 }
 
@@ -106,7 +111,10 @@ describe('cm/commands/lineType: setLineType with multiple cursors', () => {
         const doc = 'first\nsecond\nthird';
         const state = multiCursorStateFor(doc, [1, doc.indexOf('third') + 1]);
         const { state: result } = run(setLineType('ul'), state);
-        assert.deepStrictEqual(result.selection.ranges.map((r) => r.head), [0, '- first\nsecond\n'.length]);
+        assert.deepStrictEqual(
+            result.selection.ranges.map((r) => r.head),
+            [0, '- first\nsecond\n'.length]
+        );
     });
 
     it('rewrites a line only once when two cursors share it', () => {

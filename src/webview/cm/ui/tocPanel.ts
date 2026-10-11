@@ -80,7 +80,7 @@ function headingLineNumbers(docText: string): number[] {
 function topLineNumber(view: EditorView): number {
     const height = Math.min(
         Math.max(0, view.scrollDOM.scrollTop + SCROLL_SPY_OFFSET_PX),
-        Math.max(0, view.contentHeight - 1),
+        Math.max(0, view.contentHeight - 1)
     );
     return view.state.doc.lineAt(view.lineBlockAtHeight(height).from).number;
 }
@@ -111,7 +111,7 @@ function scrollToHeadingIndex(view: EditorView, index: number): void {
                 effects: EditorView.scrollIntoView(line.from, { y: 'start' }),
             });
             view.focus();
-        }),
+        })
     );
 }
 

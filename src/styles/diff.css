@@ -108,7 +108,10 @@
 
 .cm-merge-revert-btn:hover {
     opacity: 1;
-    background: var(--vscode-button-secondaryHoverBackground, var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.4))) !important;
+    background: var(
+        --vscode-button-secondaryHoverBackground,
+        var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.4))
+    ) !important;
 }
 
 /* Whole-line background for a changed line. `.cm-merge-a` is the

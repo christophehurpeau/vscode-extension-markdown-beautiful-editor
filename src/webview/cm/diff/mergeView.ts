@@ -183,7 +183,12 @@ function createRevertControl(): HTMLElement {
     return button;
 }
 
-export function createMergeView({ parent, original, modified, editableModified = false }: CreateMergeViewOptions): MergeView {
+export function createMergeView({
+    parent,
+    original,
+    modified,
+    editableModified = false,
+}: CreateMergeViewOptions): MergeView {
     const panes = mergePaneOptions(editableModified);
 
     return new MergeView({
@@ -236,7 +241,11 @@ export interface PlanToggleDiffOptions {
  * property `src/test/unit/diffMode.test.ts`'s content-preservation cases
  * check for.
  */
-export function planToggleDiff({ active, originalVersionContent, currentContent }: PlanToggleDiffOptions): DiffModeTransition {
+export function planToggleDiff({
+    active,
+    originalVersionContent,
+    currentContent,
+}: PlanToggleDiffOptions): DiffModeTransition {
     if (active) {
         return { action: 'close' };
     }

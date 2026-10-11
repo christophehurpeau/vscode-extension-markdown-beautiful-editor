@@ -122,7 +122,11 @@ function anchorRect(view: EditorView, from: number, to: number): ToolbarAnchorRe
     return { left, top: Math.min(start.top, end.top), bottom: Math.max(start.bottom, end.bottom), width: right - left };
 }
 
-export function initFloatingToolbar(view: EditorView, toolbarEl: HTMLElement, vscodeApi?: VscodeApi): FloatingToolbarController {
+export function initFloatingToolbar(
+    view: EditorView,
+    toolbarEl: HTMLElement,
+    vscodeApi?: VscodeApi
+): FloatingToolbarController {
     const buttons = Array.from(toolbarEl.querySelectorAll<HTMLButtonElement>('button[data-format]'));
     const openButton = toolbarEl.querySelector<HTMLButtonElement>('button[data-action="open-link"]');
 
@@ -231,7 +235,7 @@ export function initFloatingToolbar(view: EditorView, toolbarEl: HTMLElement, vs
                 if (update.selectionSet || update.docChanged || update.focusChanged) {
                     refresh();
                 }
-            }),
+            })
         ),
     });
 

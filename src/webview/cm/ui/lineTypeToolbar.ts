@@ -42,11 +42,13 @@ export function activeLineTypeButton(state: EditorState): string {
 }
 
 function renderButtons(toolbarEl: HTMLElement): void {
-    toolbarEl.innerHTML = MENU_LINE_TYPES.map(def => `
+    toolbarEl.innerHTML = MENU_LINE_TYPES.map(
+        (def) => `
         <button type="button" data-type="${def.type}" class="toolbar-btn line-type-btn" title="${def.label}">
             <span class="toolbar-btn-icon">${def.icon}</span>
         </button>
-    `).join('');
+    `
+    ).join('');
 }
 
 export function initLineTypeToolbar(view: EditorView, toolbarEl: HTMLElement): LineTypeToolbarController {
@@ -86,7 +88,7 @@ export function initLineTypeToolbar(view: EditorView, toolbarEl: HTMLElement): L
                 if (update.selectionSet || update.docChanged) {
                     updateActiveButton();
                 }
-            }),
+            })
         ),
     });
 

@@ -42,14 +42,17 @@ function isTextTabFor(tab: vscode.Tab, uri: vscode.Uri): boolean {
 }
 
 function hasTextTab(uri: vscode.Uri): boolean {
-    return vscode.window.tabGroups.all.some(group => group.tabs.some(tab => isTextTabFor(tab, uri)));
+    return vscode.window.tabGroups.all.some((group) => group.tabs.some((tab) => isTextTabFor(tab, uri)));
 }
 
 /** The group showing `editor` as a plain text tab. A peek or other embedded
  *  editor has no `viewColumn`; a diff pane's tab is a `TabInputTextDiff`. */
 function findTextTabGroup(editor: vscode.TextEditor): vscode.TabGroup | undefined {
     return vscode.window.tabGroups.all.find(
-        group => group.viewColumn === editor.viewColumn && group.activeTab !== undefined && isTextTabFor(group.activeTab, editor.document.uri)
+        (group) =>
+            group.viewColumn === editor.viewColumn &&
+            group.activeTab !== undefined &&
+            isTextTabFor(group.activeTab, editor.document.uri)
     );
 }
 
@@ -59,13 +62,13 @@ function waitForOpeningSelection(editor: vscode.TextEditor): Promise<vscode.Sele
     if (selectionToReveal(toTextSelection(editor.selection))) {
         return Promise.resolve(editor.selection);
     }
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
         const finish = (selection: vscode.Selection): void => {
             clearTimeout(timer);
             listener.dispose();
             resolve(selection);
         };
-        const listener = vscode.window.onDidChangeTextEditorSelection(event => {
+        const listener = vscode.window.onDidChangeTextEditorSelection((event) => {
             if (event.textEditor === editor) {
                 finish(event.selections[0]);
             }
@@ -93,7 +96,7 @@ async function redirectTextEditor(editor: vscode.TextEditor, { provider, exempti
     const selection = await waitForOpeningSelection(editor);
     // Lets a tab-close event that arrived alongside this editor land first:
     // that is how "Reopen Editor With… > Text Editor" is recognized.
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
     if (exemptions.isExempt(uri.toString())) {
         return;
     }
@@ -121,7 +124,9 @@ async function redirectTextEditor(editor: vscode.TextEditor, { provider, exempti
     }
     // A preview open replaces the group's preview tab, which is usually the
     // text tab itself, so it may already be gone.
-    const leftovers = (vscode.window.tabGroups.all.find(g => g.viewColumn === viewColumn)?.tabs ?? []).filter(tab => isTextTabFor(tab, uri));
+    const leftovers = (vscode.window.tabGroups.all.find((g) => g.viewColumn === viewColumn)?.tabs ?? []).filter((tab) =>
+        isTextTabFor(tab, uri)
+    );
     if (leftovers.length > 0) {
         await vscode.window.tabGroups.close(leftovers, true);
     }
@@ -130,7 +135,11 @@ async function redirectTextEditor(editor: vscode.TextEditor, { provider, exempti
 function trackTabsForExemptions(exemptions: RedirectExemptions): vscode.Disposable {
     return vscode.window.tabGroups.onDidChangeTabs(({ closed }) => {
         for (const tab of closed) {
-            if (tab.input instanceof vscode.TabInputCustom && tab.input.viewType === markdownEditorViewType && !tab.isPreview) {
+            if (
+                tab.input instanceof vscode.TabInputCustom &&
+                tab.input.viewType === markdownEditorViewType &&
+                !tab.isPreview
+            ) {
                 exemptions.noteCustomEditorClosed(tab.input.uri.toString());
             } else if (tab.input instanceof vscode.TabInputText && !hasTextTab(tab.input.uri)) {
                 exemptions.noteTextTabsClosed(tab.input.uri.toString());
@@ -140,7 +149,8 @@ function trackTabsForExemptions(exemptions: RedirectExemptions): vscode.Disposab
 }
 
 function isAssociatedAsDefaultEditor(): boolean {
-    const associations = vscode.workspace.getConfiguration('workbench').get<Record<string, string>>('editorAssociations') ?? {};
+    const associations =
+        vscode.workspace.getConfiguration('workbench').get<Record<string, string>>('editorAssociations') ?? {};
     return Object.values(associations).includes(markdownEditorViewType);
 }
 
@@ -156,7 +166,7 @@ function warnIfAssociatedAsDefaultEditor(): void {
             'Markdown Beautiful Editor: "Replace Text Editors" needs markdown files to open in the text editor. Remove markdown.beautifulEditor from workbench.editorAssociations.',
             openSettings
         )
-        .then(choice => {
+        .then((choice) => {
             if (choice === openSettings) {
                 vscode.commands.executeCommand('workbench.action.openSettings', 'workbench.editorAssociations');
             }
@@ -186,7 +196,7 @@ export function registerTextEditorRedirect(provider: MarkdownEditorProvider): vs
                 continue;
             }
             seenEditors.add(editor);
-            redirectTextEditor(editor, { provider, exemptions }).catch(error => {
+            redirectTextEditor(editor, { provider, exemptions }).catch((error) => {
                 console.error('[markdown-beautiful-editor] replacing text editor failed:', error);
             });
         }
@@ -199,8 +209,11 @@ export function registerTextEditorRedirect(provider: MarkdownEditorProvider): vs
     return vscode.Disposable.from(
         vscode.window.onDidChangeVisibleTextEditors(redirectNewEditors),
         trackTabsForExemptions(exemptions),
-        vscode.workspace.onDidChangeConfiguration(event => {
-            if (event.affectsConfiguration(replaceTextEditorsSettingSection) || event.affectsConfiguration('workbench.editorAssociations')) {
+        vscode.workspace.onDidChangeConfiguration((event) => {
+            if (
+                event.affectsConfiguration(replaceTextEditorsSettingSection) ||
+                event.affectsConfiguration('workbench.editorAssociations')
+            ) {
                 warnIfAssociatedAsDefaultEditor();
             }
         }),

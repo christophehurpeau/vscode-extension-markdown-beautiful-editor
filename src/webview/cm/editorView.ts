@@ -31,9 +31,7 @@ export function createEditorView({ doc, parent, onDocChanged, readOnly = false }
         }
     });
 
-    const readOnlyExtensions = readOnly
-        ? [EditorState.readOnly.of(true), EditorView.editable.of(false)]
-        : [];
+    const readOnlyExtensions = readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : [];
 
     return new EditorView({
         state: EditorState.create({

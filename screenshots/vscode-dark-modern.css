@@ -8,8 +8,8 @@
  * one either, so leaving them out exercises the same CSS fallbacks.
  */
 :root {
-    --vscode-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Ubuntu, "Droid Sans", sans-serif;
-    --vscode-editor-font-family: Menlo, Monaco, "DejaVu Sans Mono", "Courier New", monospace;
+    --vscode-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Ubuntu, 'Droid Sans', sans-serif;
+    --vscode-editor-font-family: Menlo, Monaco, 'DejaVu Sans Mono', 'Courier New', monospace;
     --vscode-editor-font-size: 13px;
 
     --vscode-foreground: #cccccc;

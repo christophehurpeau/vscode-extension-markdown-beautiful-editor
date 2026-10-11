@@ -47,7 +47,10 @@ interface DiffTarget {
     sides: DiffSides;
 }
 
-export async function openDiffForTarget({ context, target }: {
+export async function openDiffForTarget({
+    context,
+    target,
+}: {
     context: vscode.ExtensionContext;
     target: unknown;
 }): Promise<void> {
@@ -80,12 +83,10 @@ async function resolveDiffTarget(target: unknown): Promise<DiffTarget | null> {
 
     if (target instanceof vscode.Uri) {
         const fileUri = fileUriFromGitUri(target);
-        return fileUri
-            ? fromDiffTabFor(fileUri) ?? await fromFileStatus(fileUri)
-            : null;
+        return fileUri ? (fromDiffTabFor(fileUri) ?? (await fromFileStatus(fileUri))) : null;
     }
 
-    return fromActiveDiffTab() ?? await fromActiveTab();
+    return fromActiveDiffTab() ?? (await fromActiveTab());
 }
 
 /** A `SourceControlResourceState`, as opposed to a plain `Uri` or nothing. */
@@ -103,12 +104,13 @@ async function fromScmResource(resource: ScmResourceLike): Promise<DiffTarget | 
         return null;
     }
 
-    const statusOnResource = typeof resource.type === 'number' ? resource.type as GitStatus : undefined;
+    const statusOnResource = typeof resource.type === 'number' ? (resource.type as GitStatus) : undefined;
     // The lookup is needed when the object did not carry a status, and for a
     // rename either way -- only the public `Change` has `originalUri`.
-    const change = statusOnResource === undefined || readsOriginalUri(statusOnResource)
-        ? await findChange({ fileUri, scmResourceGroupId: scmResourceGroupIdFor(resource.resourceGroupType) })
-        : null;
+    const change =
+        statusOnResource === undefined || readsOriginalUri(statusOnResource)
+            ? await findChange({ fileUri, scmResourceGroupId: scmResourceGroupIdFor(resource.resourceGroupType) })
+            : null;
     const status = statusOnResource ?? (change?.status as GitStatus | undefined);
 
     return {
@@ -148,9 +150,7 @@ function fromActiveDiffTab(): DiffTarget | null {
 
 async function fromActiveTab(): Promise<DiffTarget | null> {
     const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
-    const uri = input instanceof vscode.TabInputText || input instanceof vscode.TabInputCustom
-        ? input.uri
-        : null;
+    const uri = input instanceof vscode.TabInputText || input instanceof vscode.TabInputCustom ? input.uri : null;
     const fileUri = uri ? fileUriFromGitUri(uri) : null;
 
     return fileUri ? fromFileStatus(fileUri) : null;

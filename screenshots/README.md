@@ -21,11 +21,11 @@ or the TOC reaches the screenshots without anyone remembering to mirror it here.
 
 ## Files
 
-| File | Role |
-|------|------|
-| `capture.ts` | The harness, and the shot list: surface, output name, fixture, viewport |
-| `fixtures/*.md` | One markdown document per output image (two for a diff) |
-| `vscode-dark-modern.css` | The `--vscode-*` theme variables VS Code would inject |
+| File                     | Role                                                                    |
+| ------------------------ | ----------------------------------------------------------------------- |
+| `capture.ts`             | The harness, and the shot list: surface, output name, fixture, viewport |
+| `fixtures/*.md`          | One markdown document per output image (two for a diff)                 |
+| `vscode-dark-modern.css` | The `--vscode-*` theme variables VS Code would inject                   |
 
 Each shot is a row in `shots`, near the top of `capture.ts`. Its `surface` picks
 which of the three things the bundle can be is captured:

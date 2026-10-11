@@ -54,7 +54,8 @@ body.font-mono {
     --mbe-font-content: var(--mbe-font-mono);
 }
 
-html, body {
+html,
+body {
     margin: 0;
     padding: 0;
     height: 100%;
@@ -226,12 +227,24 @@ html, body {
  * mirrors the line decorations `decorations.ts` actually builds, so the
  * synthesized boundary classes below do reach the gutter element.
  * Values here must stay equal to md-block.css / md-alerts.css. */
-.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h1 { padding-top: 0.5em; }
-.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h2 { padding-top: 0.4em; }
-.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h3 { padding-top: 0.3em; }
-.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h4 { padding-top: 0.2em; }
-.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h5 { padding-top: 0.15em; }
-.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h6 { padding-top: 0.1em; }
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h1 {
+    padding-top: 0.5em;
+}
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h2 {
+    padding-top: 0.4em;
+}
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h3 {
+    padding-top: 0.3em;
+}
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h4 {
+    padding-top: 0.2em;
+}
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h5 {
+    padding-top: 0.15em;
+}
+.cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.md-h6 {
+    padding-top: 0.1em;
+}
 
 .cm-editor .cm-gutter.cm-lineNumbers .cm-gutterElement.blockquote-first {
     padding-top: 8px;

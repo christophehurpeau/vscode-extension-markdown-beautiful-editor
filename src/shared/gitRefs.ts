@@ -12,11 +12,7 @@
  * extension's own `git:` URIs (`git show :path`). `empty` is not a git read at
  * all — it is the left side of an untracked file, which has no prior version.
  */
-export type DiffSide =
-    | { kind: 'workingTree' }
-    | { kind: 'index' }
-    | { kind: 'ref'; ref: string }
-    | { kind: 'empty' };
+export type DiffSide = { kind: 'workingTree' } | { kind: 'index' } | { kind: 'ref'; ref: string } | { kind: 'empty' };
 
 export interface DiffSides {
     original: DiffSide;
@@ -144,9 +140,7 @@ export function isModifiedSideWritable({ modified }: DiffSides): boolean {
 /** Statuses whose original side is a different file — a rename or copy reads
  *  its previous version from `Change.originalUri`, not the current path. */
 export function readsOriginalUri(status?: GitStatus): boolean {
-    return status === gitStatus.indexRenamed
-        || status === gitStatus.indexCopied
-        || status === gitStatus.intentToRename;
+    return status === gitStatus.indexRenamed || status === gitStatus.indexCopied || status === gitStatus.intentToRename;
 }
 
 export function diffSideLabel(side: DiffSide): string {
@@ -217,8 +211,7 @@ export function diffScopeLabel({ original, modified }: DiffSides): string | null
 /** Names the tab the way git names its own diff tabs — one parenthetical: the
  *  scope where there is one, and otherwise the refs themselves. */
 export function diffPanelTitle({ fileName, sides }: { fileName: string; sides: DiffSides }): string {
-    const scope = diffScopeLabel(sides)
-        ?? `${diffSideLabel(sides.original)} ↔ ${diffSideLabel(sides.modified)}`;
+    const scope = diffScopeLabel(sides) ?? `${diffSideLabel(sides.original)} ↔ ${diffSideLabel(sides.modified)}`;
     return `${fileName} (${scope})`;
 }
 

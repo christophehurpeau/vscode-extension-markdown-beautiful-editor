@@ -227,7 +227,9 @@ describe('hostSync', () => {
                         pending.set(id, handler);
                         return id as unknown as ReturnType<typeof setTimeout>;
                     },
-                    clearTimeout: (id) => { pending.delete(id as unknown as number); },
+                    clearTimeout: (id) => {
+                        pending.delete(id as unknown as number);
+                    },
                 },
                 fire(): void {
                     const ids = [...pending.keys()];
@@ -245,7 +247,13 @@ describe('hostSync', () => {
             // because that queue suppresses a repeat of the last content.
             let runs = 0;
             const { clock, fire } = fakeClock();
-            const task = createDebouncedTask({ delayMs: 300, clock, run: () => { runs++; } });
+            const task = createDebouncedTask({
+                delayMs: 300,
+                clock,
+                run: () => {
+                    runs++;
+                },
+            });
 
             task.schedule();
             fire();
@@ -260,7 +268,13 @@ describe('hostSync', () => {
         it('collapses rapid schedules into a single run', () => {
             let runs = 0;
             const { clock, fire } = fakeClock();
-            const task = createDebouncedTask({ delayMs: 300, clock, run: () => { runs++; } });
+            const task = createDebouncedTask({
+                delayMs: 300,
+                clock,
+                run: () => {
+                    runs++;
+                },
+            });
 
             task.schedule();
             task.schedule();
@@ -273,7 +287,13 @@ describe('hostSync', () => {
         it('cancel drops a pending run', () => {
             let runs = 0;
             const { clock, fire } = fakeClock();
-            const task = createDebouncedTask({ delayMs: 300, clock, run: () => { runs++; } });
+            const task = createDebouncedTask({
+                delayMs: 300,
+                clock,
+                run: () => {
+                    runs++;
+                },
+            });
 
             task.schedule();
             task.cancel();

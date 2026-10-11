@@ -17,14 +17,21 @@ import { initTocPanel } from './cm/ui/tocPanel';
 import { initChrome, selectionRangeFromTextSelection } from './cm/ui/chrome';
 import { initGlobalFindShortcut } from './cm/search';
 import { indentCommand } from './cm/commands/indent';
-import { updateToc, extractHeadingsFromMarkdown, findHeadingIndexBySlug, findHeadingLineIndex, setTocVisible } from './toc';
+import {
+    updateToc,
+    extractHeadingsFromMarkdown,
+    findHeadingIndexBySlug,
+    findHeadingLineIndex,
+    setTocVisible,
+} from './toc';
 import { resolveTocVisibility, toggledTocPreference, type TocVisibilityPreference } from '../shared/tocVisibility';
 import {
     defaultEditorFontFamily,
     monoFontBodyClass,
     resolveEditorFontFamily,
     toggledEditorFontFamily,
-    type EditorFontFamily} from '../shared/fontFamily';
+    type EditorFontFamily,
+} from '../shared/fontFamily';
 import { getStoredState, saveTocPreference } from './editor/state';
 import type { HostToWebviewMessage, WebviewToHostMessage } from '../shared/messages';
 import type { TextSelection } from '../shared/textEditorRedirect';
@@ -95,9 +102,10 @@ function recomputeLineChanges(): void {
     if (!view) {
         return;
     }
-    const markers = headContent === null
-        ? new Map<number, LineChangeKind>()
-        : computeLineChangeMarkers(headContent, view.state.doc.toString());
+    const markers =
+        headContent === null
+            ? new Map<number, LineChangeKind>()
+            : computeLineChangeMarkers(headContent, view.state.doc.toString());
     dispatchLineChangeMarkers(view, markers);
 }
 
@@ -178,25 +186,29 @@ function scrollToAnchorInEditor(editor: EditorView, slug: string): void {
     }
     const line = editor.state.doc.line(lineIndex + 1);
     // Double rAF: a just-revealed background tab may not be laid out yet.
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-        editor.dispatch({
-            selection: { anchor: line.from },
-            effects: EditorView.scrollIntoView(line.from, { y: 'start' }),
-        });
-        editor.focus();
-    }));
+    requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+            editor.dispatch({
+                selection: { anchor: line.from },
+                effects: EditorView.scrollIntoView(line.from, { y: 'start' }),
+            });
+            editor.focus();
+        })
+    );
 }
 
 function revealSelectionInEditor(editor: EditorView, selection: TextSelection): void {
     const range = selectionRangeFromTextSelection(editor.state, selection);
     // Double rAF: same reasoning as `scrollToAnchorInEditor`. Centered, as
     // VS Code's own text editor reveals a search result.
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-        editor.dispatch({
-            selection: range,
-            effects: EditorView.scrollIntoView(range.head, { y: 'center' }),
-        });
-    }));
+    requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+            editor.dispatch({
+                selection: range,
+                effects: EditorView.scrollIntoView(range.head, { y: 'center' }),
+            });
+        })
+    );
 }
 
 function initEditor(container: HTMLElement, markdown: string, readOnly: boolean): void {
@@ -452,9 +464,15 @@ function init(): void {
     // lives in the merge view's modified pane, and the main view is hidden.
     initGlobalFindShortcut({ resolveView: () => mergeView?.b ?? view });
 
-    document.getElementById('diff-toggle-btn')?.addEventListener('click', () => postToHost({ type: 'requestDiffToggle' }));
-    document.getElementById('diff-close-btn')?.addEventListener('click', () => postToHost({ type: 'requestDiffToggle' }));
-    document.getElementById('readonly-banner-btn')?.addEventListener('click', () => postToHost({ type: 'openBeautifulDiff' }));
+    document
+        .getElementById('diff-toggle-btn')
+        ?.addEventListener('click', () => postToHost({ type: 'requestDiffToggle' }));
+    document
+        .getElementById('diff-close-btn')
+        ?.addEventListener('click', () => postToHost({ type: 'requestDiffToggle' }));
+    document
+        .getElementById('readonly-banner-btn')
+        ?.addEventListener('click', () => postToHost({ type: 'openBeautifulDiff' }));
 
     window.addEventListener('message', (event: MessageEvent) => {
         const message = event.data as HostToWebviewMessage;
@@ -478,7 +496,9 @@ function init(): void {
                 // the host never actually sets them today.
                 diffAvailable = message.diffAvailable;
                 updateDiffToggleVisibility();
-                console.log(`[markdown-beautiful-editor] webview cold start: ${(performance.now() - scriptEvalStart).toFixed(1)}ms`);
+                console.log(
+                    `[markdown-beautiful-editor] webview cold start: ${(performance.now() - scriptEvalStart).toFixed(1)}ms`
+                );
                 break;
             }
             case 'initDiff': {

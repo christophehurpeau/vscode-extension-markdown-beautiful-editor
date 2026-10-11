@@ -25,7 +25,14 @@
  * last added cursor".
  */
 import { EditorSelection, EditorState, type Extension, type SelectionRange } from '@codemirror/state';
-import { EditorView, crosshairCursor, drawSelection, keymap, rectangularSelection, type Command } from '@codemirror/view';
+import {
+    EditorView,
+    crosshairCursor,
+    drawSelection,
+    keymap,
+    rectangularSelection,
+    type Command,
+} from '@codemirror/view';
 import { selectionOverlay } from './selectionOverlay';
 
 export interface AddedCursorOptions {
@@ -48,7 +55,11 @@ export interface AddedCursorOptions {
  * extends away from it, and it carries the edge range's `goalColumn` so a run
  * of presses keeps the same column across short lines.
  */
-export function selectionWithAddedCursor({ selection, forward, moveVertically }: AddedCursorOptions): EditorSelection | null {
+export function selectionWithAddedCursor({
+    selection,
+    forward,
+    moveVertically,
+}: AddedCursorOptions): EditorSelection | null {
     const edge = forward ? selection.ranges[selection.ranges.length - 1] : selection.ranges[0];
     const added = moveVertically(EditorSelection.cursor(edge.head, edge.assoc, undefined, edge.goalColumn));
     if (added.head === edge.head) {

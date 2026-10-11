@@ -11,13 +11,13 @@
  * `style-src` already covers `${webview.cspSource}` for same-origin
  * stylesheet loads.
  */
-@import "cm-shell.css";
-@import "md-inline.css";
-@import "md-block.css";
-@import "code-tokens.css";
-@import "md-alerts.css";
-@import "toolbar.css";
-@import "search.css";
-@import "toc.css";
-@import "diff.css";
-@import "diff-chrome.css";
+@import 'cm-shell.css';
+@import 'md-inline.css';
+@import 'md-block.css';
+@import 'code-tokens.css';
+@import 'md-alerts.css';
+@import 'toolbar.css';
+@import 'search.css';
+@import 'toc.css';
+@import 'diff.css';
+@import 'diff-chrome.css';

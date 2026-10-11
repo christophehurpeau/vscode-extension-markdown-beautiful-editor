@@ -35,18 +35,28 @@ function stateFor(selection: EditorSelection): EditorState {
 
 function addCursor(selection: EditorSelection, forward: boolean): EditorSelection | null {
     const state = stateFor(selection);
-    return selectionWithAddedCursor({ selection: state.selection, forward, moveVertically: moveByDocLine(state, forward) });
+    return selectionWithAddedCursor({
+        selection: state.selection,
+        forward,
+        moveVertically: moveByDocLine(state, forward),
+    });
 }
 
 describe('cm/multipleSelections: selectionWithAddedCursor', () => {
     it('adds a cursor on the line below, keeping the column', () => {
         const result = addCursor(EditorSelection.single(2), true);
-        assert.deepStrictEqual(result?.ranges.map((r) => r.head), [2, 7]);
+        assert.deepStrictEqual(
+            result?.ranges.map((r) => r.head),
+            [2, 7]
+        );
     });
 
     it('adds a cursor on the line above', () => {
         const result = addCursor(EditorSelection.single(7), false);
-        assert.deepStrictEqual(result?.ranges.map((r) => r.head), [2, 7]);
+        assert.deepStrictEqual(
+            result?.ranges.map((r) => r.head),
+            [2, 7]
+        );
     });
 
     it('makes the added cursor the main range', () => {
@@ -57,13 +67,19 @@ describe('cm/multipleSelections: selectionWithAddedCursor', () => {
     it('extends downward from the last range, not the main one', () => {
         const selection = EditorSelection.create([EditorSelection.cursor(2), EditorSelection.cursor(7)], 0);
         const result = addCursor(selection, true);
-        assert.deepStrictEqual(result?.ranges.map((r) => r.head), [2, 7, 12]);
+        assert.deepStrictEqual(
+            result?.ranges.map((r) => r.head),
+            [2, 7, 12]
+        );
     });
 
     it('extends upward from the first range', () => {
         const selection = EditorSelection.create([EditorSelection.cursor(7), EditorSelection.cursor(12)], 1);
         const result = addCursor(selection, false);
-        assert.deepStrictEqual(result?.ranges.map((r) => r.head), [2, 7, 12]);
+        assert.deepStrictEqual(
+            result?.ranges.map((r) => r.head),
+            [2, 7, 12]
+        );
     });
 
     it('returns null at the last line', () => {
@@ -98,6 +114,12 @@ describe('cm/multipleSelections: selectionWithAddedCursor', () => {
 
     it('collapses a non-empty range to its head before moving', () => {
         const result = addCursor(EditorSelection.single(0, 2), true);
-        assert.deepStrictEqual(result?.ranges.map((r) => [r.from, r.to]), [[0, 2], [7, 7]]);
+        assert.deepStrictEqual(
+            result?.ranges.map((r) => [r.from, r.to]),
+            [
+                [0, 2],
+                [7, 7],
+            ]
+        );
     });
 });

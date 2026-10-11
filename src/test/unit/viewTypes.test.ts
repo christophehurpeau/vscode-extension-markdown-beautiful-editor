@@ -16,9 +16,7 @@ interface Manifest {
     contributes?: { customEditors?: { viewType: string }[] };
 }
 
-const manifest = JSON.parse(
-    fs.readFileSync(path.resolve(__dirname, '../../../package.json'), 'utf8')
-) as Manifest;
+const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../package.json'), 'utf8')) as Manifest;
 
 describe('package.json activation events', () => {
     it('activates the extension to restore a diff panel', () => {
@@ -38,7 +36,7 @@ describe('package.json activation events', () => {
 describe('package.json custom editor', () => {
     it('registers the view type the code opens', () => {
         assert.deepStrictEqual(
-            manifest.contributes?.customEditors?.map(editor => editor.viewType),
+            manifest.contributes?.customEditors?.map((editor) => editor.viewType),
             [markdownEditorViewType]
         );
     });

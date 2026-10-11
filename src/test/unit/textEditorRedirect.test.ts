@@ -3,7 +3,10 @@ import { createRedirectExemptions, isRedirectCandidate, selectionToReveal } from
 
 describe('textEditorRedirect: isRedirectCandidate', () => {
     it('accepts a markdown file on disk in a plain text tab', () => {
-        assert.strictEqual(isRedirectCandidate({ scheme: 'file', path: '/docs/README.MD', isPlainTextTab: true }), true);
+        assert.strictEqual(
+            isRedirectCandidate({ scheme: 'file', path: '/docs/README.MD', isPlainTextTab: true }),
+            true
+        );
     });
 
     it('rejects a diff pane, peek or other non-plain tab', () => {
@@ -12,17 +15,26 @@ describe('textEditorRedirect: isRedirectCandidate', () => {
 
     it('rejects a git: or untitled document', () => {
         assert.strictEqual(isRedirectCandidate({ scheme: 'git', path: '/docs/a.md', isPlainTextTab: true }), false);
-        assert.strictEqual(isRedirectCandidate({ scheme: 'untitled', path: 'Untitled-1', isPlainTextTab: true }), false);
+        assert.strictEqual(
+            isRedirectCandidate({ scheme: 'untitled', path: 'Untitled-1', isPlainTextTab: true }),
+            false
+        );
     });
 
     it('rejects files the customEditors selector does not claim', () => {
-        assert.strictEqual(isRedirectCandidate({ scheme: 'file', path: '/docs/a.markdown', isPlainTextTab: true }), false);
+        assert.strictEqual(
+            isRedirectCandidate({ scheme: 'file', path: '/docs/a.markdown', isPlainTextTab: true }),
+            false
+        );
     });
 });
 
 describe('textEditorRedirect: selectionToReveal', () => {
     it('ignores the caret at the document start a text editor opens with', () => {
-        assert.strictEqual(selectionToReveal({ anchor: { line: 0, character: 0 }, active: { line: 0, character: 0 } }), null);
+        assert.strictEqual(
+            selectionToReveal({ anchor: { line: 0, character: 0 }, active: { line: 0, character: 0 } }),
+            null
+        );
     });
 
     it('keeps a selection starting at the document start', () => {

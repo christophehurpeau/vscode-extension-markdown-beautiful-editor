@@ -40,7 +40,7 @@ describe('floatingToolbarPosition', () => {
     });
 
     describe('align: start', () => {
-        it('aligns the toolbar to the rect\'s left edge', () => {
+        it("aligns the toolbar to the rect's left edge", () => {
             const rect: ToolbarAnchorRect = { left: 300, top: 100, bottom: 120, width: 10 };
             const pos = floatingToolbarPosition(rect, { ...baseOptions, align: 'start' });
             assert.strictEqual(pos.left, 300);

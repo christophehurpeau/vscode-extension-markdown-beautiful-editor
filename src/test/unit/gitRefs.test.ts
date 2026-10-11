@@ -26,7 +26,6 @@ import {
  * group instead is what broke staged adds and deletes.
  */
 describe('git ref resolution', () => {
-
     describe('resolveDiffSides', () => {
         it('compares the index against the working tree for an unstaged modify', () => {
             assert.deepStrictEqual(resolveDiffSides(gitStatus.modified), {
@@ -79,10 +78,7 @@ describe('git ref resolution', () => {
         });
 
         it('distinguishes a staged modify from an unstaged one', () => {
-            assert.notDeepStrictEqual(
-                resolveDiffSides(gitStatus.indexModified),
-                resolveDiffSides(gitStatus.modified)
-            );
+            assert.notDeepStrictEqual(resolveDiffSides(gitStatus.indexModified), resolveDiffSides(gitStatus.modified));
         });
 
         it('falls back to HEAD against the working tree for conflicts and unknown statuses', () => {
@@ -202,10 +198,10 @@ describe('git ref resolution', () => {
 
     describe('gitUriQuery', () => {
         it('matches the shape the built-in git extension builds', () => {
-            assert.deepStrictEqual(
-                JSON.parse(gitUriQuery({ fsPath: '/repo/NOTES.md', ref: 'HEAD' })),
-                { path: '/repo/NOTES.md', ref: 'HEAD' }
-            );
+            assert.deepStrictEqual(JSON.parse(gitUriQuery({ fsPath: '/repo/NOTES.md', ref: 'HEAD' })), {
+                path: '/repo/NOTES.md',
+                ref: 'HEAD',
+            });
         });
 
         it('keeps the empty index ref rather than dropping the key', () => {
@@ -310,7 +306,10 @@ describe('git ref resolution', () => {
 
         it('distinguishes two named refs', () => {
             const uriString = 'file:///repo/NOTES.md';
-            const at = (ref: string): DiffSides => ({ original: { kind: 'ref', ref }, modified: { kind: 'workingTree' } });
+            const at = (ref: string): DiffSides => ({
+                original: { kind: 'ref', ref },
+                modified: { kind: 'workingTree' },
+            });
             assert.notStrictEqual(
                 diffPanelKey({ uriString, sides: at('HEAD') }),
                 diffPanelKey({ uriString, sides: at('HEAD~1') })
@@ -334,7 +333,10 @@ describe('git ref resolution', () => {
                 { fileUri: 'file:///repo/NOTES.md' },
                 { sides },
                 { fileUri: 42, sides },
-                { fileUri: 'file:///repo/NOTES.md', sides: { original: { kind: 'nope' }, modified: { kind: 'index' } } },
+                {
+                    fileUri: 'file:///repo/NOTES.md',
+                    sides: { original: { kind: 'nope' }, modified: { kind: 'index' } },
+                },
                 { fileUri: 'file:///repo/NOTES.md', sides: { original: { kind: 'ref' }, modified: { kind: 'index' } } },
             ];
             for (const value of rejected) {

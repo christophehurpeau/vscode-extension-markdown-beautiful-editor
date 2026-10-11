@@ -70,15 +70,17 @@ export function updateToc(headings: TocHeading[]): void {
         return;
     }
 
-    const listItems = headings.map((heading, index) => {
-        return `
+    const listItems = headings
+        .map((heading, index) => {
+            return `
             <li class="toc-item toc-level-${heading.level}">
                 <a href="#" class="toc-link" data-heading-index="${index}" title="${escapeHtml(heading.text)}">
                     ${escapeHtml(heading.text)}
                 </a>
             </li>
         `;
-    }).join('');
+        })
+        .join('');
 
     tocContainer.innerHTML = `
         <div class="toc-title">Contents</div>
@@ -96,11 +98,13 @@ export function updateToc(headings: TocHeading[]): void {
  * `[label](url)` links to their label.
  */
 export function stripInlineMarkdown(text: string): string {
-    return text
-        // links: [label](url) -> label
-        .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-        // bold/italic/strikethrough markers and inline code backticks
-        .replace(/(\*\*|__|\*|_|~~|`)/g, '');
+    return (
+        text
+            // links: [label](url) -> label
+            .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+            // bold/italic/strikethrough markers and inline code backticks
+            .replace(/(\*\*|__|\*|_|~~|`)/g, '')
+    );
 }
 
 /**
@@ -111,12 +115,14 @@ export function stripInlineMarkdown(text: string): string {
  * Pure (no DOM) so it can be unit-tested directly.
  */
 export function slugify(text: string): string {
-    return stripInlineMarkdown(text)
-        .trim()
-        .toLowerCase()
-        // remove anything that isn't a word char (incl. unicode letters), space or hyphen
-        .replace(/[^\p{L}\p{N} \-]/gu, '')
-        .replace(/\s+/g, '-');
+    return (
+        stripInlineMarkdown(text)
+            .trim()
+            .toLowerCase()
+            // remove anything that isn't a word char (incl. unicode letters), space or hyphen
+            .replace(/[^\p{L}\p{N} \-]/gu, '')
+            .replace(/\s+/g, '-')
+    );
 }
 
 /**

@@ -60,24 +60,26 @@ function annotateSearchPanel(view: EditorView): void {
  * is there because the panel element is created by CM's own panel plugin
  * during the same update cycle this sees.
  */
-const searchPanelTitles = ViewPlugin.fromClass(class {
-    private open: boolean;
+const searchPanelTitles = ViewPlugin.fromClass(
+    class {
+        private open: boolean;
 
-    constructor(view: EditorView) {
-        this.open = searchPanelOpen(view.state);
-    }
+        constructor(view: EditorView) {
+            this.open = searchPanelOpen(view.state);
+        }
 
-    update(update: ViewUpdate): void {
-        const open = searchPanelOpen(update.state);
-        if (open === this.open) {
-            return;
-        }
-        this.open = open;
-        if (open) {
-            requestAnimationFrame(() => annotateSearchPanel(update.view));
+        update(update: ViewUpdate): void {
+            const open = searchPanelOpen(update.state);
+            if (open === this.open) {
+                return;
+            }
+            this.open = open;
+            if (open) {
+                requestAnimationFrame(() => annotateSearchPanel(update.view));
+            }
         }
     }
-});
+);
 
 export const markdownSearch: Extension = [
     search({ top: true }),
@@ -98,10 +100,7 @@ export interface FindShortcutEvent {
 }
 
 export function isFindShortcut(event: FindShortcutEvent): boolean {
-    return event.key.toLowerCase() === 'f'
-        && (event.metaKey || event.ctrlKey)
-        && !event.altKey
-        && !event.shiftKey;
+    return event.key.toLowerCase() === 'f' && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey;
 }
 
 export interface GlobalFindShortcutOptions {

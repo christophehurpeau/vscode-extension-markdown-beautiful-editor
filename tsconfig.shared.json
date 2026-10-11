@@ -13,7 +13,5 @@
         "resolveJsonModule": true,
         "composite": true
     },
-    "include": [
-        "src/shared/**/*.ts"
-    ]
+    "include": ["src/shared/**/*.ts"]
 }

@@ -89,7 +89,11 @@ export function inlineFormatChange({ text, from, to, format }: InlineFormatChang
     }
 
     // The selection itself includes the markers (e.g. selecting "**bold**").
-    if (selectedText.startsWith(prefix) && selectedText.endsWith(suffix) && selectedText.length > prefix.length + suffix.length) {
+    if (
+        selectedText.startsWith(prefix) &&
+        selectedText.endsWith(suffix) &&
+        selectedText.length > prefix.length + suffix.length
+    ) {
         const inner = selectedText.slice(prefix.length, -suffix.length);
         return { insert: inner, from, to, selection: from + inner.length };
     }
