@@ -10,6 +10,15 @@ out/**
 # Screenshot harness (regenerates images/, not shipped)
 screenshots/**
 
+# Release tooling
+scripts/**
+.github/**
+
+# Contributor and agent docs
+docs/**
+CLAUDE.md
+.claude/**
+
 # Dependencies (not needed, bundled)
 node_modules/**
 
