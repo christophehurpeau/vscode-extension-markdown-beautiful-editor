@@ -85,6 +85,6 @@ describe('cm/search: isFindShortcut', () => {
 describe('cm/search: stylesheet', () => {
     it('search.css is imported by the stylesheet root', () => {
         const root = fs.readFileSync(path.resolve(__dirname, '../../../src/styles/editor.css'), 'utf8');
-        assert.ok(root.includes('@import "search.css"'));
+        assert.match(root, /@import ['"]search\.css['"]/);
     });
 });
