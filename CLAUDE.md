@@ -51,4 +51,4 @@ There are two separate build paths: `compile-tests`/unit tests use tsc → `out/
 
 ## Publishing
 
-See [docs/PUBLISHING.md](docs/PUBLISHING.md). Uses `@vscode/vsce` (pinned to 4.0.0 in devDeps).
+`pnpm release [patch|minor|major|x.y.z]` bumps, writes CHANGELOG.md from conventional commits, tags and pushes; the tag triggers `.github/workflows/release.yml`, which publishes to the VS Code Marketplace and Open VSX. See [docs/PUBLISHING.md](docs/PUBLISHING.md). `@vscode/vsce` and `ovsx` are pinned in devDeps.

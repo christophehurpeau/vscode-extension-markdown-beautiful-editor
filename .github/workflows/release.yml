@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency: release
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: marketplace
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Check tag matches package.json version
+        run: test "v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME"
+
+      - run: pnpm run compile-tests
+      - run: pnpm run test:unit
+
+      # vscode:prepublish runs the production build
+      - run: pnpm run package:vsce --out extension.vsix
+
+      # Entra ID (OIDC) when AZURE_CLIENT_ID is configured, otherwise the VSCE_PAT secret.
+      # Global PATs stop working on 2026-12-01, see docs/PUBLISHING.md.
+      - if: vars.AZURE_CLIENT_ID != ''
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Publish to VS Code Marketplace (Entra ID)
+        if: vars.AZURE_CLIENT_ID != ''
+        run: pnpm exec vsce publish --no-dependencies --skip-duplicate --packagePath extension.vsix --azure-credential
+
+      - name: Publish to VS Code Marketplace (PAT)
+        if: vars.AZURE_CLIENT_ID == ''
+        run: pnpm exec vsce publish --no-dependencies --skip-duplicate --packagePath extension.vsix
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Publish to Open VSX
+        run: pnpm exec ovsx publish extension.vsix --skip-duplicate
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+
+      - name: Create GitHub release
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          node scripts/release-notes.ts "$version" > "$RUNNER_TEMP/notes.md"
+          cp extension.vsix "markdown-beautiful-editor-$version.vsix"
+          gh release create "$GITHUB_REF_NAME" "markdown-beautiful-editor-$version.vsix" \
+            --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md"
+        env:
+          GH_TOKEN: ${{ github.token }}
