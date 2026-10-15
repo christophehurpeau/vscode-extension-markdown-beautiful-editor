@@ -50,6 +50,10 @@ export type HostToWebviewMessage =
           // See `init`'s `headContent` above.
           headContent: string | null;
       }
+    // A git state change with no document change. Carries no content: the
+    // webview may hold keystrokes the host has not received yet, which an
+    // `update` with the host's text would revert.
+    | { type: 'headContent'; diffAvailable: boolean; headContent: string | null }
     | { type: 'focus' }
     | { type: 'toggleDiff'; originalVersionContent: string }
     // Sole message of the standalone diff panel (`src/editor/diffPanel.ts`),

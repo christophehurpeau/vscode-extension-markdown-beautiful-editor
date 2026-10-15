@@ -269,6 +269,13 @@ function applyExternalUpdate(markdown: string): void {
     (diffSync ?? hostSync)?.applyExternalUpdate(markdown);
 }
 
+function applyHeadContent(message: { diffAvailable: boolean; headContent: string | null }): void {
+    diffAvailable = message.diffAvailable;
+    headContent = message.headContent;
+    scheduleLineChangeRecompute();
+    updateDiffToggleVisibility();
+}
+
 // --- Diff mode (WP-D) ---
 // Shows/hides the toggle button per the latest `diffAvailable` (from
 // `init`/`update`) and the current diff-mode state; the close button's
@@ -511,14 +518,15 @@ function init(): void {
             }
             case 'update': {
                 applyExternalUpdate(message.originalContent || message.content || '');
-                diffAvailable = message.diffAvailable;
                 // `applyExternalUpdate` only dispatches (and so only
                 // triggers the onDocChanged-driven recompute) when the text
                 // actually changed. A HEAD-only refresh (git commit, no
                 // local edit) needs its own trigger.
-                headContent = message.headContent;
-                scheduleLineChangeRecompute();
-                updateDiffToggleVisibility();
+                applyHeadContent(message);
+                break;
+            }
+            case 'headContent': {
+                applyHeadContent(message);
                 break;
             }
             case 'focus': {

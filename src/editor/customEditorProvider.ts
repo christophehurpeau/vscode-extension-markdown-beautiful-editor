@@ -314,8 +314,18 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
         // Re-fetches HEAD content from git (an actual git state change --
         // commit, checkout, stage, branch switch) then pushes the result.
         const refreshHeadContentAndPushUpdate = async () => {
-            await this.refreshHeadContent(document.uri);
-            pushUpdate();
+            const headContent = await this.refreshHeadContent(document.uri);
+            const currentContent = document.getText();
+            if (currentContent !== lastKnownContent) {
+                lastKnownContent = currentContent;
+                pushUpdate();
+                return;
+            }
+            this.post(webviewPanel, {
+                type: 'headContent',
+                diffAvailable: this.computeDiffAvailable(headContent, currentContent),
+                headContent,
+            });
         };
 
         // Handle messages from webview
