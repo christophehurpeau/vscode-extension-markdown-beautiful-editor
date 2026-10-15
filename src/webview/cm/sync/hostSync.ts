@@ -11,11 +11,9 @@
  * annotation is per-transaction: there is no shared flag to strand, so a
  * throw anywhere downstream can never wedge future edits.
  *
- * `applyExternalUpdate` narrows the incoming content to the single region
- * between the common prefix and suffix and dispatches that as a `ChangeSpec`,
- * rather than a whole-document replace -- so the user's selection and scroll
- * position survive a localized external edit. See
- * `computeExternalUpdateChanges` for why this is not a real diff.
+ * `applyExternalUpdate` dispatches the incoming content as line-level hunks
+ * rather than a whole-document replace, so the user's selection and scroll
+ * position survive an external edit. See `computeExternalUpdateChanges`.
  *
  * TODO: the outgoing `edit` message still carries the full document string
  * (`WebviewToHostMessage` only has `content: string`), and the host
@@ -24,7 +22,8 @@
  * `WorkspaceEdit` ranges is a deliberate follow-up -- it touches the host and
  * `src/shared/messages.ts`, both out of scope here.
  */
-import { Annotation, StateEffect, type ChangeSpec, type Transaction } from '@codemirror/state';
+import { diff } from '@codemirror/merge';
+import { Annotation, StateEffect, type Transaction } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import type { WebviewToHostMessage } from '../../../shared/messages';
 
@@ -38,22 +37,85 @@ export function isHostEcho(transactions: readonly Transaction[]): boolean {
     return transactions.some((tr) => tr.annotation(hostEchoAnnotation) === true);
 }
 
+export interface ExternalUpdateChange {
+    from: number;
+    to: number;
+    insert: string;
+}
+
+const LINE_DIFF_TIMEOUT_MS = 50;
+// Line ids are encoded as UTF-16 code units, kept below the surrogate range so
+// `diff` never sees a pair. Past this many distinct lines two lines would share
+// a code unit and the diff would silently corrupt the document.
+const MAX_ENCODABLE_LINES = 0xd800;
+
+function splitLinesKeepingBreaks(text: string): string[] {
+    const lines: string[] = [];
+    let start = 0;
+    while (start < text.length) {
+        const newline = text.indexOf('\n', start);
+        const end = newline === -1 ? text.length : newline + 1;
+        lines.push(text.slice(start, end));
+        start = end;
+    }
+    return lines;
+}
+
+function lineOffsets(lines: readonly string[]): number[] {
+    const offsets = [0];
+    for (const line of lines) {
+        offsets.push(offsets[offsets.length - 1] + line.length);
+    }
+    return offsets;
+}
+
+function encodeLines({
+    oldLines,
+    newLines,
+}: {
+    oldLines: readonly string[];
+    newLines: readonly string[];
+}): [string, string] | null {
+    const ids = new Map<string, string>();
+    const encode = (lines: readonly string[]): string | null => {
+        let encoded = '';
+        for (const line of lines) {
+            let id = ids.get(line);
+            if (id === undefined) {
+                if (ids.size >= MAX_ENCODABLE_LINES) {
+                    return null;
+                }
+                id = String.fromCharCode(ids.size);
+                ids.set(line, id);
+            }
+            encoded += id;
+        }
+        return encoded;
+    };
+    const oldEncoded = encode(oldLines);
+    const newEncoded = oldEncoded === null ? null : encode(newLines);
+    return oldEncoded === null || newEncoded === null ? null : [oldEncoded, newEncoded];
+}
+
 /**
- * Minimal `ChangeSpec` turning `oldDoc` into `newDoc`: one hunk spanning the
- * region between the common prefix and the common suffix. `null` when the
- * documents are already equal.
+ * Line-level hunks turning `oldDoc` into `newDoc`, in `oldDoc` coordinates.
+ * `null` when the documents are already equal.
  *
- * Deliberately NOT a real diff. `diff.diffChars` was measured at 3.3s for a
- * 100-line wholesale replacement, 13s for 200 lines, and over two minutes for
- * 500 -- Myers is O(N*D), and D is the whole document when the content is
- * replaced outright (a git branch switch, a formatter run, an undo in another
- * editor). That freezes the webview. Prefix/suffix trimming is O(N) and gives
- * the same answer for the case that actually matters: a localized external
- * edit produces one tight hunk, so the selection and scroll position outside
- * it survive. A wholesale replacement collapses to a single full-width change,
- * which is what a whole-document replace would have done anyway.
+ * Unchanged lines must stay outside every hunk: CodeMirror keeps the viewport
+ * still by mapping its scroll anchor (the top visible line) through the
+ * change, and an anchor inside a replaced range lands at the range start. A
+ * single prefix/suffix hunk spans from the first difference to the last, so an
+ * agent touching a line near the top and one near the bottom scrolled the
+ * reader to the top.
+ *
+ * The common prefix and suffix are trimmed first in O(N), so a single
+ * localized edit stays one character-tight hunk without diffing. The rest is
+ * diffed per line -- each distinct line encoded as one character for
+ * `@codemirror/merge`'s `diff` -- under a timeout: Myers is O(N*D), and a
+ * character-level diff of a wholesale replacement froze the webview for
+ * minutes. On timeout `diff` returns coarser hunks, never wrong ones.
  */
-export function computeExternalUpdateChanges(oldDoc: string, newDoc: string): ChangeSpec | null {
+export function computeExternalUpdateChanges(oldDoc: string, newDoc: string): ExternalUpdateChange[] | null {
     if (oldDoc === newDoc) {
         return null;
     }
@@ -75,11 +137,27 @@ export function computeExternalUpdateChanges(oldDoc: string, newDoc: string): Ch
         suffix++;
     }
 
-    return {
-        from: prefix,
-        to: oldDoc.length - suffix,
-        insert: newDoc.slice(prefix, newDoc.length - suffix),
-    };
+    const oldMiddle = oldDoc.slice(prefix, oldDoc.length - suffix);
+    const newMiddle = newDoc.slice(prefix, newDoc.length - suffix);
+    const singleHunk = [{ from: prefix, to: oldDoc.length - suffix, insert: newMiddle }];
+
+    const oldLines = splitLinesKeepingBreaks(oldMiddle);
+    const newLines = splitLinesKeepingBreaks(newMiddle);
+    if (oldLines.length <= 1 || newLines.length <= 1) {
+        return singleHunk;
+    }
+    const encoded = encodeLines({ oldLines, newLines });
+    if (!encoded) {
+        return singleHunk;
+    }
+
+    const oldOffsets = lineOffsets(oldLines);
+    const newOffsets = lineOffsets(newLines);
+    return diff(encoded[0], encoded[1], { timeout: LINE_DIFF_TIMEOUT_MS }).map((change) => ({
+        from: prefix + oldOffsets[change.fromA],
+        to: prefix + oldOffsets[change.toA],
+        insert: newMiddle.slice(newOffsets[change.fromB], newOffsets[change.toB]),
+    }));
 }
 
 /** The subset of the timer API `EditQueue` needs, injectable so tests can
@@ -255,7 +333,9 @@ export function createHostSync({
     document.addEventListener('visibilitychange', onVisibilityChange);
 
     function applyExternalUpdate(content: string): void {
-        const changes = computeExternalUpdateChanges(view.state.doc.toString(), content);
+        // The doc holds `\n` only; a CRLF file diffed raw differs on every line.
+        const normalizedContent = view.state.toText(content).toString();
+        const changes = computeExternalUpdateChanges(view.state.doc.toString(), normalizedContent);
         if (!changes) {
             return;
         }

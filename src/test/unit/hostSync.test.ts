@@ -120,6 +120,59 @@ describe('hostSync', () => {
             const mapped = tr.changes.mapPos(gammaPos);
             assert.strictEqual(tr.state.doc.toString().slice(mapped, mapped + 5), 'gamma');
         });
+
+        it('keeps an unchanged line between two distant edits out of every hunk', () => {
+            // CodeMirror maps its scroll anchor with assoc -1; an anchor inside
+            // a hunk lands at the hunk start, i.e. the viewport jumps there.
+            const lines = Array.from({ length: 200 }, (_, i) => `line ${i}`);
+            const edited = [...lines];
+            edited[2] = 'edited near the top';
+            edited[197] = 'edited near the bottom';
+            const oldDoc = lines.join('\n');
+            const newDoc = edited.join('\n');
+
+            const changes = computeExternalUpdateChanges(oldDoc, newDoc);
+            assert.ok(changes);
+            assert.strictEqual(changes.length, 2);
+            const tr = EditorState.create({ doc: oldDoc }).update({ changes });
+            const anchor = oldDoc.indexOf('line 100\n');
+            const mapped = tr.changes.mapPos(anchor, -1);
+            assert.strictEqual(tr.state.doc.toString().slice(mapped, mapped + 9), 'line 100\n');
+            assert.strictEqual(tr.state.doc.toString(), newDoc);
+        });
+
+        it('produces changes that turn oldDoc into newDoc: lines added or removed at the end', () => {
+            assert.strictEqual(applyTo('x', 'x\ny'), 'x\ny');
+            assert.strictEqual(applyTo('x\ny', 'x'), 'x');
+            assert.strictEqual(applyTo('a\nb\n', 'a\nB\nc\n'), 'a\nB\nc\n');
+        });
+
+        it('produces changes that turn oldDoc into newDoc: random line edits', () => {
+            let seed = 42;
+            const random = (max: number): number => {
+                seed = (seed * 1103515245 + 12345) % 2 ** 31;
+                return seed % max;
+            };
+            const vocabulary = ['# Title', '', 'para', '- item', '```', 'code', '> quote', 'para'];
+            for (let run = 0; run < 200; run++) {
+                const oldLines = Array.from({ length: random(30) }, () => vocabulary[random(vocabulary.length)]);
+                const newLines = [...oldLines];
+                for (let edit = random(6); edit > 0; edit--) {
+                    const at = random(newLines.length + 1);
+                    const kind = random(3);
+                    if (kind === 0) {
+                        newLines.splice(at, 0, vocabulary[random(vocabulary.length)]);
+                    } else if (kind === 1) {
+                        newLines.splice(at, 1);
+                    } else {
+                        newLines[at] = `${newLines[at] ?? ''} changed`;
+                    }
+                }
+                const oldDoc = oldLines.join('\n');
+                const newDoc = newLines.join('\n');
+                assert.strictEqual(applyTo(oldDoc, newDoc), newDoc, `run ${run}`);
+            }
+        });
     });
 
     describe('createEditQueue (fake clock)', () => {
