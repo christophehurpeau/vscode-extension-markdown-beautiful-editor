@@ -2,7 +2,7 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
 import { EditorSelection, EditorState, type StateCommand } from '@codemirror/state';
-import { defaultKeymap } from '@codemirror/commands';
+import { defaultKeymap, historyKeymap } from '@codemirror/commands';
 import { editingKeymap, indentCommand } from '../../webview/cm/commands/indent';
 import { indentCommandIds } from '../../shared/indentCommands';
 
@@ -44,6 +44,19 @@ describe('cm/commands/indent: editingKeymap', () => {
             defaultKeymap.length - 2
         );
         assert.ok(keysOf(editingKeymap).includes('Mod-z'));
+    });
+
+    it('keeps undo/redo keydowns from reaching VS Code', () => {
+        const historyBindings = editingKeymap.filter((binding) =>
+            historyKeymap.some((historyBinding) => historyBinding.run === binding.run)
+        );
+        assert.strictEqual(historyBindings.length, historyKeymap.length);
+        for (const binding of historyBindings) {
+            assert.deepStrictEqual(
+                { preventDefault: binding.preventDefault, stopPropagation: binding.stopPropagation },
+                { preventDefault: true, stopPropagation: true }
+            );
+        }
     });
 });
 
