@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.4.6](https://github.com/christophehurpeau/vscode-extension-markdown-beautiful-editor/compare/v0.4.5...v0.4.6) (2026-10-16)
+
+### Bug Fixes
+
+* keep Cmd+Z from also undoing the backing document
+* keep scroll position when the file is edited externally
+* stop git refreshes from reverting unsent keystrokes
+
 ## [0.4.5](https://github.com/christophehurpeau/vscode-extension-markdown-beautiful-editor/compare/v0.4.4...v0.4.5) (2026-10-11)
 
 ### Bug Fixes
